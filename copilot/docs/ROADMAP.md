@@ -86,6 +86,26 @@ Practical effect: multi-symbol spread calibration is now possible, which was a s
 prerequisite for the paper run. The backtest evidence base is unchanged — there is
 still no route to US equity history through IB.
 
+First three-symbol measurement (delayed, 85s — short, treat as indicative):
+
+| symbol | n | median full (bps) | per side | vs 5 bps/side |
+| --- | --- | --- | --- | --- |
+| SPY | 10 | 0.2611 | 0.1306 | **38.3x** overstated |
+| AAPL | 12 | 0.9558 | 0.4779 | 10.5x |
+| MSFT | 14 | 1.2711 | 0.6355 | 7.9x |
+
+The spread differs by ~5x across three large-cap US names, so **a single global
+`spread_bps` is the wrong shape for the model** — it should be per-instrument. That is
+a structural finding, independent of sample size.
+
+### Known defect in the calibrator
+
+A long run interrupted by an external `SIGINT` lost its accumulated samples: the report
+is only written after `node.run()` returns, and the signal did not unwind through it.
+The internal self-stop path works, so bounded runs are safe; ad-hoc interruption is
+not. Fix by installing a signal handler that writes the report from accumulated state
+rather than relying on the `finally` after `node.run()`.
+
 ## 2. Risk breakers — what they actually enforce
 
 Ported from trade-copilot ADR-0025. Both breakers are pure functions over closed
