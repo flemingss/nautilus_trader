@@ -61,11 +61,30 @@ Two caveats remain:
   defensible conservative ones — and should be made explicitly rather than by
   defaulting to whichever number is at hand.
 
-**MSFT and SPY returned zero quotes** over the same window with no error logged, while
-AAPL streamed normally. Contract resolution is correct and identical for all three
-(USD equities on SMART), so this is an IB entitlement quirk rather than a code fault.
-It needs checking in TWS's Market Data Connections dialog before those symbols can be
-calibrated.
+### Entitlement change, 2026-09-01
+
+IB market data **release forms** were completed. Retested immediately; the effect is
+partial and worth recording precisely, because it changes what is calibratable but not
+what is backtestable.
+
+| | before forms | after forms |
+| --- | --- | --- |
+| AAPL delayed quotes | works | works |
+| MSFT / SPY delayed quotes | **no data, no error** | **works** |
+| Any realtime quotes | no data | **still no data** |
+| US equity historical bars | IB 2188 | **still IB 2188** |
+| Index (`^SPX`), futures | IB 2188 | still IB 2188 |
+| Forex (IDEALPRO) | full | full |
+
+So the forms unlocked **delayed quotes across the US equity universe** — the earlier
+MSFT/SPY silence was an entitlement gap, not the adapter bug it resembled. Realtime
+streaming and historical bars still need a paid subscription, which the forms alone do
+not grant. IB subscriptions also typically activate at a trading-day boundary, so
+recheck after the next session before concluding a purchase has not landed.
+
+Practical effect: multi-symbol spread calibration is now possible, which was a stated
+prerequisite for the paper run. The backtest evidence base is unchanged — there is
+still no route to US equity history through IB.
 
 ## 2. Risk breakers — what they actually enforce
 

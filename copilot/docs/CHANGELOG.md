@@ -42,12 +42,20 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   the *current* quantity, which is zero once a position closes; `Position.entry`
   records the opening side and stays valid. Caught by the integration test.
 
+### Entitlements
+
+- IB market data release forms completed. Delayed quotes now work for MSFT and SPY,
+  which previously returned no data and no error. Realtime quotes and US equity
+  historical bars are unchanged — still no data and still IB 2188 respectively, so a
+  paid subscription is still required for both. Recheck after the next trading session
+  before concluding a purchase has not landed.
+
 ### Known issues, not fixed
 
 - Two IB adapter bugs (silent sibling-subscription teardown; `request_ticks` ignoring
   its timeout). Both need a Rust build.
-- MSFT and SPY return no delayed quotes while AAPL streams normally, with no error
-  logged. Contract resolution is identical and correct for all three.
+- No route to US equity historical bars. All 16 request shapes tried return IB 2188,
+  so the backtest evidence base must come from another vendor.
 
 ### Repo hygiene
 
