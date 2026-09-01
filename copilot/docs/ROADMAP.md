@@ -142,7 +142,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Seventeen items. Grouped by blocking condition rather than by component, because that is
+Fourteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -167,6 +167,12 @@ Investigated as far as they can be. **No further work is useful until each is ca
 | Pick the spread coefficient             | 10     | Median, p75 or p95. The distribution has a real tail, so a median model understates bad days. Should be chosen, not defaulted to.               |
 | Buy consolidated US equity data, or not | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, so this is only worth it if intraday comes with it. |
 
+**Resolved 2026-09-02:** the two items that needed a live session are settled - realtime
+quotes are still not entitled, and the sibling-subscription stall does not reproduce. Both
+are written up under stage 00 and stage 10 below. `spread_snapshot.build_node` runs. `LiveNode.add_actor` is
+now exposed to Python, so the calibrator records quotes from committed code and its
+snapshots are reproducible from a commit for the first time.
+
 **Resolved 2026-09-01:** which setup ports first (gap fade, chosen on V1-31 evidence), and
 that upstream files may be changed. `set_trading_state` moves to
 ready-to-build below. The condition attached to the clearance is that every upstream file
@@ -175,10 +181,10 @@ this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 
 ### Ready to build, nothing blocking (2)
 
-| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Make the cost model per-instrument   | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Fix `spread_snapshot.build_node`** | 10    | It calls `node.add_actor(recorder)`, and `add_actor` is **not exposed to Python** on the pinned build - it exists only on the Rust node. As committed the calibrator raises `AttributeError` before recording a single quote, so the snapshots the cost analysis rests on came from code that is not in the repository. The measurements are not thereby wrong, but they are **not reproducible from a commit**, which is the exact failure the activation registry was built to end for verdicts. Found 2026-09-01 while building the paper node. |
+| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Make the cost model per-instrument   | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                   |
+| Retire the queued inherited surfaces | -     | The governance files that describe working *with upstream* - `CLA.md`, `SECURITY.md`, `AI_POLICY.md`, CODEOWNERS, the templates, the README rewrite. Root `ROADMAP.md` and `CONTRIBUTING.md` are done; the survey with per-file calls is in [`MAINTENANCE.md`](MAINTENANCE.md). One PR, chasing inbound links. |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 
@@ -193,16 +199,6 @@ open.
 | Move entry to the next session       | 02    | The gap fade fills at the signal bar's close. The charter requires next-eligible-session entry. Changing it is a new experiment rather than a fix, so it resets the premise's evidence.                                                                                                  |
 | Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities.                                                                                                                   |
 
-### Waiting on a market session (2)
-
-US cash session opens 13:30 UTC. Both need live ticks, so neither can be settled outside
-that window. **Do not open the IB web portal during either run** - it triggers error 162.
-
-| Item                                   | Stage | Notes                                                                                                                                                                                                  |
-| -------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Recheck realtime quote entitlement     | 10    | Release forms unlocked delayed quotes across the US equity universe, not realtime. With the session closed a null result proves nothing. `entitlements.py` runs the check.                             |
-| Explain the sibling-subscription stall | 00    | Reproducible across three runs, and neither the withdrawn teardown claim nor the eviction bug that was fixed accounts for it. Likeliest explanation is IB-side. Open observation, not a diagnosed bug. |
-
 ### Waiting on spend (2)
 
 No code closes these.
@@ -212,7 +208,14 @@ No code closes these.
 | US equity history through IB | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                |
 | Intraday history             | 00    | Marketstack EOD cannot support anything acting within a session. Databento was preferred and deferred until the system earns its cost. |
 
-### Deferred by decision (1)
+### Deferred by decision (2)
+
+**Groom CI for ownership.** Actions is disabled as of 2026-09-02 pending a deliberate
+pass over the inherited workflows. The reason CI has never run is diagnosed and recorded
+in [`MAINTENANCE.md`](MAINTENANCE.md) under "CI, and why it has never run", so the pass
+starts warm: the harden-runner egress allowlist lives in repository variables that did
+not travel with the copy, and the workflows still carry upstream's wheel-publication and
+release machinery, none of which applies here.
 
 **Tabletop: subscriptions, operations, strategy.** Under way. Operations and strategy
 governance are settled and recorded in [`CHARTER.md`](CHARTER.md), the
@@ -450,6 +453,26 @@ Two caveats remain:
   defensible conservative ones - and should be made explicitly rather than by
   defaulting to whichever number is at hand.
 
+### The first reproducible snapshot, 2026-09-02
+
+With `add_actor` exposed, the calibrator ran from committed code for the first time: 25
+minutes, delayed quotes, all three names in one session
+(`calibration/out/spread_snapshot_20260901T154744Z.json`).
+
+| Full spread, bps of mid | samples | median     | p75    | p95    |
+| ----------------------- | ------- | ---------- | ------ | ------ |
+| AAPL                    | 251     | 1.2241     | 1.5312 | 3.9805 |
+| MSFT                    | 301     | 1.9964     | 2.3970 | 3.5932 |
+| SPY                     | 248     | **0.2618** | 0.3928 | 1.0476 |
+
+Two things this adds to the 2026-08-31 numbers above. **The cross-name spread is the
+stable fact**: MSFT quotes ~8x wider than SPY in every run, which is the case for a
+per-instrument coefficient regardless of which percentile is chosen. **The day-to-day
+movement is not noise to average away**: AAPL's median doubled against 08-31 (1.22 vs
+0.64) while SPY's did not move (0.26 both days), so a coefficient set from any single
+session inherits that session. The 5 bps per-side incumbent remains 4x-38x conservative
+depending on the name.
+
 ### Entitlement change, 2026-09-01
 
 IB market data **release forms** were completed. Retested immediately; the effect is
@@ -480,8 +503,15 @@ all still return IB 2188 for historical bars under both REALTIME and DELAYED; fo
 still returns bars normally. Release forms do not grant historical data, and a paid
 subscription is required. `copilot/calibration/entitlements.py` runs this check.
 
-Realtime *quote* entitlement could not be retested - the US session was closed, so no
-ticks flow regardless of entitlement. That check needs a session window.
+**Realtime quote entitlement, settled 2026-09-02 inside a live session: still absent.**
+`spread_snapshot` recorded **zero** usable quotes across AAPL, MSFT and SPY over 107s under
+`REALTIME`, and **55** across the same three over 106s under `DELAYED` two minutes later.
+The delayed run is what makes the realtime run mean anything - on its own, zero quotes is
+indistinguishable from a broken subscription, which is why the earlier closed-session
+attempt proved nothing and this one does.
+
+`entitlements.py` probes historical bars only, which is not what this question was about.
+Its docstring now says so and points at the two-run procedure above.
 
 ### Why 2188 happens, and what would fix it
 
@@ -497,11 +527,11 @@ So the fix is **consolidated** US equity data - the Network A (NYSE/CTA), Networ
 bundle plus a streaming add-on. Prices were not verifiable from here (the IB pricing
 page returns HTTP 403 to automated fetches) and must be confirmed in Client Portal.
 
-Untested and worth knowing: whether a **directed-exchange** request (IEX or ISLAND
-rather than SMART) is satisfied by the non-consolidated entitlement. If it is, some
-history is available at no cost - though IEX-only bars carry the same
-unrepresentative-volume problem as any single-venue feed, so it would be a diagnostic
-convenience rather than a backtest foundation. `entitlements.py` now probes both.
+**Answered 2026-09-02: a directed-exchange request is not satisfied either.**
+`AAPL=STK.IEX` and `AAPL=STK.ISLAND` both return 2188 under `REALTIME` and `DELAYED`, the
+same as the SMART-routed request. So the hoped-for free route to some history does not
+exist: the non-consolidated entitlement does not cover historical bars even aimed at the
+single venue it does cover. Consolidated data remains the only route, and it is a purchase.
 
 ### Blocked 2026-09-01: IB error 162
 
@@ -620,12 +650,31 @@ had quotes silently evicted the quote entry - leaving that task running untracke
 sending a later `unsubscribe_quotes` to cancel the *trades* stream instead. The key is now
 `(InstrumentId, SubscriptionType)`.
 
-**The original observation is still unexplained.** Quotes stopped when an unpermissioned
-trades or depth subscription was added to the same instrument, reproducibly across three
-runs. The eviction defect does not account for it, since the evicted task was never
-cancelled. The likeliest remaining explanation is IB-side - a rejected request disturbing
-the market data line for that contract - and confirming it needs a session window and a
-deliberate test. Until then it is an open observation, not a diagnosed bug.
+**The original observation no longer reproduces.** Tested 2026-09-02 inside a live session
+with `live/subscription_interference.py`, which treats one instrument with the second
+subscription and leaves a control instrument alone, then counts quotes for both across the
+same two windows. Quotes stopping on both would be a session-wide event and evidence about
+nothing; only the treated instrument stopping is the reported behaviour.
+
+| Treatment           | Treated AAPL, before / after | Control MSFT, before / after | Verdict        |
+| ------------------- | ---------------------------- | ---------------------------- | -------------- |
+| Tick-by-tick trades | 39 / 36                      | 38 / 36                      | not reproduced |
+| L2 book (`L2_MBP`)  | 39 / 37                      | 38 / 38                      | not reproduced |
+
+**Read this as "the trigger no longer occurs", not as "the mechanism is disproven."** The
+original stall came with IB refusals - 10189 for tick-by-tick and a depth-entitlement
+refusal - and the hypothesis was that a refusal disturbs the contract's data line. Neither
+run drew any refusal: both requests were accepted and simply delivered nothing. The
+account's entitlements have widened since (release forms unlocked delayed quotes across the
+US equity universe), so the most likely reading is that IB no longer refuses these requests
+on this account and therefore cannot trigger the stall. The mechanism is untested, and the
+practical risk is gone.
+
+**One method note worth keeping.** The first depth run used `subscribe_book_depth10`, which
+the IB adapter does not implement; the call raised on a missing argument, quotes carried on
+undisturbed, and the run read *not reproduced* from an experiment that never ran. A
+treatment that raised now forces an inconclusive verdict. **A negative result is only worth
+as much as the proof that the treatment was applied.**
 
 ## Rust toolchain prerequisites
 

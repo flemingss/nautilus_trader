@@ -86,21 +86,26 @@ def test_registered_paths_exist():
     assert not missing, f"{REGISTER} lists path(s) that do not exist: {missing}"
 
 
-def test_nothing_maintainer_owned_is_touched(delta):
+def test_nothing_kept_frozen_is_touched(delta):
     """
-    Paths that stay off limits whatever the delta policy is.
+    Paths this repository has decided to keep frozen must not drift.
 
-    These belong to upstream's maintainers: release notes they curate, CI they own, and
-    a roadmap that is theirs and not this fork's - `copilot/docs/ROADMAP.md` is ours.
+    Under [ADR-0010] any file may be changed on its merits, so nothing is off limits by
+    origin any more - this list is our own decision, recorded in `MAINTENANCE.md` under
+    "Inherited governance surfaces". `RELEASES.md` is accurate history of the code we
+    inherited and is kept frozen. The workflow directories stay here until the deliberate
+    CI grooming pass; when that pass runs, it revises this list on purpose. Root
+    `ROADMAP.md` left the list on 2026-09-02 when it was deliberately replaced with a
+    pointer to `copilot/docs/ROADMAP.md`.
 
     """
-    forbidden_files = {"RELEASES.md", "ROADMAP.md"}
-    forbidden_dirs = (".github/workflows/", ".github/actions/")
+    frozen_files = {"RELEASES.md"}
+    frozen_dirs = (".github/workflows/", ".github/actions/")
 
     offending = sorted(
-        d.path for d in delta if d.path in forbidden_files or d.path.startswith(forbidden_dirs)
+        d.path for d in delta if d.path in frozen_files or d.path.startswith(frozen_dirs)
     )
-    assert not offending, f"maintainer-owned upstream path(s) modified: {offending}"
+    assert not offending, f"kept-frozen path(s) modified: {offending}"
 
 
 def test_the_register_documents_its_own_enforcement():

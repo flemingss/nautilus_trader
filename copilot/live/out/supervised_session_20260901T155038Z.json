@@ -1,0 +1,71 @@
+{
+  "started_at": "2026-09-01T15:50:38.468276+00:00",
+  "finished_at": "2026-09-01T15:52:26.657643+00:00",
+  "stage": "5",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "instrument_id": "AAPL=STK.SMART",
+  "deployable_capital": "500",
+  "passed": true,
+  "result": {
+    "quote_seen": true,
+    "mid_price": "324.265",
+    "quantity": 1,
+    "bracket_submitted": true,
+    "entry_filled": true,
+    "entry_price": "326.28",
+    "children_working": 2,
+    "position_opened": true,
+    "position_closed": true,
+    "exit_price": "326.23",
+    "realized_pnl": "-2.06 USD",
+    "commissions": "2.01 USD",
+    "orders_left_working": [],
+    "milestones": [
+      {
+        "at": "2026-09-01T15:50:51.195861+00:00",
+        "kind": "subscribed",
+        "detail": "AAPL=STK.SMART"
+      },
+      {
+        "at": "2026-09-01T15:50:55.628514+00:00",
+        "kind": "bracket_submitted",
+        "detail": "1 @ market, mid 324.265, sl 291.84, tp 356.69"
+      },
+      {
+        "at": "2026-09-01T15:50:55.630413+00:00",
+        "kind": "child_accepted",
+        "detail": "O-20260901-155055-001-000-2"
+      },
+      {
+        "at": "2026-09-01T15:50:55.630596+00:00",
+        "kind": "child_accepted",
+        "detail": "O-20260901-155055-001-000-3"
+      },
+      {
+        "at": "2026-09-01T15:50:56.662660+00:00",
+        "kind": "entry_filled",
+        "detail": "326.28"
+      },
+      {
+        "at": "2026-09-01T15:50:56.663005+00:00",
+        "kind": "position_opened",
+        "detail": "AAPL=STK.SMART-SupervisedSession-000"
+      },
+      {
+        "at": "2026-09-01T15:50:56.663314+00:00",
+        "kind": "close_submitted",
+        "detail": "AAPL=STK.SMART-SupervisedSession-000"
+      },
+      {
+        "at": "2026-09-01T15:50:56.948479+00:00",
+        "kind": "exit_filled",
+        "detail": "326.23"
+      },
+      {
+        "at": "2026-09-01T15:50:56.948873+00:00",
+        "kind": "position_closed",
+        "detail": "pnl -2.06 USD"
+      }
+    ]
+  }
+}

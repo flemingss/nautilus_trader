@@ -2,6 +2,99 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (making the calibrator runnable, and two market-session answers)
+
+### Fixed
+
+- **`LiveNode.add_actor` is now exposed to Python** (`crates/live/src/python/node.rs`). The
+  Rust node has always accepted actors and `BacktestEngine` already exposed the instance form,
+  but the live node offered only `add_actor_from_config` - so an actor configured with state
+  decided at runtime could be backtested and not deployed. `calibration/spread_snapshot.py`
+  was exactly that shape and raised `AttributeError` before recording a quote, which meant the
+  spread numbers under the cost analysis came from code that was not in the repository.
+
+  **The calibrator now runs from a commit, and its snapshots are reproducible for the first
+  time.** Three tests, the load-bearing one being that state assigned to the actor after
+  construction survives registration - which is the whole difference between the two entry
+  points, and the thing `add_actor_from_config` cannot do.
+
+- **A connection failure in `calibration/entitlements.py` is now a probe verdict, not an
+  exception.** The client is constructed inside the `try`, because constructing it connects.
+  Sixteen probes were reduced to one traceback about the first when the timezone alias was
+  unset.
+
+### Measured
+
+- **Realtime quotes are still not entitled, and this time the run can prove it.**
+  `spread_snapshot` recorded **zero** usable quotes across AAPL, MSFT and SPY over 107s under
+  `REALTIME`, and **55** across the same three over 106s under `DELAYED`, two minutes apart in
+  the same session. The delayed run is the
+  control, and without it a realtime run recording nothing cannot be told apart from a broken
+  subscription. Historical bars agree: all five US equity probes still return `[2188]` under
+  both market data types, while both FX probes return bars.
+
+  Release forms unlocked **delayed** quotes across the US equity universe. They did not
+  unlock realtime, and the equity minimum is still the gate.
+
+- **The sibling-subscription stall does not reproduce.** Both treatments the original
+  observation named were run against a control instrument: tick-by-tick trades left AAPL at
+  36 quotes against a 39 baseline (control 36 / 38), and an L2 book subscription left it at
+  37 against 39 (control 38 / 38). Neither run drew an IB refusal, and the original stall came
+  with 10189 and a depth-entitlement refusal - so the reading is that the account's widened
+  entitlements mean IB no longer refuses these requests and therefore cannot trigger it. The
+  mechanism is untested rather than disproven, and the practical risk is gone.
+
+- **The per-order commission minimum is measured, not modelled.** A second supervised round
+  trip at a third of the size: 1 AAPL against USD 500 of capital cost **2.01 USD** in
+  commission, against **2.02 USD** for the three-share trip the day before. Cutting the
+  position to a third changed the cost by one cent, which is what
+  [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) rests on and had
+  only ever asserted from a fee schedule. Commission was **98%** of the realised loss, and the
+  cost in R moved from 0.1010 to 0.1030 - **trading smaller does not help.**
+
+- **A directed-exchange historical request is not satisfied by the non-consolidated feed.**
+  `AAPL=STK.IEX` and `AAPL=STK.ISLAND` both return 2188 under both market data types, the
+  same as SMART. There is no free route to some history; consolidated data is a purchase.
+
+- **The first reproducible-from-a-commit spread snapshot: 27 minutes, 250-300 samples per
+  name** (full spread, bps of mid): AAPL median 1.22 / p95 3.98, MSFT 2.00 / 3.59, SPY 0.26
+  / 1.05. The cross-name ratio is the stable fact - MSFT ~8x wider than SPY in every run -
+  while AAPL's median doubled against 2026-08-31 with SPY unmoved, so a coefficient set from
+  one session inherits that session. The incumbent 5 bps per side stays 4x-38x conservative
+  depending on the name; both numbers argue the coefficient must be per-instrument.
+
+### Ownership housekeeping
+
+- **The repository's front matter now answers for this project, not upstream.** Root
+  `ROADMAP.md` is a pointer to `copilot/docs/ROADMAP.md` (upstream's original stays linked
+  for harvest decisions), and `CONTRIBUTING.md` states that this repository takes no
+  contributions and points at the charter and `AGENTS.md`. The full survey of inherited
+  governance surfaces - what is aligned, kept deliberately, or queued for removal - is in
+  `MAINTENANCE.md`, alongside a new record of the codebase's actual shape (one Rust project,
+  ~1.82M lines across 43 crates, under a ~5.8k-line Python facade) so a session can start
+  from the doc instead of re-deriving it.
+- **Why CI has never run is diagnosed and recorded** in `MAINTENANCE.md`: the harden-runner
+  egress allowlist lives in repository variables that did not travel with the copy, so every
+  job blocks all traffic and dies at checkout. Actions is disabled again as of 2026-09-02;
+  the grooming pass is a roadmap item and starts warm.
+
+### Added
+
+- **`copilot/live/subscription_interference.py`** - a controlled test of the reported stall
+  where quotes stop once a second subscription is added to the same instrument. A treated
+  instrument gets the second subscription, a control instrument does not, and both are counted
+  across the same two windows. Without the control, quotes stopping everywhere at once reads
+  as a result; with it, that is visibly a session-wide event and says nothing about the
+  subscription. A baseline with no quotes is reported inconclusive rather than as evidence in
+  either direction.
+
+  **A treatment that raised also reports inconclusive**, which the first depth run needed:
+  `subscribe_book_depth10` is not implemented for Interactive Brokers, the call raised on a
+  missing argument, quotes carried on undisturbed, and the run read NOT REPRODUCED from an
+  experiment with no treatment in it. The treatment is now an L2 `subscribe_book_deltas`,
+  which the adapter does forward, and a clean negative can no longer come from a test that
+  never ran.
+
 ## 2026-09-01 (recovering an unknown working order)
 
 ### Fixed
