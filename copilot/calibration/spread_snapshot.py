@@ -21,6 +21,7 @@ can be wider than the realtime NBBO. Results are therefore an **upper bound** on
 realtime spread, which is the conservative direction for a cost model. The recorded
 ``market_data_type`` in the output says which was used; treat DELAYED numbers as
 indicative until a realtime subscription is in place.
+
 """
 
 from __future__ import annotations
@@ -30,21 +31,25 @@ import os
 import signal
 import statistics
 import subprocess
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
-from nautilus_trader.adapters.interactive_brokers import (
-    InteractiveBrokersDataClientConfig,
-    InteractiveBrokersDataClientFactory,
-    InteractiveBrokersInstrumentProviderConfig,
-    MarketDataType,
-    SymbologyMethod,
-)
-from nautilus_trader.common import DataActor, DataActorConfig, Environment
+from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
+from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientFactory
+from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersInstrumentProviderConfig
+from nautilus_trader.adapters.interactive_brokers import MarketDataType
+from nautilus_trader.adapters.interactive_brokers import SymbologyMethod
+from nautilus_trader.common import DataActor
+from nautilus_trader.common import DataActorConfig
+from nautilus_trader.common import Environment
 from nautilus_trader.live import LiveNode
-from nautilus_trader.model import InstrumentId, TraderId
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import TraderId
+
 
 # The trade-copilot calibration record (ADR-0011) covers these three names, so
 # measuring the same set makes the new number directly comparable to the old one.
@@ -58,16 +63,22 @@ OUT_DIR = Path(__file__).parent / "out"
 
 @dataclass
 class SymbolSamples:
-    """Accumulated spread observations for one instrument."""
+    """
+    Accumulated spread observations for one instrument.
+    """
 
     instrument_id: str
     spreads_bps: list[float] = field(default_factory=list)
     """Full spread (ask - bid) as basis points of the mid price."""
     rejected: int = 0
-    """Quotes discarded as unusable (crossed, locked, or non-positive mid)."""
+    """
+    Quotes discarded as unusable (crossed, locked, or non-positive mid).
+    """
 
     def add(self, bid: float, ask: float) -> None:
-        """Record one quote, discarding it if the book is crossed or locked."""
+        """
+        Record one quote, discarding it if the book is crossed or locked.
+        """
         mid = (bid + ask) / 2.0
         # A crossed or locked book, or a non-positive mid, says nothing about cost.
         if mid <= 0.0 or ask <= bid:
@@ -76,7 +87,9 @@ class SymbolSamples:
         self.spreads_bps.append((ask - bid) / mid * 10_000.0)
 
     def summary(self) -> dict[str, object]:
-        """Report the distribution, or say plainly that nothing arrived."""
+        """
+        Report the distribution, or say plainly that nothing arrived.
+        """
         n = len(self.spreads_bps)
         if n == 0:
             return {
@@ -128,23 +141,30 @@ class SpreadRecorder(DataActor):
     ``DataActor`` is a pyo3 class whose ``__new__`` accepts only the config, so the
     instruments are attached after construction by :func:`build_node` rather than
     passed through ``__init__``.
+
     """
 
     def configure(self, instrument_ids: list[InstrumentId]) -> None:
-        """Attach the instruments to record, after pyo3 construction."""
+        """
+        Attach the instruments to record, after pyo3 construction.
+        """
         self._instrument_ids = instrument_ids
         self.samples: dict[str, SymbolSamples] = {
             str(i): SymbolSamples(instrument_id=str(i)) for i in instrument_ids
         }
 
     def on_start(self) -> None:
-        """Subscribe to quotes for every configured instrument."""
+        """
+        Subscribe to quotes for every configured instrument.
+        """
         for instrument_id in self._instrument_ids:
             self.subscribe_quotes(instrument_id)
             self.log.info(f"Subscribed quotes for {instrument_id}")
 
     def on_quote(self, quote) -> None:  # noqa: ANN001 - QuoteTick from the engine
-        """Accumulate the spread of one quote."""
+        """
+        Accumulate the spread of one quote.
+        """
         bucket = self.samples.get(str(quote.instrument_id))
         if bucket is not None:
             bucket.add(float(quote.bid_price), float(quote.ask_price))
@@ -159,7 +179,9 @@ def build_node(  # noqa: PLR0913 - each argument is an independent connection kn
     market_data_type: MarketDataType,
     symbology: SymbologyMethod = SymbologyMethod.RAW,
 ) -> tuple[LiveNode, SpreadRecorder]:
-    """Build a data-only node with a recorder attached."""
+    """
+    Build a data-only node with a recorder attached.
+    """
     provider_config = InteractiveBrokersInstrumentProviderConfig(
         symbology_method=symbology,
         load_ids=set(instrument_ids),
@@ -191,7 +213,9 @@ def build_node(  # noqa: PLR0913 - each argument is an independent connection kn
 
 
 def main() -> None:
-    """Record spreads for the configured window, then write the report."""
+    """
+    Record spreads for the configured window, then write the report.
+    """
     host = os.getenv("IB_V2_HOST", "172.17.112.1")
     port = int(os.getenv("IB_V2_PORT", "7497"))
     client_id = int(os.getenv("COPILOT_CAL_CLIENT_ID", "701"))

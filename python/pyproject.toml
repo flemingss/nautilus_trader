@@ -323,6 +323,60 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 ] # Optional timer demo is left commented on purpose
 "examples/live/interactive_brokers/_common.py" = ["S603"]
 "examples/live/polymarket/updown_smoke_tester.py" = ["TRY004"]
+# --- Fork-local overlay (copilot/). Not upstream code; see copilot/AGENTS.md ---
+"copilot/**/*.py" = [
+  "CPY001",
+  "G004",
+  "TC001",
+  "TC003",
+] # Fork-local files carry no Nautech copyright; Nautilus's logger takes a formatted string, so G004's lazy-formatting benefit does not exist
+"copilot/tests/**/*.py" = [
+  "A002",
+  "ANN001",
+  "ANN201",
+  "ANN202",
+  "ANN401",
+  "ARG001",
+  "ARG002",
+  "ARG004",
+  "ARG005",
+  "ASYNC110",
+  "BLE001",
+  "D",
+  "E402",
+  "E501",
+  "E711",
+  "FBT001",
+  "FBT002",
+  "FBT003",
+  "INP001",
+  "ISC004",
+  "PLC0206",
+  "PLC0415",
+  "PLR0124",
+  "PLR0913",
+  "PLR0915",
+  "PLR0917",
+  "PLR2004",
+  "PT011",
+  "PT019",
+  "PTH103",
+  "S101",
+  "S105",
+  "S106",
+  "S301",
+  "S603",
+  "SLF001",
+] # Mirrors the tests/** exemption above, which this path does not match
+"copilot/calibration/*.py" = ["T201"]
+"copilot/data/backfill.py" = ["T201"]
+"copilot/data/marketstack.py" = [
+  "PLR0913",
+] # Endpoint, paging and retry policy as explicit keyword args
+"copilot/tools/*.py" = ["T201"]
+"copilot/validation/*.py" = ["ANN401", "PLR0913"]
+"copilot/risk/guard.py" = ["ANN401"]
+"copilot/strategies/*.py" = ["ANN401", "PLR0913"]
 "tests/**/*.py" = [
   "A002",
   "ANN001",

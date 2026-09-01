@@ -23,48 +23,58 @@ Taken from the vendor's ``exchange`` MIC (``XNAS`` for AAPL, ``ARCX`` for SPY) s
 instrument id names where the series actually came from. The MIC is required to be
 constant across a symbol's history; a change means a relisting, which re-bases prices
 the same way a split does and is not something to merge into one series silently.
+
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable
+from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from nautilus_trader.model import (
-    Bar,
-    BarType,
-    Currency,
-    Equity,
-    InstrumentId,
-    Price,
-    Quantity,
-    Symbol,
-    Venue,
-)
+from copilot.validation.types import DailyBar
+from nautilus_trader.model import Bar
+from nautilus_trader.model import BarType
+from nautilus_trader.model import Currency
+from nautilus_trader.model import Equity
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import Price
+from nautilus_trader.model import Quantity
+from nautilus_trader.model import Symbol
+from nautilus_trader.model import Venue
 from nautilus_trader.persistence import ParquetDataCatalog
 
-from copilot.validation.types import DailyBar
 
 if TYPE_CHECKING:
     from copilot.data.marketstack import IngestionResult
 
 PRICE_PRECISION = 4
-"""Decimal places stored for a price. Measured against the vendor; see module docstring."""
+"""
+Decimal places stored for a price.
+
+Measured against the vendor; see module docstring.
+
+"""
 
 PRICE_INCREMENT = "0.0001"
 DEFAULT_CURRENCY = "USD"
 BAR_SPEC = "1-DAY-LAST-EXTERNAL"
-"""Daily bars, last-price aggregated, sourced externally rather than aggregated by the
-engine — which is what these are: the venue's own official daily summary."""
+"""
+Daily bars, last-price aggregated, sourced externally rather than aggregated by the
+engine - which is what these are: the venue's own official daily summary.
+"""
 
 
 @dataclass(frozen=True)
 class WriteReport:
-    """What one catalog write actually persisted, per symbol."""
+    """
+    What one catalog write actually persisted, per symbol.
+    """
 
     instrument_id: str
     bar_type: str
@@ -74,7 +84,9 @@ class WriteReport:
 
 
 def bar_type_for(instrument_id: InstrumentId) -> BarType:
-    """Return the daily bar type this overlay stores for an instrument."""
+    """
+    Return the daily bar type this overlay stores for an instrument.
+    """
     return BarType.from_str(f"{instrument_id}-{BAR_SPEC}")
 
 
@@ -90,6 +102,7 @@ def equity_for(
 
     ``currency`` is a caller decision, not read from the vendor rows: Marketstack's
     ``price_currency`` is unreliable (see ``marketstack.DEFAULT_BASE_URL``).
+
     """
     instrument_id = InstrumentId(Symbol(symbol), Venue(venue))
     return Equity(
@@ -115,6 +128,7 @@ def to_nautilus_bars(
     decimal places quietly rounds it. That is tolerable in a transient replay and not
     tolerable in a stored history, which later runs read as ground truth without ever
     seeing the source. Every field is therefore compared back against its input.
+
     """
     out: list[Bar] = []
     for daily in sorted(bars, key=lambda b: b.closed_at):
@@ -170,9 +184,10 @@ def write_ingestion(
     Persist one ingestion result, one instrument and bar series per symbol.
 
     The instrument is written alongside its bars. A catalog holding bars for an
-    instrument it cannot describe is only half a dataset — ``BacktestNode`` needs both,
+    instrument it cannot describe is only half a dataset - ``BacktestNode`` needs both,
     and discovering the instrument is missing at run time is a much worse place to find
     out than here.
+
     """
     reports: list[WriteReport] = []
     for symbol in sorted({bar.symbol for bar in result.bars}):
@@ -213,6 +228,7 @@ def read_daily_bars(
     Prices come back through ``str`` into ``Decimal`` rather than through ``float``:
     the whole point of storing at a fixed precision is that the value is exact, and a
     float round trip would give that away on the last step.
+
     """
     symbol = bar_type.instrument_id.symbol.value
     stored = catalog.query_bars(
@@ -240,6 +256,7 @@ def venues_from_rows(rows: Iterable[dict[str, object]]) -> dict[str, str]:
 
     A symbol reported on two exchanges across one history is a relisting, not a detail
     to average over: the two series are not continuous with each other.
+
     """
     seen: dict[str, set[str]] = {}
     for row in rows:
@@ -257,7 +274,9 @@ def venues_from_rows(rows: Iterable[dict[str, object]]) -> dict[str, str]:
 
 
 def open_catalog(path: str | Path) -> ParquetDataCatalog:
-    """Open (creating if needed) the catalog at ``path``."""
+    """
+    Open (creating if needed) the catalog at ``path``.
+    """
     base = Path(path).expanduser().resolve()
     base.mkdir(parents=True, exist_ok=True)
     return ParquetDataCatalog(str(base))

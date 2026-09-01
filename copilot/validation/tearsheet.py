@@ -10,7 +10,7 @@ same expectancy as one that wins 30% of the time and is worth running.
 
 **Deflation.** Search hard enough over noise and something clears any bar.
 :func:`deflated_pass_probability` turns the attempt count into the question actually
-worth asking — *how likely was a result this good from candidates with no edge at all?*
+worth asking - *how likely was a result this good from candidates with no edge at all?*
 
 Everything here is pure and reported. **Nothing here is a gate.** The gate stays
 majority-of-folds; adding a second threshold against figures nobody has read yet would
@@ -19,15 +19,19 @@ mean tuning a gate to taste.
 Ported faithfully from `services/validation/tearsheet.py`; only the import of the
 result types changes, since this overlay vendors them in
 :mod:`copilot.validation.types`.
+
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from math import comb, sqrt
+from math import comb
+from math import sqrt
 
-from copilot.validation.types import BacktestRunResult, ClosedTrade
+from copilot.validation.types import BacktestRunResult
+from copilot.validation.types import ClosedTrade
+
 
 TRADING_DAYS_PER_YEAR = Decimal(252)
 
@@ -42,6 +46,7 @@ class Tearsheet:
 
     Every currency-denominated figure is in R, so a tearsheet from one symbol is
     comparable with one from another.
+
     """
 
     trades: int
@@ -52,26 +57,48 @@ class Tearsheet:
     total_r: Decimal
     average_win_r: Decimal
     average_loss_r: Decimal
-    """Reported positive. A rule's asymmetry is the ratio of this to ``average_win_r``,
-    and a signed figure makes that comparison read backwards."""
+    """
+    Reported positive.
+
+    A rule's asymmetry is the ratio of this to ``average_win_r``,
+    and a signed figure makes that comparison read backwards.
+
+    """
     profit_factor: Decimal | None
-    """Gross R won over gross R lost. ``None`` when nothing was lost — undefined rather
+    """
+    Gross R won over gross R lost.
+
+    ``None`` when nothing was lost - undefined rather
     than infinite, because a run with no losing trade has not demonstrated a profit
-    factor, it has demonstrated too small a sample."""
+    factor, it has demonstrated too small a sample.
+
+    """
     max_drawdown_r: Decimal
-    """Peak-to-trough of the cumulative-R curve, by trade rather than by day. The
-    replay records fills, not a daily equity series; trade-ordered drawdown is the
+    """
+    Peak-to-trough of the cumulative-R curve, by trade rather than by day.
+
+    The replay records fills, not a daily equity series; trade-ordered drawdown is the
     honest thing to compute from what exists, and it understates a true daily drawdown
-    because it cannot see intra-trade excursion."""
+    because it cannot see intra-trade excursion.
+
+    """
     sharpe: Decimal | None
-    """Mean R over the standard deviation of R, **per trade and not annualised**.
+    """
+    Mean R over the standard deviation of R, **per trade and not annualised**.
+
     Annualising would require a trade frequency this harness does not hold fixed across
     candidates, and scaling by a varying frequency would reward candidates that simply
-    traded more. ``None`` below two trades, where deviation is undefined."""
+    traded more. ``None`` below two trades, where deviation is undefined.
+
+    """
     exposure: Decimal
-    """Fraction of the run's calendar span spent holding a position. Overlapping
-    positions are counted once — this measures *time in the market*, not the sum of
-    position-days, which would exceed 1 and mean something different."""
+    """
+    Fraction of the run's calendar span spent holding a position.
+
+    Overlapping positions are counted once - this measures *time in the market*, not the
+    sum of position-days, which would exceed 1 and mean something different.
+
+    """
     span_days: int
     trades_per_year: Decimal
 
@@ -81,6 +108,7 @@ class Tearsheet:
 
         Decimals become strings rather than floats: a float round trip would quietly
         change a reported figure.
+
         """
         return {
             "trades": self.trades,
@@ -119,12 +147,19 @@ EMPTY_TEARSHEET = Tearsheet(
 
 
 def tearsheet(result: BacktestRunResult) -> Tearsheet:
-    """Summarise a replay's closed trades. Pure; no clock, no I/O."""
+    """
+    Summarise a replay's closed trades.
+
+    Pure; no clock, no I/O.
+
+    """
     return tearsheet_for(result.trades)
 
 
 def tearsheet_for(trades: tuple[ClosedTrade, ...]) -> Tearsheet:
-    """As :func:`tearsheet`, over trades already selected — one fold's window, say."""
+    """
+    As :func:`tearsheet`, over trades already selected - one fold's window, say.
+    """
     if not trades:
         return EMPTY_TEARSHEET
 
@@ -167,7 +202,9 @@ def tearsheet_for(trades: tuple[ClosedTrade, ...]) -> Tearsheet:
 
 
 def _max_drawdown(multiples: list[Decimal]) -> Decimal:
-    """Peak-to-trough of the cumulative-R curve, as a positive number."""
+    """
+    Peak-to-trough of the cumulative-R curve, as a positive number.
+    """
     equity = Decimal(0)
     peak = Decimal(0)
     worst = Decimal(0)
@@ -183,8 +220,9 @@ def _sharpe(multiples: list[Decimal]) -> Decimal | None:
     Mean over sample standard deviation of per-trade R.
 
     Sample (n-1) rather than population: these trades are a sample of the rule's
-    behaviour, not the population of everything it will ever do, and the population
-    form flatters a small sample by dividing by a larger number.
+    behaviour, not the population of everything it will ever do, and the population form
+    flatters a small sample by dividing by a larger number.
+
     """
     n = len(multiples)
     if n < MIN_TRADES_FOR_DEVIATION:
@@ -201,8 +239,9 @@ def _exposure(ordered: list[ClosedTrade], span_days: int) -> Decimal:
     Share of the span with at least one position open.
 
     Union of the holding intervals, so two overlapping positions count once. The
-    alternative — summing position-days — can exceed the span, and would report a
+    alternative - summing position-days - can exceed the span, and would report a
     concentrated portfolio as more "exposed" than a continuously-invested one.
+
     """
     if span_days <= 0:
         return Decimal(0)
@@ -228,7 +267,7 @@ def deflated_pass_probability(*, attempts: int, folds: int, folds_passed: int) -
     A cheap form of the deflated Sharpe idea, computed from what the gate already
     holds rather than from a new statistic.
 
-    The null: a fold is a coin flip. That is exactly what the fold threshold asserts —
+    The null: a fold is a coin flip. That is exactly what the fold threshold asserts -
     it passes on expectancy above zero, "better than not trading", so a rule with no
     edge passes each fold with probability half by construction. The chance one
     edgeless candidate matches or beats ``folds_passed`` of ``folds`` is the binomial
@@ -242,7 +281,8 @@ def deflated_pass_probability(*, attempts: int, folds: int, folds_passed: int) -
     deflation statistic should err.
 
     Returns 1 when nothing was passed well enough to be surprising, and is defined to
-    be 1 for a zero-fold run — no evidence cannot be improbable.
+    be 1 for a zero-fold run - no evidence cannot be improbable.
+
     """
     if folds <= 0 or attempts <= 0:
         return Decimal(1)

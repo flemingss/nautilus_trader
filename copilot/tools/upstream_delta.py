@@ -1,5 +1,8 @@
 """
-Report every upstream file this fork has changed, and what it will cost at the next sync.
+Report this fork's divergence from upstream.
+
+Lists every file outside ``copilot/`` that has been changed, and what each one will cost
+at the next sync.
 
 Why this exists
 ---------------
@@ -22,7 +25,7 @@ Usage
     python -m copilot.tools.upstream_delta --fetch    # refresh the upstream snapshot
     python -m copilot.tools.upstream_delta --check    # exit 1 on an unregistered file
 
-Syncing with upstream is **on demand only** — the fork is deliberately held still during
+Syncing with upstream is **on demand only** - the fork is deliberately held still during
 development rather than tracking `develop`. So the local upstream ref is a snapshot that
 ages, and the conflict line is a forecast for whenever a sync is actually chosen, never a
 task list. `--fetch` refreshes it; nothing else does.
@@ -38,6 +41,7 @@ less obvious and more dangerous: ``gh`` picks its target repository from the rem
 merely adding ``upstream`` makes ``gh pr create`` try to open a pull request **against the
 upstream project**. Neither line survives a fresh clone, because both write to
 ``.git/config``.
+
 """
 
 from __future__ import annotations
@@ -49,14 +53,20 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+
 UPSTREAM_REF = "upstream/develop"
 REGISTER = Path("copilot/docs/UPSTREAM_DELTA.md")
 OVERLAY_PREFIX = "copilot/"
 
 CHURN_RATIO = 5
-"""How much faster upstream must be rewriting a file than we are before the delta is
-called churning. A judgement call, not a measurement: the point is to separate a file
-upstream is quietly leaving alone from one our hunks are drifting inside of."""
+"""
+How much faster upstream must be rewriting a file than we are before the delta is called
+churning.
+
+A judgement call, not a measurement: the point is to separate a file upstream is quietly
+leaving alone from one our hunks are drifting inside of.
+
+"""
 
 # Rows in the register start with the path in a code span, which is also how the file
 # reads as prose. Parsing the document people actually maintain beats keeping a second
@@ -64,18 +74,27 @@ upstream is quietly leaving alone from one our hunks are drifting inside of."""
 REGISTER_ROW = re.compile(r"^\|\s*`([^`]+)`\s*\|")
 
 REGISTER_HEADING = "## The register"
-"""Only rows under this heading are entries. The document has other tables — the risk
-legend is one — whose first cell is also a code span, and reading the whole file would
-register `quiet` and `churning` as if they were paths."""
+"""
+Only rows under this heading are entries.
+
+The document has other tables - the risk
+legend is one - whose first cell is also a code span, and reading the whole file would
+register `quiet` and `churning` as if they were paths.
+
+"""
 
 
 class NoUpstreamError(RuntimeError):
-    """The `upstream` remote or its ref is not available locally."""
+    """
+    The `upstream` remote or its ref is not available locally.
+    """
 
 
 @dataclass(frozen=True)
 class FileDelta:
-    """One upstream file this fork has changed."""
+    """
+    One upstream file this fork has changed.
+    """
 
     path: str
     ours_added: int
@@ -84,22 +103,28 @@ class FileDelta:
     theirs_removed: int
     registered: bool
     committed: bool = True
-    """False for a change that exists only in the working tree or index.
+    """
+    False for a change that exists only in the working tree or index.
 
     Counted the same as a committed one on purpose. The useful moment to be told a file
     needs a register entry is while it is being edited, not after it has been committed
-    and pushed — an earlier version compared only `base..HEAD` and stayed silent through
+    and pushed - an earlier version compared only `base..HEAD` and stayed silent through
     the entire edit.
+
     """
 
     @property
     def upstream_touched(self) -> bool:
-        """Whether upstream has changed this file since the merge base."""
+        """
+        Whether upstream has changed this file since the merge base.
+        """
         return bool(self.theirs_added or self.theirs_removed)
 
     @property
     def risk(self) -> str:
-        """How much the next sync is likely to cost for this file."""
+        """
+        How much the next sync is likely to cost for this file.
+        """
         if not self.upstream_touched:
             return "quiet"
         # Upstream rewriting far more than we did means our hunks sit in moving code.
@@ -122,7 +147,9 @@ def _git(*args: str) -> str:
 
 
 def registered_paths(register: Path = REGISTER) -> set[str]:
-    """Paths listed in the delta register."""
+    """
+    Paths listed in the delta register.
+    """
     if not register.exists():
         return set()
 
@@ -142,17 +169,23 @@ def registered_paths(register: Path = REGISTER) -> set[str]:
 
 
 def _combine(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int]:
-    """Approximate the total churn on a path with both committed and pending edits."""
+    """
+    Approximate the total churn on a path with both committed and pending edits.
+    """
     return (a[0] + b[0], a[1] + b[1])
 
 
 def _numstat(rev_range: str) -> dict[str, tuple[int, int]]:
-    """Return added and removed line counts per path, ignoring the overlay's directory."""
+    """
+    Return added and removed line counts per path, ignoring the overlay's directory.
+    """
     return _numstat_args("diff", "--numstat", rev_range)
 
 
 def _numstat_args(*args: str) -> dict[str, tuple[int, int]]:
-    """Parse `git diff --numstat` output from an arbitrary argument list."""
+    """
+    Parse `git diff --numstat` output from an arbitrary argument list.
+    """
     out: dict[str, tuple[int, int]] = {}
     raw = _git(*args)
     for line in raw.splitlines():
@@ -168,7 +201,9 @@ def _numstat_args(*args: str) -> dict[str, tuple[int, int]]:
 
 
 def _uncommitted() -> dict[str, tuple[int, int]]:
-    """Return changes present only in the working tree or index, plus untracked files."""
+    """
+    Return changes present only in the working tree or index, plus untracked files.
+    """
     out = _numstat_args("diff", "--numstat", "HEAD")
     for line in _git("status", "--porcelain", "-uall").splitlines():
         path = line[3:].strip()
@@ -180,7 +215,9 @@ def _uncommitted() -> dict[str, tuple[int, int]]:
 
 
 def collect(ref: str = UPSTREAM_REF) -> tuple[str, int, int, list[FileDelta]]:
-    """Return the merge base, how far each side has moved, and the per-file deltas."""
+    """
+    Return the merge base, how far each side has moved, and the per-file deltas.
+    """
     base = _git("merge-base", "HEAD", ref)
     committed = _numstat(f"{base}..HEAD")
     pending = _uncommitted()
@@ -214,6 +251,7 @@ def conflicting_paths(ref: str = UPSTREAM_REF) -> list[str]:
 
     `merge-tree` writes no working-tree or index state, so this is safe to run at any
     time, including with uncommitted work present.
+
     """
     result = subprocess.run(  # noqa: S603
         ["git", "merge-tree", "--write-tree", "--name-only", "HEAD", ref],  # noqa: S607
@@ -278,7 +316,12 @@ def _report(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Print the delta report. Returns a process exit code."""
+    """
+    Print the delta report.
+
+    Returns a process exit code.
+
+    """
     parser = argparse.ArgumentParser(
         prog="python -m copilot.tools.upstream_delta",
         description="Report and check this fork's divergence from upstream.",
@@ -302,8 +345,8 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         base, behind, ahead, deltas = collect(args.ref)
-    except NoUpstreamError as exc:
-        print(f"error: cannot compare against {args.ref}: {exc}", file=sys.stderr)
+    except NoUpstreamError as e:
+        print(f"error: cannot compare against {args.ref}: {e}", file=sys.stderr)
         for hint in (
             "",
             "Add the remote (fetch only - this fork must never push upstream):",

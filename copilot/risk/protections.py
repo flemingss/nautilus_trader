@@ -7,7 +7,7 @@ its reasoning are reproduced faithfully; only the contract types change, from py
 models to stdlib dataclasses, so this module needs no dependency Nautilus lacks.
 
 The gap these close: every risk control Nautilus ships judges **one order in
-isolation** — ``max_notional_per_order`` and the submit/modify rate limits. Nothing
+isolation** - ``max_notional_per_order`` and the submit/modify rate limits. Nothing
 asks *"how has the last fortnight gone"*, so four stop-outs in a row, or a drawdown
 that has quietly eaten a tenth of the account, changes no behaviour at all. Over an
 unattended paper run that is the difference between a bad week and a bad month.
@@ -18,13 +18,15 @@ caller (see :mod:`copilot.risk.guard`); the judgement belongs here, where it can
 tested against a hand-built losing streak rather than against a live account.
 
 Original design rationale: trade-copilot ADR-0025.
+
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from enum import StrEnum
 
@@ -33,8 +35,9 @@ class ProtectionTrigger(StrEnum):
     """
     Which rolling-window breaker refused new trading.
 
-    Named separately from a generic "rejected" because the operator's first question
-    on being alerted is exactly which breaker fired.
+    Named separately from a generic "rejected" because the operator's first question on
+    being alerted is exactly which breaker fired.
+
     """
 
     CONSECUTIVE_STOPS = "CONSECUTIVE_STOPS"
@@ -56,24 +59,36 @@ class ProtectionPolicy:
     This belongs to the operator, not to a strategy: a loss limit states the
     operator's tolerance for loss, not a rule's edge, so two strategies on one account
     share one breaker.
+
     """
 
     enabled: bool = True
 
     max_consecutive_stops: int = 4
-    """Stop-outs in an unbroken run, counted back from the latest closed trade.
-    ``0`` disables this breaker while leaving the drawdown one in force."""
+    """
+    Stop-outs in an unbroken run, counted back from the latest closed trade.
+
+    ``0`` disables this breaker while leaving the drawdown one in force.
+
+    """
 
     max_drawdown_pct: Decimal = Decimal("0.06")
-    """Peak-to-trough decline of realised P&L inside the window, as a fraction of
-    account value. Peak-to-trough rather than net, so a strong start cannot fund a
-    collapse in silence. ``0`` disables this breaker."""
+    """
+    Peak-to-trough decline of realised P&L inside the window, as a fraction of account
+    value.
+
+    Peak-to-trough rather than net, so a strong start cannot fund a
+    collapse in silence. ``0`` disables this breaker.
+
+    """
 
     window_days: int = 14
     cooldown_days: int = 3
 
     def __post_init__(self) -> None:
-        """Refuse settings that cannot mean anything."""
+        """
+        Refuse settings that cannot mean anything.
+        """
         if self.max_consecutive_stops < 0:
             raise ValueError("max_consecutive_stops must be >= 0")
         if not (Decimal(0) <= self.max_drawdown_pct <= Decimal(1)):
@@ -93,6 +108,7 @@ class TradeOutcome:
     or lost, and *whether the stop decided it*. Symbol, direction and prices are not
     its business, and taking them would invite a per-symbol breaker, which is a
     portfolio decision this does not make.
+
     """
 
     closed_at: datetime
@@ -102,21 +118,30 @@ class TradeOutcome:
 
 @dataclass(frozen=True)
 class ProtectionBreach:
-    """Why new trading is being refused, and until when."""
+    """
+    Why new trading is being refused, and until when.
+    """
 
     trigger: ProtectionTrigger
     detail: str
-    """Human-readable and specific — it reaches the operator's alert unchanged, and
-    "4 consecutive stop-outs since 2026-09-02" is actionable where "protection" is
-    not."""
+    """
+    Human-readable and specific - it reaches the operator's alert unchanged, and "4
+    consecutive stop-outs since 2026-09-02" is actionable where "protection" is not.
+    """
     triggered_at: datetime
-    """When the breaching trade closed, **not** when the breach was noticed. The
-    cooldown runs from the event, so a quiet weekend counts toward it rather than
-    resetting it by not being observed."""
+    """
+    When the breaching trade closed, **not** when the breach was noticed.
+
+    The cooldown runs from the event, so a quiet weekend counts toward it rather than
+    resetting it by not being observed.
+
+    """
     until: datetime
 
     def is_active_at(self, moment: datetime) -> bool:
-        """Whether this breach still bars trading at ``moment``."""
+        """
+        Whether this breach still bars trading at ``moment``.
+        """
         return moment < self.until
 
 
@@ -138,6 +163,7 @@ def evaluate_protections(
     Taking the first to match would let a mild drawdown that happened to be checked
     first mask a severe stop-out streak and release trading earlier than either rule
     intends.
+
     """
     if not policy.enabled:
         return None
@@ -172,9 +198,10 @@ def _consecutive_stops(
     Report a run of stop-outs ending at the most recent trade.
 
     The streak must be *current*: a run of four stops followed by a win means the
-    strategy has since done something right, and holding it in penalty for a
-    recovered streak would be punishing history rather than managing risk. So this
-    counts backward from the latest trade and stops at the first non-stop.
+    strategy has since done something right, and holding it in penalty for a recovered
+    streak would be punishing history rather than managing risk. So this counts backward
+    from the latest trade and stops at the first non-stop.
+
     """
     if policy.max_consecutive_stops <= 0:
         return None
@@ -209,12 +236,13 @@ def _drawdown(
     Report peak-to-trough decline of the window's realised equity curve.
 
     Peak-to-trough, not the window's net: a run that made 5% and then gave back 9% is
-    net down 4% but has just lost 9% from its high, and it is the 9% that says
-    something has changed. Measuring the net would let a strong start fund a collapse
-    in silence, which is the exact shape this exists to catch.
+    net down 4% but has just lost 9% from its high, and it is the 9% that says something
+    has changed. Measuring the net would let a strong start fund a collapse in silence,
+    which is the exact shape this exists to catch.
 
     Only realised P&L counts. Open positions would make the breaker fire and un-fire
     with every price tick rather than on completed evidence.
+
     """
     if policy.max_drawdown_pct <= 0 or account_value <= 0:
         return None

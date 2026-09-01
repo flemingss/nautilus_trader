@@ -13,6 +13,7 @@ run fails outright when the rejection rate crosses ``--max-rejection-ratio``. Th
 threshold exists because a provider outage tends to look like partially-valid data
 rather than an error, and a half-ingested history is worse than none: later runs treat
 whatever landed as complete.
+
 """
 
 from __future__ import annotations
@@ -21,28 +22,40 @@ import argparse
 import os
 import sys
 from collections import Counter
-from datetime import UTC, date, datetime
+from datetime import UTC
+from datetime import date
+from datetime import datetime
 from decimal import Decimal
 
-from copilot.data.catalog import (
-    DEFAULT_CURRENCY,
-    open_catalog,
-    venues_from_rows,
-    write_ingestion,
-)
-from copilot.data.marketstack import MarketstackClient, normalize
+from copilot.data.catalog import DEFAULT_CURRENCY
+from copilot.data.catalog import open_catalog
+from copilot.data.catalog import venues_from_rows
+from copilot.data.catalog import write_ingestion
+from copilot.data.marketstack import MarketstackClient
+from copilot.data.marketstack import normalize
+
 
 API_KEY_ENV = "MARKETSTACK_API_KEY"
 CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
 DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
-"""Outside the repository on purpose. A parquet store inside the tree would need a
-`.gitignore` entry, and `.gitignore` is an upstream file this fork does not touch —
-so the data would sit one `git add -A` away from being committed."""
+"""
+Outside the repository on purpose.
+
+A parquet store inside the tree would need a
+`.gitignore` entry, and `.gitignore` is an upstream file this fork does not touch -
+so the data would sit one `git add -A` away from being committed.
+
+"""
 
 DEFAULT_MAX_REJECTION_RATIO = "0.02"
-"""Two percent. The two phantom holiday rows in 21 years of AAPL, MSFT and SPY are
+"""
+Two percent.
+
+The two phantom holiday rows in 21 years of AAPL, MSFT and SPY are
 0.013%, so a real run sits two orders of magnitude below this and anything near the
-threshold means something changed at the provider."""
+threshold means something changed at the provider.
+
+"""
 
 
 def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -88,7 +101,12 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run one backfill. Returns a process exit code."""
+    """
+    Run one backfill.
+
+    Returns a process exit code.
+
+    """
     args = _parse_args(argv)
 
     access_key = os.environ.get(API_KEY_ENV)

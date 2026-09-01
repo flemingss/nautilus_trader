@@ -5,12 +5,12 @@ Nautilus enforces risk per-order (``max_notional_per_order``, submit/modify rate
 limits). This adds the account-wide, sequence-aware layer: a run of stop-outs or a
 realised drawdown pauses trading for a cooldown.
 
-Enforcement strength — read this before relying on it
+Enforcement strength - read this before relying on it
 -----------------------------------------------------
 Nautilus already has the right primitive: ``TradingState`` (``ACTIVE`` / ``HALTED`` /
 ``REDUCING``) is enforced natively in the Rust risk engine, which rejects new orders
-outright when halted. It is **not reachable from Python** in this version —
-``set_trading_state`` has no pyo3 binding and no production caller — so this guard
+outright when halted. It is **not reachable from Python** in this version -
+``set_trading_state`` has no pyo3 binding and no production caller - so this guard
 cannot use it yet.
 
 What this guard does instead, in descending order of reliability:
@@ -24,23 +24,25 @@ keep getting orders accepted between guard evaluations. Closing that gap needs t
 ``set_trading_state`` binding, which requires building the Rust workspace from source
 (see ``copilot/docs/ROADMAP.md``). Until then, treat this as a strong safety net, not
 as an engine-level gate.
+
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 
-from nautilus_trader.model import InstrumentId, OrderType
+from copilot.risk.protections import ProtectionBreach
+from copilot.risk.protections import ProtectionPolicy
+from copilot.risk.protections import TradeOutcome
+from copilot.risk.protections import evaluate_protections
+from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import OrderType
 from nautilus_trader.trading import Strategy
 
-from copilot.risk.protections import (
-    ProtectionBreach,
-    ProtectionPolicy,
-    TradeOutcome,
-    evaluate_protections,
-)
 
 # Closing a position with any of these means the stop decided the trade, which is
 # what `TradeOutcome.stopped_out` means to the consecutive-stops breaker.
@@ -58,15 +60,27 @@ STOP_ORDER_TYPES = frozenset(
 
 @dataclass(frozen=True)
 class ProtectionGuardSettings:
-    """Operator settings for the guard, kept separate from the pure policy."""
+    """
+    Operator settings for the guard, kept separate from the pure policy.
+    """
 
     policy: ProtectionPolicy
     instrument_ids: tuple[InstrumentId, ...]
-    """Instruments the guard will flatten on breach. Order cancellation is account
-    wide regardless; flattening needs an explicit instrument."""
+    """
+    Instruments the guard will flatten on breach.
+
+    Order cancellation is account wide regardless; flattening needs an explicit
+    instrument.
+
+    """
     account_value: Decimal
-    """Denominator for the drawdown limit. Sourced from the operator rather than read
-    live, so the limit does not move as the account does mid-run."""
+    """
+    Denominator for the drawdown limit.
+
+    Sourced from the operator rather than read live, so the limit does not move as the
+    account does mid-run.
+
+    """
     evaluate_seconds: int = 60
     flatten_on_breach: bool = True
 
@@ -77,20 +91,30 @@ class ProtectionGuard(Strategy):
 
     Implemented as a ``Strategy`` rather than a ``DataActor`` only because order
     cancellation and position closing live on ``Strategy``.
+
     """
 
     def configure(self, settings: ProtectionGuardSettings) -> None:
-        """Attach operator settings, after pyo3 construction."""
+        """
+        Attach operator settings, after pyo3 construction.
+        """
         self._settings = settings
         self._breach: ProtectionBreach | None = None
 
     @property
     def breach(self) -> ProtectionBreach | None:
-        """The breach currently in force, or ``None``. Strategies may consult this."""
+        """
+        The breach currently in force, or ``None``.
+
+        Strategies may consult this.
+
+        """
         return self._breach
 
     def on_start(self) -> None:
-        """Announce the policy and start the evaluation timer."""
+        """
+        Announce the policy and start the evaluation timer.
+        """
         self.log.info(
             f"ProtectionGuard active: {self._settings.policy}",
         )
@@ -100,18 +124,24 @@ class ProtectionGuard(Strategy):
         )
 
     def on_time_event(self, _event) -> None:  # noqa: ANN001 - TimeEvent from the engine
-        """Re-evaluate on the timer."""
+        """
+        Re-evaluate on the timer.
+        """
         self.evaluate()
 
     def on_position_closed(self, _event) -> None:  # noqa: ANN001 - PositionClosed
-        """Re-evaluate immediately on new evidence."""
+        """
+        Re-evaluate immediately on new evidence.
+        """
         # Evaluate immediately on new evidence rather than waiting for the timer;
         # the breaker exists to react to a losing sequence, and a whole timer
         # interval of delay is exactly the window it is meant to remove.
         self.evaluate()
 
     def evaluate(self) -> None:
-        """Re-read closed trades, judge them, and act if the verdict changed."""
+        """
+        Re-read closed trades, judge them, and act if the verdict changed.
+        """
         now = datetime.now(UTC)
         outcomes = self.collect_outcomes()
         breach = evaluate_protections(
@@ -128,7 +158,9 @@ class ProtectionGuard(Strategy):
         self._breach = breach
 
     def collect_outcomes(self) -> list[TradeOutcome]:
-        """Map this node's closed positions onto the breaker's input type."""
+        """
+        Map this node's closed positions onto the breaker's input type.
+        """
         outcomes: list[TradeOutcome] = []
         for position in self.cache.positions_closed():
             ts_closed = position.ts_closed
@@ -149,9 +181,10 @@ class ProtectionGuard(Strategy):
         """
         Whether a stop order closed this position.
 
-        Nautilus does not record an exit reason, so this reads the closing order's
-        type. An unknown or missing closing order is treated as *not* a stop-out:
-        the consecutive-stops breaker should fire on evidence, not on absence of it.
+        Nautilus does not record an exit reason, so this reads the closing order's type.
+        An unknown or missing closing order is treated as *not* a stop-out: the
+        consecutive-stops breaker should fire on evidence, not on absence of it.
+
         """
         closing_order_id = position.closing_order_id
         if closing_order_id is None:
@@ -164,7 +197,7 @@ class ProtectionGuard(Strategy):
     def _on_breach_opened(self, breach: ProtectionBreach) -> None:
         self.log.error(
             f"PROTECTION BREACH [{breach.trigger}] {breach.detail} "
-            f"— pausing until {breach.until.isoformat()}",
+            f"- pausing until {breach.until.isoformat()}",
         )
         for instrument_id in self._settings.instrument_ids:
             # Account-wide: a breaker that only cancelled this component's own

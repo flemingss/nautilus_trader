@@ -24,22 +24,27 @@ The rules are validated empirically rather than by assertion: `tests/test_calend
 checks this calendar against 15,851 real Marketstack rows spanning 2005-2025 and
 requires that it flags **only** the two known phantom rows. A calendar that wrongly
 marks a real session closed would drop live data, so that test is the load-bearing
-one — treat a failure as a defect in this file, not in the fixture.
+one - treat a failure as a defect in this file, not in the fixture.
 
 Scope
 -----
 Regular sessions only. Early closes (1pm on the day after Thanksgiving, Christmas
 Eve) are still trading days and are not distinguished, which is correct for daily
 bars and would not be for intraday.
+
 """
 
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date
+from datetime import timedelta
+
 
 SATURDAY = 5
 SUNDAY = 6
-"""Named so the weekend check reads as a weekend check rather than a bare 5."""
+"""
+Named so the weekend check reads as a weekend check rather than a bare 5.
+"""
 
 # Ad-hoc, non-rule closures. Each one is a day the exchange was shut for a reason no
 # rule predicts, so it can only be enumerated. Restricted to the window the overlay
@@ -64,8 +69,9 @@ def easter_sunday(year: int) -> date:
     """
     Easter Sunday by the anonymous Gregorian algorithm.
 
-    Needed only to locate Good Friday, which is the one moveable US market holiday
-    that does not follow a weekday-of-month rule.
+    Needed only to locate Good Friday, which is the one moveable US market holiday that
+    does not follow a weekday-of-month rule.
+
     """
     a = year % 19
     b, c = divmod(year, 100)
@@ -81,14 +87,18 @@ def easter_sunday(year: int) -> date:
 
 
 def _nth_weekday(year: int, month: int, weekday: int, n: int) -> date:
-    """Return the ``n``-th ``weekday`` (Mon=0) of a month."""
+    """
+    Return the ``n``-th ``weekday`` (Mon=0) of a month.
+    """
     first = date(year, month, 1)
     offset = (weekday - first.weekday()) % 7
     return first + timedelta(days=offset + 7 * (n - 1))
 
 
 def _last_weekday(year: int, month: int, weekday: int) -> date:
-    """Return the last ``weekday`` (Mon=0) of a month."""
+    """
+    Return the last ``weekday`` (Mon=0) of a month.
+    """
     next_month = date(year + month // 12, month % 12 + 1, 1)
     last = next_month - timedelta(days=1)
     return last - timedelta(days=(last.weekday() - weekday) % 7)
@@ -100,6 +110,7 @@ def _observed(day: date) -> date:
 
     Saturday moves back to Friday, Sunday forward to Monday. This is the rule the US
     exchanges use, and it is why 4 July can close the market on the 3rd or the 5th.
+
     """
     if day.weekday() == SATURDAY:
         return day - timedelta(days=1)
@@ -109,7 +120,9 @@ def _observed(day: date) -> date:
 
 
 def market_holidays(year: int) -> frozenset[date]:
-    """Every scheduled full-day US equity market closure in ``year``."""
+    """
+    Every scheduled full-day US equity market closure in ``year``.
+    """
     holidays = {
         _observed(date(year, 1, 1)),  # New Year's Day
         _nth_weekday(year, 1, 0, 3),  # Martin Luther King Jr. Day
@@ -125,7 +138,7 @@ def market_holidays(year: int) -> frozenset[date]:
         holidays.add(_observed(date(year, 6, 19)))
 
     # Deliberately NOT here: 31 December when 1 January falls on a Saturday. The
-    # federal holiday shifts back to that Friday, but the exchanges stay open — an
+    # federal holiday shifts back to that Friday, but the exchanges stay open - an
     # earlier version of this file closed it and the fixture test caught the error,
     # because AAPL, MSFT and SPY all traded on 2010-12-31 and 2021-12-31.
 
@@ -137,6 +150,7 @@ def is_trading_day(day: date) -> bool:
     Whether the US equity market held a regular session on ``day``.
 
     Half days count as trading days: the session opened, so an order could be placed.
+
     """
     if day.weekday() >= SATURDAY:
         return False
@@ -146,7 +160,9 @@ def is_trading_day(day: date) -> bool:
 
 
 def trading_days(start: date, end: date) -> tuple[date, ...]:
-    """Every trading day in ``[start, end]``, inclusive and in order."""
+    """
+    Every trading day in ``[start, end]``, inclusive and in order.
+    """
     out: list[date] = []
     day = start
     while day <= end:

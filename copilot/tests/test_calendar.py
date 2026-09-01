@@ -4,9 +4,10 @@ Tests for the US equity trading calendar.
 The load-bearing test is `test_calendar_agrees_with_twenty_years_of_vendor_data`. The
 rules in `calendar.py` are only worth having if they reproduce the real session dates,
 and a hand-written calendar that wrongly closes a real session would silently drop
-live market data. An earlier version of the file did exactly that — it closed
+live market data. An earlier version of the file did exactly that - it closed
 31 December when 1 January fell on a Saturday, following the federal rule rather than
-the exchange one — and this test is what caught it.
+the exchange one - and this test is what caught it.
+
 """
 
 from __future__ import annotations
@@ -16,12 +17,12 @@ from datetime import date
 from pathlib import Path
 
 import pytest
-from copilot.data.calendar import (
-    easter_sunday,
-    is_trading_day,
-    market_holidays,
-    trading_days,
-)
+
+from copilot.data.calendar import easter_sunday
+from copilot.data.calendar import is_trading_day
+from copilot.data.calendar import market_holidays
+from copilot.data.calendar import trading_days
+
 
 FIXTURE = Path(__file__).parent / "fixtures" / "marketstack_session_dates.json"
 
@@ -36,7 +37,9 @@ KNOWN_PHANTOM_SESSIONS = {
 
 @pytest.fixture(scope="module")
 def vendor_session_dates() -> dict[str, list[date]]:
-    """Dates Marketstack returned per symbol for 2005-2025, captured from the live API."""
+    """
+    Dates Marketstack returned per symbol for 2005-2025, captured from the live API.
+    """
     raw = json.loads(FIXTURE.read_text())
     return {symbol: [date.fromisoformat(d) for d in dates] for symbol, dates in raw.items()}
 
@@ -46,8 +49,9 @@ def test_calendar_agrees_with_twenty_years_of_vendor_data(vendor_session_dates):
     Every vendor row falls on a session, and every session has a vendor row.
 
     Checked in both directions on purpose. Only flagging extras would pass a calendar
-    that called every weekday a trading day; only checking for gaps would pass one
-    that called every day a holiday.
+    that called every weekday a trading day; only checking for gaps would pass one that
+    called every day a holiday.
+
     """
     phantom: set[tuple[str, date]] = set()
     missing: dict[str, list[date]] = {}
@@ -65,7 +69,9 @@ def test_calendar_agrees_with_twenty_years_of_vendor_data(vendor_session_dates):
 
 
 def test_the_calendar_finds_the_same_session_count_as_the_clean_symbols(vendor_session_dates):
-    """AAPL and MSFT carry no phantom rows, so their row count is the session count."""
+    """
+    AAPL and MSFT carry no phantom rows, so their row count is the session count.
+    """
     aapl = vendor_session_dates["AAPL"]
     assert len(trading_days(min(aapl), max(aapl))) == len(aapl) == 5283
 
@@ -116,7 +122,9 @@ def test_open_days(day, why):
 
 
 def test_juneteenth_is_not_backdated():
-    """The holiday exists from 2022; applying it to 2005 would delete a real session."""
+    """
+    The holiday exists from 2022; applying it to 2005 would delete a real session.
+    """
     assert date(2019, 6, 19) not in market_holidays(2019)
     assert date(2022, 6, 20) in market_holidays(2022)  # 19th was a Sunday
 

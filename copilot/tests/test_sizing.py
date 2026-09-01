@@ -1,7 +1,9 @@
-"""Tests for risk-based position sizing.
+"""
+Tests for risk-based position sizing.
 
 The properties that matter are directional: never round up into more risk than the
 budget allows, and refuse rather than guess when a stop cannot be honoured.
+
 """
 
 from __future__ import annotations
@@ -9,12 +11,11 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from copilot.risk.sizing import (
-    position_size,
-    risk_amount,
-    size_from_levels,
-    stop_distance,
-)
+
+from copilot.risk.sizing import position_size
+from copilot.risk.sizing import risk_amount
+from copilot.risk.sizing import size_from_levels
+from copilot.risk.sizing import stop_distance
 from copilot.validation.types import Direction
 
 

@@ -15,7 +15,7 @@ python -m copilot.tools.upstream_delta --check     # exit 1 on an unregistered f
 ## Syncing is on demand
 
 The fork does not track `develop`. A merge is a deliberate, scheduled act, and while
-development is active the fork is held still on purpose — chasing upstream mid-feature
+development is active the fork is held still on purpose - chasing upstream mid-feature
 means debugging our own work and someone else's refactor on two moving bases at once.
 
 So this file is not a to-do list. It is the review list for whenever a sync *is* chosen,
@@ -43,44 +43,46 @@ list rather than an archaeology exercise.
    buys nothing.
 4. **Never edit a generated artifact.** Change its source and regenerate.
 5. **Off limits regardless:** `RELEASES.md`, `.github/workflows/`, `.github/actions/`, and
-   the root `ROADMAP.md` — all maintainer-owned upstream.
+   the root `ROADMAP.md` - all maintainer-owned upstream.
 6. **`origin` is the fork.** The `upstream` remote is fetch-only, with its push URL set to
    `DISABLED-never-push-upstream`. Never push to, or open anything on, `nautechsystems/*`.
 7. **Pin `gh` to the fork.** `gh` resolves its target repository from the remotes, so
    adding `upstream` silently makes `gh pr create` aim at the upstream project. Run
    `gh repo set-default flemingss/nautilus_trader`, verify with `--view`, and re-run it
-   after a fresh clone — it lives in `.git/config` and is not shared.
+   after a fresh clone - it lives in `.git/config` and is not shared.
 
 ## Reading the risk column
 
 Assigned by the tool, from how much upstream has moved the same file since our merge base.
 
-| Risk | Meaning |
-| --- | --- |
-| `quiet` | Upstream has not touched the file since the base. Nearly free to carry. |
-| `touched` | Upstream is also changing it. Expect to re-read our hunks at sync. |
+| Risk       | Meaning                                                                                                                        |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `quiet`    | Upstream has not touched the file since the base. Nearly free to carry.                                                        |
+| `touched`  | Upstream is also changing it. Expect to re-read our hunks at sync.                                                             |
 | `churning` | Upstream is rewriting it far faster than we are. Our change is sitting in moving code; consider upstreaming it or dropping it. |
 
 ## The register
 
-| Path | Change | Why | Cost to drop |
-| --- | --- | --- | --- |
-| `crates/adapters/interactive_brokers/src/historical/client.rs` | Bound the tick-stream drain by the caller's `timeout`, at two sites | `tokio::time::timeout` wrapped only the request that opens the subscription, not the loop draining it, so `request_ticks` hung forever on a tick type an instrument does not have. Verified live: 97 s hang became a clean 22.0 s return, with `BID_ASK` unchanged at 1022 ticks in 0.4 s. | Any backfill requesting an absent tick type hangs the job. **Upstream would likely accept this** — it is a straight bug fix with no behaviour change on the working path. |
-| `crates/adapters/interactive_brokers/src/data/core.rs` | Key the subscriptions map by `(InstrumentId, SubscriptionType)` rather than `InstrumentId` | The value already carried a `subscription_type`, so the map could hold only one subscription per instrument. Subscribing to trades on an instrument that already had quotes silently evicted the quote entry, leaving that task running untracked, and a later `unsubscribe_quotes` cancelled the *trades* stream instead. | Multi-stream subscriptions on one instrument are silently lossy. **Upstream would likely accept this** too. |
+| Path                                                           | Change                                                                                     | Why                                                                                                                                                                                                                                                                                                                                                                                                                                      | Cost to drop                                                                                                                                                                                       |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `python/pyproject.toml`                                        | Add `copilot/**` entries to `[tool.ruff.lint.per-file-ignores]`                            | The repository's pre-commit runs `ruff --config python/pyproject.toml` over **every** Python file, `copilot/` included. A scoped `copilot/ruff.toml` therefore never governed these files: `make pre-commit` reported 728 errors on them, mostly upstream's own `tests/**` exemptions failing to match `copilot/tests/**`. Relocating the ignores to the config that actually applies fixed that and let `copilot/ruff.toml` be deleted. | `make pre-commit` fails on the overlay. Purely additive - new table keys, no existing line touched - so it is the lowest-conflict shape available. Not upstreamable: the paths do not exist there. |
+| `.typos.toml`                                                  | Allowlist `CPY` in `[default.extend-words]`                                                | `CPY001` is a real Ruff rule id (flake8-copyright), which the overlay's lint documentation has to name. The typos checker reads it as a misspelling of `COPY`/`CPU` and fails the hook.                                                                                                                                                                                                                                                  | One line. Overlay docs cannot name the rule they exempt. Purely additive and genuinely upstreamable - upstream uses Ruff too.                                                                      |
+| `crates/adapters/interactive_brokers/src/historical/client.rs` | Bound the tick-stream drain by the caller's `timeout`, at two sites                        | `tokio::time::timeout` wrapped only the request that opens the subscription, not the loop draining it, so `request_ticks` hung forever on a tick type an instrument does not have. Verified live: 97 s hang became a clean 22.0 s return, with `BID_ASK` unchanged at 1022 ticks in 0.4 s.                                                                                                                                               | Any backfill requesting an absent tick type hangs the job. **Upstream would likely accept this** - it is a straight bug fix with no behaviour change on the working path.                          |
+| `crates/adapters/interactive_brokers/src/data/core.rs`         | Key the subscriptions map by `(InstrumentId, SubscriptionType)` rather than `InstrumentId` | The value already carried a `subscription_type`, so the map could hold only one subscription per instrument. Subscribing to trades on an instrument that already had quotes silently evicted the quote entry, leaving that task running untracked, and a later `unsubscribe_quotes` cancelled the *trades* stream instead.                                                                                                               | Multi-stream subscriptions on one instrument are silently lossy. **Upstream would likely accept this** too.                                                                                        |
 
 ## Known state at the last sync check
 
 Recorded 2026-09-01 against `upstream/develop`, 15 commits ahead of our merge base
 `7df531101a` (2026-08-31).
 
-- `historical/client.rs` — **quiet.** Upstream has not touched it. Free to carry.
-- `data/core.rs` — **churning.** Upstream changed +160/-64 against our +16/-12, across
+- `historical/client.rs` - **quiet.** Upstream has not touched it. Free to carry.
+- `data/core.rs` - **churning.** Upstream changed +160/-64 against our +16/-12, across
   two commits: `05eae9fa43` "Replace Rust standard locks with parking_lot" and
   `4c18691277` "Standardize adapter task lifecycles".
 
 A merge today conflicts in **one hunk**, the `subscriptions` field declaration: upstream
 dropped the doc comments while we changed the key type. Resolution is to keep our tuple
-key and take upstream's surrounding form — mechanical, but it must be done by hand and
+key and take upstream's surrounding form - mechanical, but it must be done by hand and
 re-verified, because the surrounding locking model changed underneath it.
 
 **That is the whole argument for this register in one example.** The delta is two files
@@ -89,6 +91,7 @@ in.
 
 **No action is due.** Syncing is on demand only and the fork is deliberately held still
 during development, so this conflict is a forecast for whenever a sync is actually chosen
-— not work waiting to be done. Upstreaming both fixes would retire the entry instead of
+
+- not work waiting to be done. Upstreaming both fixes would retire the entry instead of
 carrying it, and it stays the cheapest option available, but an upstream pull request
 opens a review front on someone else's schedule. Deferred on the same reasoning.

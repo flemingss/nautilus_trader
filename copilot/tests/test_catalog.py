@@ -3,26 +3,27 @@ Tests for the Marketstack-to-catalog bridge.
 
 These run a real ``ParquetDataCatalog`` against a temporary directory rather than a
 mock. The catalog is a Rust component reached through pyo3, and the failure this
-suite most needs to catch — a price quietly rounded on the way to disk — only happens
+suite most needs to catch - a price quietly rounded on the way to disk - only happens
 in the real conversion.
+
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
 
 import pytest
-from copilot.data.catalog import (
-    PRICE_PRECISION,
-    bar_type_for,
-    equity_for,
-    open_catalog,
-    read_daily_bars,
-    to_nautilus_bars,
-    venues_from_rows,
-    write_ingestion,
-)
+
+from copilot.data.catalog import PRICE_PRECISION
+from copilot.data.catalog import bar_type_for
+from copilot.data.catalog import equity_for
+from copilot.data.catalog import open_catalog
+from copilot.data.catalog import read_daily_bars
+from copilot.data.catalog import to_nautilus_bars
+from copilot.data.catalog import venues_from_rows
+from copilot.data.catalog import write_ingestion
 from copilot.data.marketstack import IngestionResult
 from copilot.validation.types import DailyBar
 
@@ -64,6 +65,7 @@ def test_precision_covers_what_the_vendor_returns(instrument):
 
     The deepest value the vendor returns is 4 dp (12,924 of them), so this is exact
     rather than generous.
+
     """
     assert PRICE_PRECISION == 4
     assert instrument.price_precision == 4
@@ -73,8 +75,9 @@ def test_a_price_that_would_be_rounded_raises(instrument):
     """
     Storing a rounded price is the failure this guard exists for.
 
-    A transient replay can tolerate it; a stored history cannot, because every later
-    run reads the file as ground truth without ever seeing the vendor's number.
+    A transient replay can tolerate it; a stored history cannot, because every later run
+    reads the file as ground truth without ever seeing the vendor's number.
+
     """
     bar_type = bar_type_for(instrument.id)
     too_deep = daily(open_="203.00001", high="205.7", low="202.05", close="203.92")
@@ -106,7 +109,12 @@ def test_a_billion_share_session_survives_conversion(instrument):
     """
     bar_type = bar_type_for(instrument.id)
     source = daily(
-        day=(2005, 2, 2), open_="1.13", high="1.20", low="1.10", close="1.15", volume=1020062400
+        day=(2005, 2, 2),
+        open_="1.13",
+        high="1.20",
+        low="1.10",
+        close="1.15",
+        volume=1020062400,
     )
 
     (bar,) = to_nautilus_bars([source], instrument, bar_type)
@@ -143,6 +151,7 @@ def test_the_instrument_is_written_with_its_bars(catalog):
 
     ``BacktestNode`` needs both, and finding the instrument missing at run time is a
     much worse place to discover it than at ingestion.
+
     """
     write_ingestion(catalog, IngestionResult(bars=(daily(),), fetched=1), venues={"AAPL": "XNAS"})
 
@@ -162,7 +171,9 @@ def test_each_symbol_gets_its_own_series(catalog):
 
 
 def test_an_unknown_venue_stops_the_write(catalog):
-    """Guessing a venue would file the series under an instrument id that means nothing."""
+    """
+    Guessing a venue would file the series under an instrument id that means nothing.
+    """
     with pytest.raises(KeyError, match="no venue known"):
         write_ingestion(catalog, IngestionResult(bars=(daily(),), fetched=1), venues={})
 
@@ -170,7 +181,9 @@ def test_an_unknown_venue_stops_the_write(catalog):
 def test_reading_a_window_bounds_the_result(catalog):
     source = [daily(day=(2025, 6, 4)), daily(day=(2025, 6, 5)), daily(day=(2025, 6, 6))]
     write_ingestion(
-        catalog, IngestionResult(bars=tuple(source), fetched=3), venues={"AAPL": "XNAS"}
+        catalog,
+        IngestionResult(bars=tuple(source), fetched=3),
+        venues={"AAPL": "XNAS"},
     )
 
     back = read_daily_bars(
@@ -200,6 +213,7 @@ def test_a_symbol_on_two_exchanges_raises():
 
     Merging the two into one series would produce a continuous-looking history that
     never traded.
+
     """
     rows = [
         {"symbol": "FOO", "exchange": "XNAS"},
@@ -215,7 +229,7 @@ def test_rows_without_an_exchange_are_ignored():
 
 def test_bar_type_is_daily_and_externally_sourced():
     """
-    ``EXTERNAL``, not ``INTERNAL``: these are the venue's official daily summaries,
-    not bars the engine aggregated from ticks.
+    ``EXTERNAL``, not ``INTERNAL``: these are the venue's official daily summaries, not
+    bars the engine aggregated from ticks.
     """
     assert str(bar_type_for(equity_for("AAPL", "XNAS").id)) == "AAPL.XNAS-1-DAY-LAST-EXTERNAL"

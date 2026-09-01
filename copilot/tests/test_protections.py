@@ -1,21 +1,25 @@
-"""Tests for the ported rolling-window breakers.
+"""
+Tests for the ported rolling-window breakers.
 
 These exercise the pure judgement against hand-built sequences, which is the whole
 reason the logic was kept free of I/O and clocks.
+
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from copilot.risk.protections import (
-    ProtectionPolicy,
-    ProtectionTrigger,
-    TradeOutcome,
-    evaluate_protections,
-)
+
+from copilot.risk.protections import ProtectionPolicy
+from copilot.risk.protections import ProtectionTrigger
+from copilot.risk.protections import TradeOutcome
+from copilot.risk.protections import evaluate_protections
+
 
 NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
 ACCOUNT = Decimal(100000)
