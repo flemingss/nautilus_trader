@@ -20,6 +20,12 @@ does not have.
 `trade-copilot/` is excluded from git via `.git/info/exclude` — local only, so it adds
 no diff against upstream. Verify with `git status` before any commit.
 
+## For agents
+
+[`AGENTS.md`](AGENTS.md) in this directory records every departure from the repository's
+root process, with the reasoning for each. Read it alongside the root `AGENTS.md` — it
+supplements those rules rather than replacing them.
+
 ## What is here
 
 | Path | Purpose |
@@ -29,6 +35,8 @@ no diff against upstream. Verify with `git status` before any commit.
 | `validation/` | Types and a Nautilus-backed `Replay` for the walk-forward gate |
 | `tests/` | Tests for all of the above |
 | `docs/` | Roadmap, changelog, and the fusion plan |
+| `AGENTS.md` | Fork-local process departures and their reasoning |
+| `ruff.toml` | Lint config, scoped here so upstream files stay untouched |
 
 ## Provenance
 
