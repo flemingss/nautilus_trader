@@ -387,6 +387,15 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/preflight.py" = [
   "T201",
 ] # Operator CLI: the check table it prints is the product
+"copilot/live/controlled_order.py" = [
+  "ANN401",
+  "T201",
+] # Operator CLI; ANN401 for the pyo3 event objects it receives
+"copilot/live/cancel_working.py" = [
+  "ANN401",
+  "T201",
+  "TRY400",
+] # Operator CLI; ANN401 for the pyo3 event objects it receives
 "tests/**/*.py" = [
   "A002",
   "ANN001",

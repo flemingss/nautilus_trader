@@ -52,7 +52,7 @@ strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are bloc
 | --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 1   | Connect, orders disabled (**passed 2026-09-01**) | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
 | 2   | Confirm the environment (**passed 2026-09-01**)  | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
-| 3   | One controlled order                             | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
+| 3   | One controlled order (**passed 2026-09-01**)     | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
 | 4   | Order types and TIF                              | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
 | 5   | A full supervised session                        | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
 | 6   | Failure injection                                | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
@@ -128,6 +128,39 @@ be sized in a regime the real account will never see.
 **Paper fills are not evidence about fill quality**, as IBKR states and OPERATIONS repeats.
 Nothing measured here is admissible against the cost model.
 
+## What stage three found
+
+Stage three took three attempts. None of the failures were the broker's.
+
+**`Strategy.cancel_order` takes a `ClientOrderId`, not an `Order`.**
+`ExecutionAlgorithm.cancel_order` takes the order, which is where the wrong habit came
+from. Passing an order to the strategy method did nothing at all - no cancel, no exception,
+no log line - and left a working GTC order at the broker after the node stopped. The only
+thing distinguishing that run from a clean one was a missing event.
+
+**The execution client needs explicit routing.** Without a `RoutingConfig` every order was
+denied with `NO_EXECUTION_CLIENT: client_id=NONE, venue=SMART`. Orders route by the
+instrument's venue, and the execution client does not register under one - the same
+venue split that hid the account behind `IB` while instruments resolved on `SMART`.
+
+The routing lists its destinations rather than setting `default=True`. A default would
+route *any* venue to IB, including a research-form id like `AAPL.XNAS` that nothing should
+be able to trade. Listing them keeps that denial as a backstop.
+
+**Nautilus cannot cancel an external order in `SUBMITTED` status, and this is the
+serious one.** `crates/execution/src/reconciliation/orders.rs` matches `Accepted`,
+`Triggered`, `PartiallyFilled`, `Filled`, `Canceled`, `Expired` and `Rejected`; anything
+else falls through to a warning and an empty event list. The order left working by the
+first attempt was reported by IB on every subsequent connect, logged as *"Unhandled order
+status SUBMITTED for external order"*, never entered the cache, and so was invisible to
+`cancel_all_orders` - which then reported success, because the cache it consulted was empty.
+
+That is precisely the *"unknown working broker order"* scenario `OPERATIONS.md` lists as a
+required stage-six test, and **the framework currently cannot recover from it**. A tool that
+reports "nothing working" while an order is live at the broker is worse than no tool, so
+`cancel_working.py` now reports `CACHE CLEAR` rather than `PASS` and says what it cannot
+see. The order itself has to be cancelled in TWS by hand.
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
@@ -143,16 +176,20 @@ Nothing measured here is admissible against the cost model.
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date       | Stage | Result                                                                                                                                                                                                                  | Evidence                                   |
-| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                        | `live/out/preflight_20260901T121340Z.json` |
-| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine. | `live/out/preflight_20260901T122835Z.json` |
+| Date       | Stage | Result                                                                                                                                                                                                                                                                                    | Evidence                                          |
+| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                          | `live/out/preflight_20260901T121340Z.json`        |
+| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                   | `live/out/preflight_20260901T122835Z.json`        |
+| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json` |
 
 ## Where the code is
 
-| Piece                         | Location                                       | State                          |
-| ----------------------------- | ---------------------------------------------- | ------------------------------ |
-| Paper/live discrimination     | [`../live/session.py`](../live/session.py)     | Built, 17 tests                |
-| Node builder and order switch | [`../live/node.py`](../live/node.py)           | Built, unrun against a broker  |
-| Preflight check script        | [`../live/preflight.py`](../live/preflight.py) | Built and run. Stages 1 and 2. |
-| Failure injection             | -                                              | Not built. Stage 6.            |
+| Piece                         | Location                                                     | State                                                             |
+| ----------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------- |
+| Paper/live discrimination     | [`../live/session.py`](../live/session.py)                   | Built, 17 tests                                                   |
+| Node builder and order switch | [`../live/node.py`](../live/node.py)                         | Built, unrun against a broker                                     |
+| Preflight check script        | [`../live/preflight.py`](../live/preflight.py)               | Built and run. Stages 1 and 2.                                    |
+| Instrument id bridge          | [`../live/symbology.py`](../live/symbology.py)               | Built, 10 tests. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`. |
+| Controlled order              | [`../live/controlled_order.py`](../live/controlled_order.py) | Built and run. Stage 3.                                           |
+| Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)     | Built. Cannot see external SUBMITTED orders; says so.             |
+| Failure injection             | -                                                            | Not built. Stage 6.                                               |

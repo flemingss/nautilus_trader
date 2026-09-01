@@ -247,3 +247,52 @@ def test_an_absent_account_names_the_read_only_cause():
 
     assert not account.passed
     assert "Read-Only API" in account.note
+
+
+# ------------------------------------------------------- the controlled order outcome
+
+
+def test_a_clean_lifecycle_passes():
+    from copilot.live.controlled_order import Outcome
+
+    assert Outcome(submitted=True, accepted=True, canceled=True).passed
+
+
+def test_a_fill_fails_the_stage_even_though_the_lifecycle_completed():
+    """
+    The order is priced so it cannot fill, so a fill means an assumption was wrong.
+
+    Counting it as a pass because submit, accept and cancel all happened would report a
+    healthy run at the exact moment the safety argument collapsed.
+
+    """
+    from copilot.live.controlled_order import Outcome
+
+    assert not Outcome(submitted=True, accepted=True, canceled=True, filled=True).passed
+
+
+@pytest.mark.parametrize("refusal", ["rejected", "denied"])
+def test_a_refused_order_fails_the_stage(refusal):
+    """
+    Stage three wants an acknowledged order.
+
+    A refusal proves the path is not working.
+
+    """
+    from copilot.live.controlled_order import Outcome
+
+    assert not Outcome(submitted=True, **{refusal: True}).passed
+
+
+def test_an_order_that_was_never_cancelled_fails():
+    """
+    The failure the first stage-three run actually had.
+
+    `Strategy.cancel_order` takes a ClientOrderId; it was passed an Order, did nothing,
+    raised nothing, and left a working order at the broker. Only the missing cancel event
+    distinguished that run from a clean one.
+
+    """
+    from copilot.live.controlled_order import Outcome
+
+    assert not Outcome(submitted=True, accepted=True).passed

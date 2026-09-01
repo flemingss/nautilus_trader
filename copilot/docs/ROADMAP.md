@@ -53,7 +53,7 @@ stalls.
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-2 passed** 2026-09-01. Stage 3 blocked         |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-3 passed** 2026-09-01                          |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
 | 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 
@@ -130,19 +130,19 @@ The campaign, its gates and its evidence log live in [`PAPER_CAMPAIGN.md`](PAPER
 
 What stages 1 to 6 need built, none of it blocked:
 
-| Piece                           | State                                                                                                                                                                                       |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                                           |
-| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests.             |
-| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.                    |
-| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                                         |
-| A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                                |
-| Map catalog ids to broker ids   | **Open, and blocking stage 3.** Research scores `AAPL.XNAS`; the broker trades `AAPL=STK.SMART` on venue `SMART`. Nothing maps between them, so no activation can currently reach an order. |
-| Failure injection               | **Open.** Stage 6: stale data, disconnect, reject, reconciliation mismatch.                                                                                                                 |
+| Piece                           | State                                                                                                                                                                           |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                               |
+| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests. |
+| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.        |
+| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                             |
+| A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                    |
+| Map catalog ids to broker ids   | **Built**, `live/symbology.py`. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`, with the routing table listed rather than defaulted so an unmapped venue raises.               |
+| Failure injection               | **Open.** Stage 6: stale data, disconnect, reject, reconciliation mismatch. The reconciliation gap below is one of these, found early.                                          |
 
 ## Open work, grouped by what unblocks it
 
-Seventeen items. Grouped by blocking condition rather than by component, because that is
+Eighteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -173,12 +173,13 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Ready to build, nothing blocking (2)
+### Ready to build, nothing blocking (3)
 
-| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| ------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Make the cost model per-instrument   | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                                                                                                                                                                                                                                                       |
-| **Fix `spread_snapshot.build_node`** | 10    | It calls `node.add_actor(recorder)`, and `add_actor` is **not exposed to Python** on the pinned build - it exists only on the Rust node. As committed the calibrator raises `AttributeError` before recording a single quote, so the snapshots the cost analysis rests on came from code that is not in the repository. The measurements are not thereby wrong, but they are **not reproducible from a commit**, which is the exact failure the activation registry was built to end for verdicts. Found 2026-09-01 while building the paper node. |
+| Item                                                | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Make the cost model per-instrument                  | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                                                                                                                                                                                                                                                       |
+| **Fix `spread_snapshot.build_node`**                | 10    | It calls `node.add_actor(recorder)`, and `add_actor` is **not exposed to Python** on the pinned build - it exists only on the Rust node. As committed the calibrator raises `AttributeError` before recording a single quote, so the snapshots the cost analysis rests on came from code that is not in the repository. The measurements are not thereby wrong, but they are **not reproducible from a commit**, which is the exact failure the activation registry was built to end for verdicts. Found 2026-09-01 while building the paper node. |
+| **External `SUBMITTED` orders cannot be cancelled** | 08    | Nautilus reconciliation (`crates/execution/src/reconciliation/orders.rs`) matches `Accepted`, `Triggered`, `PartiallyFilled`, `Filled`, `Canceled`, `Expired` and `Rejected`; anything else warns and returns no events. An order left working by a previous run and reported as `SUBMITTED` therefore never enters the cache and cannot be cancelled - the exact "unknown working broker order" scenario OPERATIONS requires a stage-six test for. Would be an upstream delta in a churning crate; measured 2026-09-01, not yet attempted.        |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 
