@@ -53,7 +53,7 @@ stalls.
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-5 passed** 2026-09-01                          |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-5 pass, stage 6 fails**                        |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
 | 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 
@@ -142,7 +142,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Eighteen items. Grouped by blocking condition rather than by component, because that is
+Nineteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -173,13 +173,14 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Ready to build, nothing blocking (3)
+### Ready to build, nothing blocking (4)
 
 | Item                                                | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | --------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Make the cost model per-instrument                  | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                                                                                                                                                                                                                                                       |
 | **Fix `spread_snapshot.build_node`**                | 10    | It calls `node.add_actor(recorder)`, and `add_actor` is **not exposed to Python** on the pinned build - it exists only on the Rust node. As committed the calibrator raises `AttributeError` before recording a single quote, so the snapshots the cost analysis rests on came from code that is not in the repository. The measurements are not thereby wrong, but they are **not reproducible from a commit**, which is the exact failure the activation registry was built to end for verdicts. Found 2026-09-01 while building the paper node. |
 | **External `SUBMITTED` orders cannot be cancelled** | 08    | Nautilus reconciliation (`crates/execution/src/reconciliation/orders.rs`) matches `Accepted`, `Triggered`, `PartiallyFilled`, `Filled`, `Canceled`, `Expired` and `Rejected`; anything else warns and returns no events. An order left working by a previous run and reported as `SUBMITTED` therefore never enters the cache and cannot be cancelled - the exact "unknown working broker order" scenario OPERATIONS requires a stage-six test for. Would be an upstream delta in a churning crate; measured 2026-09-01, not yet attempted.        |
+| **`max_notional_per_order` is inert on IB**         | 06    | `RiskEngine::check_orders_risk_for_account` resolves the account with `account_for_venue(instrument.venue)`. On IB, instruments resolve on `SMART` while the account is `IB-DUT067974` on venue `IB`, so the lookup fails and the function returns `true` - passing every order, including one over an explicitly configured cap. Reported at `DEBUG` only. **One of the two pre-trade risk controls Nautilus ships does nothing on IB.** The cap needs no account and should not sit behind an account guard. Measured 2026-09-01 at stage six.   |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 

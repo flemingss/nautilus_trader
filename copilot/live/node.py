@@ -97,6 +97,7 @@ def build_paper_node(
     symbology: SymbologyMethod = SymbologyMethod.RAW,
     strategies: tuple[object, ...] = (),
     risk_engine_config: LiveRiskEngineConfig | None = None,
+    logging_config: object | None = None,
 ) -> tuple[LiveNode, SupportsTradingState]:
     """
     Build the paper node and return it with its risk engine handle.
@@ -113,6 +114,10 @@ def build_paper_node(
     )
 
     builder = LiveNode.builder(NODE_NAME, TraderId.from_str(TRADER_ID), Environment.LIVE)
+    if logging_config is not None:
+        # Needed to see the risk engine's account-resolution failures, which are DEBUG
+        # level and are how a silently inert notional cap was found.
+        builder = builder.with_logging(logging_config)
     if risk_engine_config is not None:
         # Order limits belong outside the strategy, per playbook/OPERATIONS.md. A
         # strategy cannot relax its own cap if the cap is engine configuration.

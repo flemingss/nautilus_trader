@@ -97,6 +97,9 @@ Confirmed by a failed run on 2026-09-01, not from documentation.
 - **The paper account is `MARGIN` while the live account is cash.** Paper will accept a
   short sale and size against buying power; the live cash account will do neither. A paper
   pass is not evidence about the cash constraints.
+- **Paper does not enforce buying power on a far-from-market limit.** Measured at stage
+  six: IB paper accepted a 100,000-share order worth USD 24M on a USD 1M account. A
+  rejection path tested only on paper has not been tested.
 - **The paper balance is USD 1,000,000**, three orders of magnitude above the target
   account. Size from the configured risk budget, never from reported equity.
 - **Instrument identifiers differ between research and the broker.** The catalog names an

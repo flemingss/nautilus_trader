@@ -77,6 +77,17 @@ comfortably larger than estimated all-in cost, skip it too.
 
 ## Account-wide breakers
 
+> **`max_notional_per_order` does not work on Interactive Brokers.** Measured at paper stage
+> six on 2026-09-01. The risk engine resolves the account by the *instrument's* venue; on IB
+> instruments resolve on `SMART` while the account sits on `IB`, so the lookup fails and the
+> whole check returns "allow" - including a cap the operator configured explicitly. It is
+> reported at `DEBUG` and nowhere else.
+>
+> Until that is fixed, **`TradingState::HALTED` is the only pre-trade control this system
+> has.** It is enforced natively in the Rust risk engine and was verified surviving node
+> startup at stage one, so the account-wide breakers in `risk/guard.py` are real. Do not
+> write a limit that depends on the per-order cap and assume it holds.
+
 Beyond per-order limits, `copilot/risk/protections.py` enforces sequence-aware limits: a run
 of consecutive stop-outs, and peak-to-trough realised drawdown over a rolling window, each
 opening a cooldown with the longest-running breach winning.

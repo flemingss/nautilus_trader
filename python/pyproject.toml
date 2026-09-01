@@ -384,6 +384,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "ANN401",
   "T201",
 ] # Operator CLI: the verdict it prints is the product
+"copilot/live/node.py" = [
+  "PLR0913",
+] # Node wiring: each argument is a distinct broker or engine concern
 "copilot/live/preflight.py" = [
   "T201",
 ] # Operator CLI: the check table it prints is the product
@@ -393,8 +396,11 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 ] # Operator CLI; ANN401 for the pyo3 event objects it receives
 "copilot/live/cancel_working.py" = ["ANN401", "T201", "TRY400"]
 "copilot/live/order_types.py" = ["ANN401", "T201", "TRY400"]
-"copilot/live/supervised_session.py" = [
+"copilot/live/supervised_session.py" = ["ANN401", "T201", "TRY400"]
+"copilot/live/failure_injection.py" = [
   "ANN401",
+  "E501",
+  "PLR0913",
   "T201",
   "TRY400",
 ] # Operator CLI; ANN401 for the pyo3 event objects it receives

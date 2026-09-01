@@ -2,6 +2,42 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 6)
+
+### Added
+
+- **`live/failure_injection.py`** - paper stage six. Three injected faults whose expected
+  outcome is a refusal or an alarm, plus one case reported from the record rather than re-run.
+- `build_paper_node` accepts a logging config, which is how a `DEBUG`-only failure was found.
+
+### Failed, and the failure is the point
+
+- **`max_notional_per_order` is silently inert on Interactive Brokers.** An order for
+  USD 1,580 against a configured USD 1,000 cap was accepted. Confirmed at `DEBUG` rather than
+  inferred: `Cannot find account for venue SMART (account_id=None)`.
+  `RiskEngine::check_orders_risk_for_account` resolves the account with
+  `account_for_venue(instrument.venue)`; instruments resolve on `SMART` while the account is
+  `IB-DUT067974` on venue `IB`, so the lookup fails and the function returns `true`, passing
+  every order. **The notional cap needs no account** - it is a statement about the order - but
+  it sits past an account guard that fails for an unrelated reason.
+
+  Nautilus ships two pre-trade risk controls; on IB one of them does nothing. The backstop
+  described in the stage-five entry was fiction. `TradingState::HALTED`, verified at stage
+  one, is now the only pre-trade control this system actually has.
+
+  This is the **third** failure caused by the same unmodelled distinction between listing
+  venue, routing destination and the account's home venue - after the stage-two account
+  lookup and stage-three order routing.
+
+- **IB paper accepted a USD 24M order on a USD 1M account** (100,000 MSFT at a USD 240
+  limit). Paper does not enforce buying power on a far-from-market limit, so a rejection path
+  tested only on paper has not been tested.
+
+### Passed
+
+- Stale-feed detection fired 20.2s after the subscription was cut. That tests the detector
+  against a real feed going quiet, not IB going quiet.
+
 ## 2026-09-01 (paper stage 5)
 
 ### Added
