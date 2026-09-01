@@ -150,8 +150,51 @@ def registered_paths(register: Path = REGISTER) -> set[str]:
     """
     Paths listed in the delta register.
     """
+    paths: set[str] = set()
+    for line in _register_rows(register):
+        if match := REGISTER_ROW.match(line):
+            paths.add(match.group(1))
+    return paths
+
+
+REMOVED_MARK = "Removed"
+"""
+A register row whose *Change* column begins with this records a deletion.
+"""
+
+CHANGE_CELL = 2
+"""
+Index of the *Change* column when a register row is split on ``|``.
+"""
+
+
+def removed_paths(register: Path = REGISTER) -> set[str]:
+    """
+    Return the registered paths whose row records a deletion rather than a modification.
+
+    A deleted file stays in the delta forever - the diff against the merge base never
+    stops reporting it - so it needs a row like any other change, but the path check has
+    to know the file is meant to be gone.
+
+    """
+    removed: set[str] = set()
+    for line in _register_rows(register):
+        cells = line.split("|")
+        if (
+            len(cells) > CHANGE_CELL
+            and cells[CHANGE_CELL].strip().startswith(REMOVED_MARK)
+            and (match := REGISTER_ROW.match(line))
+        ):
+            removed.add(match.group(1))
+    return removed
+
+
+def _register_rows(register: Path = REGISTER) -> list[str]:
+    """
+    Return the raw lines of the register section, shared by the path parsers.
+    """
     if not register.exists():
-        return set()
+        return []
 
     lines = register.read_text().splitlines()
     try:
@@ -159,13 +202,12 @@ def registered_paths(register: Path = REGISTER) -> set[str]:
     except StopIteration:
         raise ValueError(f"{register} has no '{REGISTER_HEADING}' section to read") from None
 
-    paths: set[str] = set()
+    rows: list[str] = []
     for line in lines[start + 1 :]:
         if line.startswith("## "):
             break
-        if match := REGISTER_ROW.match(line):
-            paths.add(match.group(1))
-    return paths
+        rows.append(line)
+    return rows
 
 
 def _combine(a: tuple[int, int], b: tuple[int, int]) -> tuple[int, int]:

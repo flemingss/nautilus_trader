@@ -25,6 +25,7 @@ from copilot.tools.upstream_delta import REGISTER
 from copilot.tools.upstream_delta import NoUpstreamError
 from copilot.tools.upstream_delta import collect
 from copilot.tools.upstream_delta import registered_paths
+from copilot.tools.upstream_delta import removed_paths
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -78,12 +79,24 @@ def test_the_register_has_no_stale_rows(delta):
     )
 
 
-def test_registered_paths_exist():
+def test_registered_paths_match_the_tree():
     """
-    Catches a typo in a path, which would otherwise silently register nothing.
+    Catches a register that no longer describes the tree, in both directions.
+
+    A row whose Change column begins with "Removed" records a deletion, so its path must
+    not exist; every other row's path must. A typo in a path lands in the first branch,
+    a deleted file coming back without its row being updated lands in the second.
+
     """
-    missing = sorted(p for p in registered_paths() if not (REPO_ROOT / p).exists())
+    removed = removed_paths()
+    missing = sorted(p for p in registered_paths() - removed if not (REPO_ROOT / p).exists())
     assert not missing, f"{REGISTER} lists path(s) that do not exist: {missing}"
+
+    resurrected = sorted(p for p in removed if (REPO_ROOT / p).exists())
+    assert not resurrected, (
+        f"{REGISTER} records path(s) as removed that exist in the tree: {resurrected}. "
+        "Either the file came back deliberately - update its row - or the deletion was lost."
+    )
 
 
 def test_nothing_kept_frozen_is_touched(delta):

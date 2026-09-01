@@ -142,7 +142,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Fourteen items. Grouped by blocking condition rather than by component, because that is
+Thirteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -179,12 +179,11 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Ready to build, nothing blocking (2)
+### Ready to build, nothing blocking (1)
 
-| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                                          |
-| ------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Make the cost model per-instrument   | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                   |
-| Retire the queued inherited surfaces | -     | The governance files that describe working *with upstream* - `CLA.md`, `SECURITY.md`, `AI_POLICY.md`, CODEOWNERS, the templates, the README rewrite. Root `ROADMAP.md` and `CONTRIBUTING.md` are done; the survey with per-file calls is in [`MAINTENANCE.md`](MAINTENANCE.md). One PR, chasing inbound links. |
+| Item                               | Stage | Notes                                                                                                                                        |
+| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Make the cost model per-instrument | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 
