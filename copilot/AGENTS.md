@@ -4,6 +4,13 @@ Read this **in addition to** the repository root `AGENTS.md`, not instead of it.
 rules still apply; this file records where fork-local work deliberately departs from
 them, and why.
 
+For *why things are this way*, read `docs/decisions/`. Those records are immutable: a
+decision that stops being true is superseded by a new one, never rewritten. If this file
+and an ADR disagree, the ADR is the record and this file is the bug.
+
+For *how to draw from upstream*, read `docs/MAINTENANCE.md`. Syncing is a scheduled piece
+of work reviewed quarterly, never a step inside another task.
+
 For *what to work on*, read `docs/ROADMAP.md` - it is the central record, organised
 around the kill chain, and it says which items are blocked on a decision rather than on
 work. Do not start an item listed there as awaiting a decision.

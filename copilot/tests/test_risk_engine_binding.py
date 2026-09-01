@@ -11,6 +11,7 @@ against a stand-in. This file covers the marshalling underneath it.
 Skipped rather than failed when the extension predates the binding: the overlay is
 sometimes run against a wheel rather than the source build, and a hard failure there
 would say "the overlay is broken" when the truth is "this build does not have it".
+
 """
 
 from __future__ import annotations
@@ -33,7 +34,12 @@ if not hasattr(LiveNode, "risk_engine"):
 
 @pytest.fixture
 def node():
-    """A built but unstarted node. Building needs no broker connection."""
+    """
+    A built but unstarted node.
+
+    Building needs no broker connection.
+
+    """
     return LiveNode.build("COPILOT-RISK-BINDING-TEST")
 
 
@@ -60,6 +66,7 @@ def test_two_handles_share_one_engine(node):
     share, so a change made through one is seen by the engine that gates orders. A
     handle holding its own copy would set a state nothing enforces - and would look
     identical from Python.
+
     """
     first = node.risk_engine
     second = node.risk_engine
@@ -79,6 +86,7 @@ def test_the_handle_outlives_the_accessor(node):
 
     Dropping the Python reference to the node stands in for that here: the handle holds
     its own `Rc`, so the engine stays alive and usable.
+
     """
     engine = node.risk_engine
     del node
@@ -94,6 +102,7 @@ def test_setting_the_current_state_is_a_no_op(node):
     Worth pinning because the guard calls this on every breach evaluation while a
     breach is in force, and a `TradingStateChanged` event per evaluation would be noise
     that buries the one that mattered.
+
     """
     engine = node.risk_engine
     engine.set_trading_state(TradingState.HALTED)

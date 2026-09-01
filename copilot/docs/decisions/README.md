@@ -1,0 +1,26 @@
+# Architecture decisions
+
+One file per decision, numbered, never edited once accepted. A decision that stops being
+true is **superseded by a new one**, not rewritten, so the reasoning that led here stays
+readable after the conclusion changes.
+
+## Re-derived, not lifted
+
+trade-copilot carries 25 ADRs. They were **not copied**. Its architecture rests on an
+assumption that no longer holds - a human placing every order by hand, because Fidelity
+has no retail trading API - and lifting the set wholesale would import that assumption
+into decisions that look unrelated to it. Each ADR here was decided again on its own
+merits; where one descends from a trade-copilot ADR, it says so and says what changed.
+
+## Index
+
+| # | Decision | Status |
+| --- | --- | --- |
+| [0001](0001-record-architecture-decisions.md) | Record architecture decisions | Accepted |
+| [0002](0002-fork-local-overlay.md) | Fork-local work lives in `copilot/` | Accepted |
+| [0003](0003-registered-upstream-deltas.md) | Upstream changes are permitted but registered | Accepted |
+| [0004](0004-quarterly-upstream-sync.md) | Sync with upstream on demand, reviewed quarterly | Accepted |
+| [0005](0005-setup-is-code-activation-is-data.md) | A setup is code; activation is data | Accepted |
+| [0006](0006-ops-progression.md) | Ops progression: WSL and TWS, then Gateway, then Kubernetes | Accepted |
+| [0007](0007-self-sourced-images.md) | We build and source our own images | Accepted |
+| [0008](0008-direct-api-execution.md) | Direct API execution supersedes the HITL assumption | Accepted |

@@ -9,6 +9,15 @@ and the detail sections are ordered by stage, so a reference stays true as the b
 moves. Read "The kill chain" and "Open work" first; everything under *Detail* is the
 working record behind them.
 
+Companion documents, each with a distinct job:
+
+| Document                                 | Job                                                        |
+| ---------------------------------------- | ---------------------------------------------------------- |
+| [`decisions/`](decisions/README.md)      | Why things are the way they are. Immutable once accepted.  |
+| [`MAINTENANCE.md`](MAINTENANCE.md)       | How we draw from upstream, and what we own in the runtime. |
+| [`UPSTREAM_DELTA.md`](UPSTREAM_DELTA.md) | Every upstream file we change and what it costs to drop.   |
+| [`CHANGELOG.md`](CHANGELOG.md)           | What changed and what was measured.                        |
+
 A rendered view of the same two sections is published at
 <https://claude.ai/code/artifact/80882028-e15c-4247-a2f4-e08cf2b2ef20>. This file is the
 source of truth; regenerate the page from it rather than the other way round.

@@ -2,6 +2,34 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (decisions + maintenance)
+
+### Added
+
+- **`docs/decisions/`** - 8 ADRs recording decisions that were previously only prose in
+  `AGENTS.md`, `ROADMAP.md` and commit messages, where the conclusion survived but the
+  reasoning did not. **Re-derived, not lifted** from trade-copilot's 25: its architecture
+  rests on a human placing every order by hand, and copying the set wholesale would import
+  that assumption into decisions that look unrelated to it.
+- **`docs/MAINTENANCE.md`** - the upstream sync procedure and the runtime ownership map.
+  Quarterly review starting 2026-09-01, with "skip" and "retire a delta" as first-class
+  outcomes alongside "sync".
+
+### Recorded
+
+- **Ops progresses in three stages and does not skip ahead**: WSL with host TWS now,
+  dockerized IB Gateway once a strategy is validated, Kubernetes once proven. Stage 1 is
+  explicitly **not** unattended - a machine that sleeps is intermittent, and the guard's
+  cooldown across a restart must be reviewed before any unattended run.
+- **There is no path that consumes a published `nautilus_trader` wheel.** Carrying Rust
+  deltas means an image built on one would run, connect, trade, and silently fall back to
+  breakers that cannot stop the next order. We build from source, pin third-party images
+  by digest, and assert the binding at startup.
+- **Knobs get three buckets** - searchable, identity, environment - with `SEARCH_SPACE`
+  beside the strategy code and activation in a version-controlled registry. The immediate
+  reason: no `ParameterGrid` exists in committed code, so the first walk-forward verdict
+  this fork produced cannot be reproduced from the repository.
+
 ## 2026-09-01 (risk enforcement + universe)
 
 ### Added
