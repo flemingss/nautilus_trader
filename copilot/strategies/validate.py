@@ -10,17 +10,19 @@ verdict could not be reproduced from a commit by anyone, including whoever produ
 Reads only. It runs a backtest over stored bars and writes a JSON record; it constructs no
 execution client and cannot place an order whatever an activation's lifecycle says.
 
-What the verdict is not
------------------------
-The gate scores against whatever cost model the replay is given. **No fee or fill model is
-supplied yet**, so the engine charges neither commission nor spread and every number below
-is gross of costs. trade-copilot's own analysis names the cost model as the number that
-decides every verdict, so these are a measurement of the machinery rather than of an edge.
-The record carries `costs_modelled: false` so a file cannot be read later as more than it
-was.
+What the verdict is
+-------------------
+**Net of costs, as of [ADR-0011].** Every fold score charges the measured spread at p95
+per side and IB's commission schedule against each replayed trade, through the gate's own
+objective - so the in-sample search selects parameters that survive costs, not merely
+ones that win gross. The record carries the snapshot name, the percentile and the
+coefficient it was charged, so a number ties to its exact cost basis the way it ties to
+a commit.
 
-This is also not the holdout. Walk-forward is repeatable; the single-use out-of-sample is
-not, and spending it is a deliberate separate act.
+What it still is not: the holdout (walk-forward is repeatable; the single-use
+out-of-sample is not, and spending it is a deliberate separate act), and not a viability
+judgment at the target account size, which is [ADR-0009]'s sweep - costs here are charged
+on the trades as replayed, at the research sizing.
 """
 
 from __future__ import annotations
@@ -36,6 +38,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.calibration.cost_model import CostModel
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
@@ -61,6 +64,7 @@ class Verdict:
     first_bar: str
     last_bar: str
     seconds: float
+    cost_model: CostModel
 
     def as_record(self) -> dict[str, Any]:
         """Return the JSON form written to disk."""
@@ -83,13 +87,14 @@ class Verdict:
             "seeded_parameters": {k: str(v) for k, v in self.activation.parameters.items()},
             "validation": vars(self.activation.validation),
             "warmup_bars": self.activation.setup.warmup_bars,
-            "costs_modelled": False,
+            "costs_modelled": True,
+            "cost_model": self.cost_model.as_record(self.activation.symbol),
             "holdout_spent": False,
             "folds": len(self.report.folds),
             "folds_evaluated": len(evaluated),
             "folds_passed": self.report.passed_count,
             "majority_passed": self.report.majority_passed,
-            "mean_oos_expectancy_r": str(
+            "mean_oos_net_expectancy_r": str(
                 (sum(scores, Decimal(0)) / len(scores)).quantize(Decimal("0.000001")),
             )
             if scores
@@ -104,7 +109,7 @@ class Verdict:
                     if f.selected
                     else None,
                     "trades": f.test_trades,
-                    "score_r": str(f.test_score.quantize(Decimal("0.000001"))),
+                    "net_score_r": str(f.test_score.quantize(Decimal("0.000001"))),
                     "passed": f.passed,
                     "reason": f.reason,
                 }
@@ -113,8 +118,14 @@ class Verdict:
         }
 
 
-def run(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> Verdict:
-    """Run the gate for one activation over stored bars."""
+def run(
+    activation: Activation,
+    catalog_path: str = DEFAULT_CATALOG,
+    cost_model: CostModel | None = None,
+) -> Verdict:
+    """Run the gate for one activation over stored bars, net of the pinned cost model."""
+    if cost_model is None:
+        cost_model = CostModel.from_snapshot()
     catalog = open_catalog(catalog_path)
     instrument = equity_for(activation.symbol, activation.venue)
     bar_type = bar_type_for(instrument.id)
@@ -141,6 +152,7 @@ def run(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> Verdict:
         purge_bars=settings.purge_bars,
         warmup_bars=activation.setup.warmup_bars,
         replay=replay,
+        objective=cost_model.net_expectancy_for(activation.symbol),
         min_trades=settings.min_trades,
         fold_min_trades=settings.fold_min_trades,
     )
@@ -151,6 +163,7 @@ def run(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> Verdict:
         first_bar=bars[0].closed_at.date().isoformat(),
         last_bar=bars[-1].closed_at.date().isoformat(),
         seconds=time.time() - started,
+        cost_model=cost_model,
     )
 
 
@@ -159,7 +172,7 @@ def _print(verdict: Verdict) -> None:
     print(
         f"{record['activation']:<24} {record['instrument']:<11} "
         f"{record['folds_passed']}/{record['folds_evaluated']} folds  "
-        f"mean OOS {record['mean_oos_expectancy_r'] or 'n/a':>10} R  "
+        f"mean OOS net {record['mean_oos_net_expectancy_r'] or 'n/a':>10} R  "
         f"{record['total_test_trades']:>5} trades  "
         f"majority={record['majority_passed']}  ({record['runtime_seconds']}s)",
         flush=True,
@@ -189,9 +202,13 @@ def main(argv: list[str] | None = None) -> int:
     else:
         parser.error("name an activation or pass --all")
 
-    print("Gross of costs: no fee or fill model is supplied yet. Not the holdout.\n")
+    cost_model = CostModel.from_snapshot()
+    print(
+        f"Net of costs: spread at {cost_model.percentile} per side from "
+        f"{cost_model.snapshot}, plus IB commission. Not the holdout.\n",
+    )
     for activation in activations:
-        verdict = run(activation, args.catalog)
+        verdict = run(activation, args.catalog, cost_model)
         _print(verdict)
         if args.write:
             OUT_DIR.mkdir(parents=True, exist_ok=True)
