@@ -55,7 +55,7 @@ strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are bloc
 | 3   | One controlled order (**passed 2026-09-01**)      | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
 | 4   | Order types and TIF (**passed 2026-09-01**)       | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
 | 5   | A full supervised session (**passed 2026-09-01**) | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
-| 6   | Failure injection                                 | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
+| 6   | Failure injection (**failed 2026-09-01**)         | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
 | 7   | Repeat sessions, frozen strategy                  | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
 | 8   | Unattended                                        | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
 
@@ -245,6 +245,74 @@ IBKR says about its paper environment.
 this account size there is no second position. That is a real constraint on any strategy
 design that assumes a portfolio.
 
+## What stage six found, and it invalidates a safety claim
+
+Stages one to five confirmed the happy path. Stage six is the one that was worth the eight
+weeks, and it failed on its first run - which is the outcome that justifies the stage.
+
+### `max_notional_per_order` is silently inert on Interactive Brokers
+
+The probe submitted 10 AAPL at a USD 158 limit - USD 1,580 against a configured cap of
+USD 1,000. **It was accepted.**
+
+The cause, confirmed by running the node at `DEBUG` rather than inferred:
+
+```text
+[DEBUG] nautilus_risk::engine: Cannot find account for venue SMART (account_id=None)
+```
+
+`RiskEngine::check_orders_risk_for_account` resolves the account with
+`cache.account_for_venue(&instrument.id().venue)`. Instruments resolve on **`SMART`**; the
+execution client registers the account under its own client name, so the account is
+`IB-DUT067974` on venue **`IB`**. The lookup returns nothing, and the function then
+**`return true`** - passing every order, including one that exceeds a cap the operator
+explicitly configured.
+
+The notional cap needs no account. It is a statement about the order. It is skipped anyway,
+because it lives past an account guard that fails for an unrelated reason.
+
+**Consequences, in order of seriousness:**
+
+- Nautilus ships two pre-trade risk controls. On IB, **one of them does nothing**, and says
+  so only at `DEBUG`.
+- The `max_notional_per_order` backstop in
+  [`../live/supervised_session.py`](../live/supervised_session.py) was fiction. It was
+  described in stage five as denying a grossly wrong order before it reached the broker. It
+  would not have.
+- The same venue split has now caused three separate failures: the account lookup in stage
+  two, order routing in stage three, and this. **It is not a series of coincidences, it is
+  one unmodelled distinction** between a listing venue, a routing destination, and an
+  account's home venue.
+
+**What still works, and now matters more than it looked:** `TradingState::HALTED` is
+enforced natively and was verified surviving node startup in stage one. Account-wide halting
+
+- which is what [`../risk/guard.py`](../risk/guard.py) uses - is real. The per-order cap is
+not. Until the cap is fixed, **the halt is the only pre-trade control this system actually
+has.**
+
+### IB paper accepted a USD 24M order on a USD 1M account
+
+The second probe deliberately carried no cap, so it reached IB: 100,000 MSFT at a USD 240
+limit. The broker accepted it.
+
+Paper does not enforce buying power on a far-from-market limit. So **paper cannot validate
+buying-power protection**, and a rejection path that has only ever been tested on paper has
+not been tested. Add it to what paper cannot reproduce, beside the margin-versus-cash account
+type and the million-dollar balance.
+
+### What passed
+
+Stale-feed detection fired at 20.2 seconds after the subscription was cut. That tests the
+detector against a real feed going quiet; it does not test IB going quiet, which is a
+different fault with the same symptom.
+
+### The fourth case is still a known failure
+
+Recovering an unknown working order remains impossible - reconciliation drops an external
+order reported as `SUBMITTED`. Not re-run, because re-running strands another live order to
+re-learn something already evidenced.
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
@@ -267,6 +335,7 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json`   |
 | 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`        |
 | 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.             | `live/out/supervised_session_20260901T133242Z.json` |
+| 2026-09-01 | 6     | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                  | `live/out/failure_injection_20260901T134539Z.json`  |
 
 ## Where the code is
 
@@ -280,4 +349,4 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)         | Built. Cannot see external SUBMITTED orders; says so.             |
 | Order type matrix             | [`../live/order_types.py`](../live/order_types.py)               | Built and run. Stage 4.                                           |
 | Supervised round trip         | [`../live/supervised_session.py`](../live/supervised_session.py) | Built and run. Stage 5.                                           |
-| Failure injection             | -                                                                | Not built. Stage 6.                                               |
+| Failure injection             | [`../live/failure_injection.py`](../live/failure_injection.py)   | Built and run. Stage 6, **failing**.                              |
