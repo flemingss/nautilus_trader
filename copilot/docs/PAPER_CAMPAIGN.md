@@ -48,16 +48,16 @@ Each stage opens only when the one before it has a dated row in the log. Stages 
 broker-integration testing and need no subscription, no settled cash, no margin and no
 strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are blocked.
 
-| #   | Stage                            | Gate: what has to be true to pass                                                                                                                                                                     |
-| --- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Connect, orders disabled         | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
-| 2   | Confirm the environment          | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
-| 3   | One controlled order             | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
-| 4   | Order types and TIF              | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
-| 5   | A full supervised session        | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
-| 6   | Failure injection                | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
-| 7   | Repeat sessions, frozen strategy | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
-| 8   | Unattended                       | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
+| #   | Stage                                                | Gate: what has to be true to pass                                                                                                                                                                     |
+| --- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Connect, orders disabled (**passed 2026-09-01**)     | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
+| 2   | Confirm the environment (**blocked**: Read-Only API) | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
+| 3   | One controlled order                                 | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
+| 4   | Order types and TIF                                  | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
+| 5   | A full supervised session                            | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
+| 6   | Failure injection                                    | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
+| 7   | Repeat sessions, frozen strategy                     | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
+| 8   | Unattended                                           | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
 
 ### Two gates that are easy to wave through
 
@@ -71,6 +71,31 @@ comment and the whole campaign has been running with the safety off.
 **Stage 6 is the one worth the eight weeks.** Stages 1 to 5 tell you the happy path works,
 which is the part that was never in doubt. Everything this campaign is actually for lives in
 stage 6.
+
+## What the first run found
+
+Three things, none of which were visible from reading code.
+
+**The halt survives startup.** Stage one's whole claim, now evidence rather than
+assumption: `HALTED` before the start and `HALTED` after it, against a real broker.
+Orders-disabled mode is real.
+
+**TWS had Read-Only API enabled.** The execution client failed to connect with IB **321**,
+*"The API interface is currently in Read-Only mode"*. Two checks then failed together -
+no account, no balances - and neither said why, because the account is missing as a
+*consequence* of the execution client never connecting, and that is a checkbox in the TWS
+GUI that nothing in the failure text points at. The preflight now names the cause in its
+own record so the next run does not rediscover it.
+
+Read-only is the correct setting for stage one and the wrong one from stage two onward.
+**Turn it off in TWS: Global Configuration, API, Settings, uncheck Read-Only API.**
+
+**Research instrument ids are not broker instrument ids.** The catalog names the instrument
+`AAPL.XNAS` (MIC venue, via `data/catalog.equity_for`); the broker resolves
+`AAPL=STK.SMART` and reports the venue as `SMART`. The first attempt failed on exactly this,
+and it is not cosmetic - an activation names `symbol="AAPL", venue="XNAS"`, and that
+instrument cannot be traded. **Nothing in the overlay maps between the two**, and stage
+three cannot place an order until something does.
 
 ## Standing rules for every session
 
@@ -87,15 +112,16 @@ stage 6.
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date | Stage | Result      | Evidence |
-| ---- | ----- | ----------- | -------- |
-| -    | 1     | Not yet run | -        |
+| Date       | Stage | Result                                                                                                                                                                             | Evidence                                   |
+| ---------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                   | `live/out/preflight_20260901T121340Z.json` |
+| 2026-09-01 | 2     | **Fail.** No account reached the cache and no balances reconciled. Cause found: **TWS had Read-Only API enabled**, so the execution client failed with IB 321 and never connected. | same record                                |
 
 ## Where the code is
 
-| Piece                         | Location                                   | State                         |
-| ----------------------------- | ------------------------------------------ | ----------------------------- |
-| Paper/live discrimination     | [`../live/session.py`](../live/session.py) | Built, 17 tests               |
-| Node builder and order switch | [`../live/node.py`](../live/node.py)       | Built, unrun against a broker |
-| Preflight check script        | -                                          | Not built. Stage 2.           |
-| Failure injection             | -                                          | Not built. Stage 6.           |
+| Piece                         | Location                                       | State                          |
+| ----------------------------- | ---------------------------------------------- | ------------------------------ |
+| Paper/live discrimination     | [`../live/session.py`](../live/session.py)     | Built, 17 tests                |
+| Node builder and order switch | [`../live/node.py`](../live/node.py)           | Built, unrun against a broker  |
+| Preflight check script        | [`../live/preflight.py`](../live/preflight.py) | Built and run. Stages 1 and 2. |
+| Failure injection             | -                                              | Not built. Stage 6.            |

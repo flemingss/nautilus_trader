@@ -176,3 +176,74 @@ def test_a_session_defaults_to_orders_disabled():
 
     """
     assert a_session().orders_enabled is False
+
+
+# --------------------------------------------------------------- stage two checks
+
+
+class FakeInstrument:
+    def __init__(self, instrument_id: object) -> None:
+        self.id = instrument_id
+
+
+class FakeCache:
+    """
+    Enough cache to exercise the stage-two observations without a broker.
+    """
+
+    def __init__(self, instruments: list[object], account_id: str | None = None) -> None:
+        self._instruments = instruments
+        self._account_id = account_id
+
+    def instruments(self) -> list[object]:
+        return self._instruments
+
+    def account_id(self, venue: object) -> str | None:
+        return self._account_id
+
+    def account_for_venue(self, venue: object) -> object | None:
+        return None
+
+
+def test_missing_instruments_are_counted_not_merely_reported():
+    """
+    A partial resolution is a failure, not a warning.
+
+    Trading a subset of the configured universe silently is worse than not starting.
+
+    """
+    from copilot.live.preflight import observe_environment
+    from nautilus_trader.model import InstrumentId
+
+    session = a_session(instrument_ids=("AAPL=STK.SMART", "MSFT=STK.SMART"))
+    cache = FakeCache([FakeInstrument(InstrumentId.from_str("AAPL=STK.SMART"))])
+
+    resolved = next(
+        c for c in observe_environment(cache, session) if c.name == "instruments_resolved"
+    )
+
+    assert not resolved.passed
+    assert resolved.observed == "1"
+    assert resolved.expected == "2"
+
+
+def test_an_absent_account_names_the_read_only_cause():
+    """
+    Two checks fail together and neither says why, so the hint is carried in the record.
+
+    The account is missing because the execution client never connected, and it never
+    connected because of a checkbox in the TWS GUI. Nothing in the failure text says so.
+
+    """
+    from copilot.live.preflight import observe_environment
+    from nautilus_trader.model import InstrumentId
+
+    session = a_session(instrument_ids=("AAPL=STK.SMART",))
+    cache = FakeCache([FakeInstrument(InstrumentId.from_str("AAPL=STK.SMART"))])
+
+    account = next(
+        c for c in observe_environment(cache, session) if c.name == "account_reported_by_broker"
+    )
+
+    assert not account.passed
+    assert "Read-Only API" in account.note
