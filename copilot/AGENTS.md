@@ -4,6 +4,13 @@ Read this **in addition to** the repository root `AGENTS.md`, not instead of it.
 rules still apply; this file records where fork-local work deliberately departs from
 them, and why.
 
+For *what to work on*, read `docs/ROADMAP.md` — it is the central record, organised
+around the kill chain, and it says which items are blocked on a decision rather than on
+work. Do not start an item listed there as awaiting a decision.
+
+Note the two roadmaps. `ROADMAP.md` at the repository root is **upstream's** and is never
+edited here; `copilot/docs/ROADMAP.md` is this overlay's.
+
 Every departure below is a considered decision, not an oversight. If a departure no
 longer earns its keep, remove it here rather than quietly working around it.
 
