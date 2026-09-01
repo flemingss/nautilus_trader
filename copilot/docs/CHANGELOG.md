@@ -2,6 +2,55 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (charter)
+
+### Added
+
+- **`docs/CHARTER.md`** - the entry point. Purpose, operating model, the three kinds of
+  success, the two-track lifecycle, and which gate a candidate stands at. Everything else
+  breadcrumbs from it, including the out-of-repo half, so it outranks `AGENTS.md` where the
+  two overlap.
+- **`docs/playbook/`** - `PREFLIGHT`, `RESEARCH`, `RISK` and `OPERATIONS`, each carrying its
+  own checklist beside the process it belongs to rather than collected where they would be
+  read out of context.
+- **[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md)** - cost is
+  modelled at the target account size.
+
+### Measured
+
+- **The gap fade is negative at the account size it would actually trade.** Repricing the
+  same trades at USD 20 of risk (an 8k account at 0.25%) rather than the research default
+  of USD 1,000: AAPL -0.065 R, MSFT -0.037 R, SPY -0.059 R. At 0.10% risk, 31 to 131 trades
+  per symbol do not size at all.
+- The mechanism is IB's USD 1.00 per-order minimum. At USD 20 of risk the position is 5 to
+  23 shares and a round trip costs USD 2.00 whatever its size: **0.11 R against a gross edge
+  of 0.05 to 0.09 R**. Spread at the same point is 0.007 R, so **commission is fifteen times
+  larger** and the median-versus-p95 question is noise beside it.
+
+### Corrected
+
+- **Two earlier cost reports were true of their stated budget and misleading as summaries.**
+  Quantity cancels out of the spread term, so spread cost in R is genuinely size-independent
+  - and it was easy to carry that across the whole model. A per-order minimum does not
+  cancel, and it dominates exactly where a beginner account operates.
+
+### Recorded as open
+
+Adopting the charter surfaced three conflicts with the code, now tracked in `ROADMAP.md`:
+
+- **No locked holdout exists.** `walk_forward` runs over the whole history while every
+  verdict record carries `holdout_spent: false`, implying one does. No verdict from this
+  repository currently has an out-of-sample estimate behind it.
+- **Entry timing conflicts.** The gap fade fills at the signal bar's close; the charter
+  requires next-eligible-session entry.
+- **The universe is survivor-biased.** Today's large caps backfilled to 2005, which the
+  charter names as the error to avoid.
+
+### Fixed
+
+- Restored the "waiting on a market session", "waiting on spend" and "deferred by decision"
+  sections of `ROADMAP.md`, lost to an over-broad regex edit two commits earlier.
+
 ## 2026-09-01 (strategy registry)
 
 ### Added
