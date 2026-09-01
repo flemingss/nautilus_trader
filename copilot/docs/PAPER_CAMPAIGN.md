@@ -214,6 +214,25 @@ But the number that matters is the commission.
 **Commission was 88% of the loss.** The position moved nine cents against us across the hold
 and cost two dollars and two cents to open and close.
 
+### Repeated at a third of the size, 2026-09-02
+
+The premise underneath [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md)
+is that IB's per-order minimum makes cost **fixed per order rather than proportional to size**.
+One measurement cannot show that; two at different sizes can.
+
+|                   | 3 shares (2026-09-01) | 1 share (2026-09-02) |
+| ----------------- | --------------------- | -------------------- |
+| Deployed          | USD 947.13            | USD 326.28           |
+| Commission        | **2.02 USD**          | **2.01 USD**         |
+| Price change      | -0.27 USD             | -0.05 USD            |
+| Realised          | -2.29 USD             | -2.06 USD            |
+| Commission share  | 88%                   | **98%**              |
+| At USD 20 of risk | 0.1010 R              | **0.1030 R**         |
+
+**Cutting the position to a third changed the commission by one cent.** That is the per-order
+minimum, measured rather than modelled, and it is why cost in R is essentially invariant to
+size in this range - and why trading smaller does not help.
+
 ### The cost model was predicting this, and now it is measured
 
 [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) rests on IB's USD
@@ -409,15 +428,16 @@ broker actually holds.
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date       | Stage | Result                                                                                                                                                                                                                                                                                    | Evidence                                            |
-| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                          | `live/out/preflight_20260901T121340Z.json`          |
-| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                   | `live/out/preflight_20260901T122835Z.json`          |
-| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json`   |
-| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`        |
-| 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.             | `live/out/supervised_session_20260901T133242Z.json` |
-| 2026-09-01 | 6     | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                  | `live/out/failure_injection_20260901T134539Z.json`  |
-| 2026-09-01 | 6     | **Pass**, after fixing the engine it failed against. Both scored probes pass: the notional cap now denies (`NOTIONAL_EXCEEDS_MAX_PER_ORDER`), stale-feed detection fires at 20.6s, nothing left working. Two cases excluded and named: one paper cannot decide, one is a known gap.       | `live/out/failure_injection_*.json`                 |
+| Date       | Stage | Result                                                                                                                                                                                                                                                                                                                           | Evidence                                            |
+| ---------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                                                                 | `live/out/preflight_20260901T121340Z.json`          |
+| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                                                          | `live/out/preflight_20260901T122835Z.json`          |
+| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below.                                        | `live/out/controlled_order_20260901T124521Z.json`   |
+| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                                                                     | `live/out/order_types_20260901T130102Z.json`        |
+| 2026-09-02 | 5     | **Pass**, repeated at a third of the size to test whether commission scales. 1 AAPL at market inside USD 500 of capital. Entry filled 326.28, both children accepted, closed on purpose at 326.23, nothing left working. Realised **-2.06 USD**, of which **2.01 USD was commission** - one cent less than the three-share trip. | `live/out/supervised_session_20260901T155038Z.json` |
+| 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.                                                    | `live/out/supervised_session_20260901T133242Z.json` |
+| 2026-09-01 | 6     | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                                                         | `live/out/failure_injection_20260901T134539Z.json`  |
+| 2026-09-01 | 6     | **Pass**, after fixing the engine it failed against. Both scored probes pass: the notional cap now denies (`NOTIONAL_EXCEEDS_MAX_PER_ORDER`), stale-feed detection fires at 20.6s, nothing left working. Two cases excluded and named: one paper cannot decide, one is a known gap.                                              | `live/out/failure_injection_*.json`                 |
 
 ## Where the code is
 

@@ -44,6 +44,14 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   entitlements mean IB no longer refuses these requests and therefore cannot trigger it. The
   mechanism is untested rather than disproven, and the practical risk is gone.
 
+- **The per-order commission minimum is measured, not modelled.** A second supervised round
+  trip at a third of the size: 1 AAPL against USD 500 of capital cost **2.01 USD** in
+  commission, against **2.02 USD** for the three-share trip the day before. Cutting the
+  position to a third changed the cost by one cent, which is what
+  [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) rests on and had
+  only ever asserted from a fee schedule. Commission was **98%** of the realised loss, and the
+  cost in R moved from 0.1010 to 0.1030 - **trading smaller does not help.**
+
 - **A directed-exchange historical request is not satisfied by the non-consolidated feed.**
   `AAPL=STK.IEX` and `AAPL=STK.ISLAND` both return 2188 under both market data types, the
   same as SMART. There is no free route to some history; consolidated data is a purchase.
