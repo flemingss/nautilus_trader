@@ -18411,3 +18411,46 @@ fn test_prior_cycle_fill_void_applied_with_carried_replay() {
     // The rebuild spans both cycles, so the archived cycle it absorbed is dropped
     assert_eq!(cache.position_snapshot_count(&position_id), 0);
 }
+
+#[rstest]
+fn test_external_order_reported_as_submitted_is_adopted() {
+    // A venue reporting an external order as `Submitted` is holding a working order.
+    //
+    // Before this, `Submitted` fell through the status match to a warning and an empty
+    // event list, so the order never entered the cache: it existed at the venue and
+    // nowhere else, and nothing could query, cancel or reconcile it. Measured against
+    // Interactive Brokers, where an order left working by a previous run was reported on
+    // every reconnect and could only be cancelled by hand in the broker's own GUI.
+    let instrument = audusd_sim();
+    let instrument_id = instrument.id;
+    let order = OrderTestBuilder::new(OrderType::Limit)
+        .instrument_id(instrument_id)
+        .side(OrderSide::Buy)
+        .price(Price::from("1.00000"))
+        .quantity(Quantity::from(100_000))
+        .build();
+
+    let report = create_order_status_report(
+        Some(order.client_order_id()),
+        VenueOrderId::from("V-SUBMITTED"),
+        instrument_id,
+        OrderStatus::Submitted,
+        Quantity::from(100_000),
+        Quantity::from(0),
+    );
+
+    let events = nautilus_execution::reconciliation::generate_external_order_status_events(
+        &order,
+        &report,
+        &AccountId::test_default(),
+        &InstrumentAny::CurrencyPair(instrument),
+        UnixNanos::from(2_000_000),
+    );
+
+    assert_eq!(
+        events.len(),
+        1,
+        "a submitted external order must produce an acceptance"
+    );
+    assert!(matches!(events[0], OrderEventAny::Accepted(_)));
+}

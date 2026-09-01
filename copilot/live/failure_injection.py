@@ -100,11 +100,11 @@ NOT_TESTABLE_ON_PAPER = {
     "name": "rejected_by_broker",
     "status": "NOT TESTABLE HERE",
     "detail": (
-        "IB paper accepted a 100,000-share order worth USD 24M on a USD 1M account "
-        "(measured 2026-09-01), so paper does not enforce buying power on a "
-        "far-from-market limit. The probe is still submitted, because that is how we would "
-        "notice if it ever started. **Verify the rejection path on the live account before "
-        "any size increase** - it has not been tested."
+        "Paper does not enforce buying power on a far-from-market limit: measured "
+        "2026-09-01, IB paper accepted USD 1.2M and USD 24M of orders on a USD 1M "
+        "account. The probe is still submitted, because that is how we would notice if "
+        "it ever started. **Verify the rejection path on the live account before any "
+        "size increase** - it has not been tested."
     ),
 }
 """
