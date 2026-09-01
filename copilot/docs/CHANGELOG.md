@@ -2,6 +2,45 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (upstream delta policy)
+
+### Changed
+
+- **The prime directive is now "every upstream change is registered", not "change zero
+  upstream files".** Upstream changes are permitted where they are worth it. The
+  guarantee they replaced was self-enforcing; a register is not, so it is enforced by a
+  test instead.
+
+### Added
+
+- **`copilot/docs/UPSTREAM_DELTA.md`** — the register. One row per upstream file this
+  fork changes: what, why, and what it would cost to drop.
+- **`copilot/tools/upstream_delta.py`** — reports the delta, whether upstream has since
+  touched the same files, and whether a merge would conflict today. `--check` exits 1 on
+  an unregistered file.
+- **`copilot/tests/test_upstream_delta.py`** — 5 tests. Fails on an unregistered file, a
+  stale row, a path typo, or a maintainer-owned path being touched. Skips cleanly when no
+  `upstream` remote is configured, so a fresh clone does not fail.
+
+### Measured
+
+- Current delta: **2 files, 52 lines**, both in the IB adapter.
+- `historical/client.rs` is **quiet** — upstream has not touched it since our merge base.
+- `data/core.rs` is **churning**: upstream changed +160/-64 against our +16/-12, and
+  **a merge already conflicts** one sync in, in the `subscriptions` field declaration.
+  Upstream moved the adapter to `parking_lot` and standardised task lifecycles
+  underneath our re-keying.
+
+### Fixed
+
+- The delta check originally compared only `base..HEAD`, so it stayed silent through an
+  entire editing session and only fired after a change was committed. It now counts
+  working-tree, index and untracked changes too — the useful moment to be told a file
+  needs a row is while it is being edited.
+- The register parser read every table in the document, registering `quiet`, `touched`
+  and `churning` from the risk legend as if they were paths. It now reads only rows under
+  `## The register`. Caught by `test_registered_paths_exist`.
+
 ## 2026-09-01 (docs)
 
 ### Changed
