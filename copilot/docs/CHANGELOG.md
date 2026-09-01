@@ -14,6 +14,15 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   from 2006 onward. Revisit triggers are named in the ADR - an intraday strategy
   re-measures at its entry time-of-day rather than inflating the percentile.
 
+### Clarified
+
+- **SPY is the lead candidate, per the charter's own scope table.** *"Liquid US-listed
+  ETFs first; large caps only once the pipeline handles point-in-time universes and
+  corporate actions"* - and the pipeline handles neither yet. SPY's net pass leans on no
+  splits table and no survivor-chosen membership, so it is the verdict whose evidence is
+  whole; the MSFT and AAPL results are provisional until the pipeline graduates. The
+  holdout carve starts with SPY.
+
 ### Added
 
 - **`calibration/cost_model.py`** - the cost model the gate charges. Per-instrument
