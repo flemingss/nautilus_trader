@@ -1,0 +1,250 @@
+{
+  "generated_at": "2026-09-01T16:46:24.019068+00:00",
+  "calibration_source": "spread_snapshot_20260901T154744Z.json",
+  "commission_model": "IB Pro fixed tier, USD 0.005/share, USD 1.00 minimum, 1% cap",
+  "caveats": [
+    "Spreads are measured in 2026 and applied to trades from 2006 onward. Large-cap spreads were several times wider early in that window, so cost is understated for the early years at every coefficient.",
+    "Spreads are measured on delayed quotes, which is an upper bound on the realtime NBBO and therefore conservative in the other direction.",
+    "Per-share commission is charged on split-corrected share counts; see the module docstring."
+  ],
+  "symbols": {
+    "AAPL": {
+      "gross_r": "0.0492",
+      "trades": 612,
+      "gross_r_since_2021": "0.0063",
+      "recent_trades": 154,
+      "choices": {
+        "median": {
+          "bps_per_side": "0.61205",
+          "spread_r": "0.0038",
+          "commission_r": "0.0024",
+          "total_r": "0.0061",
+          "net_r": "0.0430",
+          "edge_remaining_pct": "88"
+        },
+        "p75": {
+          "bps_per_side": "0.7656",
+          "spread_r": "0.0047",
+          "commission_r": "0.0024",
+          "total_r": "0.0071",
+          "net_r": "0.0421",
+          "edge_remaining_pct": "86"
+        },
+        "p95": {
+          "bps_per_side": "1.99025",
+          "spread_r": "0.0123",
+          "commission_r": "0.0024",
+          "total_r": "0.0146",
+          "net_r": "0.0345",
+          "edge_remaining_pct": "70"
+        },
+        "incumbent": {
+          "bps_per_side": "5.0",
+          "spread_r": "0.0308",
+          "commission_r": "0.0024",
+          "total_r": "0.0332",
+          "net_r": "0.0160",
+          "edge_remaining_pct": "32"
+        }
+      },
+      "concentration": {
+        "total_r": "30.91",
+        "years": 20,
+        "by_year": {
+          "2006": "4.00",
+          "2007": "8.92",
+          "2008": "-8.54",
+          "2009": "7.33",
+          "2010": "5.53",
+          "2011": "1.60",
+          "2012": "-3.57",
+          "2013": "-0.58",
+          "2014": "2.56",
+          "2015": "-4.32",
+          "2016": "-5.80",
+          "2017": "12.66",
+          "2018": "-3.54",
+          "2019": "11.53",
+          "2020": "2.16",
+          "2021": "5.23",
+          "2022": "-6.41",
+          "2023": "1.74",
+          "2024": "4.62",
+          "2025": "-4.21"
+        },
+        "best_two_years": [
+          "2017",
+          "2019"
+        ],
+        "best_two_share_pct": "78",
+        "losing_years": [
+          "2008",
+          "2012",
+          "2013",
+          "2015",
+          "2016",
+          "2018",
+          "2022",
+          "2025"
+        ]
+      }
+    },
+    "MSFT": {
+      "gross_r": "0.0906",
+      "trades": 571,
+      "gross_r_since_2021": "0.0050",
+      "recent_trades": 139,
+      "choices": {
+        "median": {
+          "bps_per_side": "0.9982",
+          "spread_r": "0.0070",
+          "commission_r": "0.0076",
+          "total_r": "0.0146",
+          "net_r": "0.0761",
+          "edge_remaining_pct": "84"
+        },
+        "p75": {
+          "bps_per_side": "1.1985",
+          "spread_r": "0.0083",
+          "commission_r": "0.0076",
+          "total_r": "0.0160",
+          "net_r": "0.0747",
+          "edge_remaining_pct": "82"
+        },
+        "p95": {
+          "bps_per_side": "1.7966",
+          "spread_r": "0.0125",
+          "commission_r": "0.0076",
+          "total_r": "0.0201",
+          "net_r": "0.0705",
+          "edge_remaining_pct": "78"
+        },
+        "incumbent": {
+          "bps_per_side": "5.0",
+          "spread_r": "0.0348",
+          "commission_r": "0.0076",
+          "total_r": "0.0424",
+          "net_r": "0.0482",
+          "edge_remaining_pct": "53"
+        }
+      },
+      "concentration": {
+        "total_r": "43.95",
+        "years": 20,
+        "by_year": {
+          "2006": "1.44",
+          "2007": "0.61",
+          "2008": "-5.94",
+          "2009": "12.75",
+          "2010": "-8.81",
+          "2011": "2.75",
+          "2012": "2.76",
+          "2013": "6.27",
+          "2014": "2.97",
+          "2015": "-1.56",
+          "2016": "1.67",
+          "2017": "5.56",
+          "2018": "6.65",
+          "2019": "12.77",
+          "2020": "3.35",
+          "2021": "2.17",
+          "2022": "-12.81",
+          "2023": "8.33",
+          "2024": "0.81",
+          "2025": "2.20"
+        },
+        "best_two_years": [
+          "2019",
+          "2009"
+        ],
+        "best_two_share_pct": "58",
+        "losing_years": [
+          "2008",
+          "2010",
+          "2015",
+          "2022"
+        ]
+      }
+    },
+    "SPY": {
+      "gross_r": "0.0637",
+      "trades": 609,
+      "gross_r_since_2021": "0.1150",
+      "recent_trades": 143,
+      "choices": {
+        "median": {
+          "bps_per_side": "0.1309",
+          "spread_r": "0.0016",
+          "commission_r": "0.0033",
+          "total_r": "0.0048",
+          "net_r": "0.0589",
+          "edge_remaining_pct": "92"
+        },
+        "p75": {
+          "bps_per_side": "0.1964",
+          "spread_r": "0.0024",
+          "commission_r": "0.0033",
+          "total_r": "0.0056",
+          "net_r": "0.0581",
+          "edge_remaining_pct": "91"
+        },
+        "p95": {
+          "bps_per_side": "0.5238",
+          "spread_r": "0.0064",
+          "commission_r": "0.0033",
+          "total_r": "0.0096",
+          "net_r": "0.0541",
+          "edge_remaining_pct": "85"
+        },
+        "incumbent": {
+          "bps_per_side": "5.0",
+          "spread_r": "0.0607",
+          "commission_r": "0.0033",
+          "total_r": "0.0640",
+          "net_r": "-0.0002",
+          "edge_remaining_pct": "-0"
+        }
+      },
+      "concentration": {
+        "total_r": "34.21",
+        "years": 20,
+        "by_year": {
+          "2006": "-3.00",
+          "2007": "-1.74",
+          "2008": "-6.33",
+          "2009": "0.27",
+          "2010": "4.40",
+          "2011": "-8.36",
+          "2012": "1.53",
+          "2013": "10.44",
+          "2014": "2.96",
+          "2015": "0.30",
+          "2016": "-0.53",
+          "2017": "7.00",
+          "2018": "-2.36",
+          "2019": "9.29",
+          "2020": "3.90",
+          "2021": "9.19",
+          "2022": "-3.56",
+          "2023": "5.57",
+          "2024": "4.40",
+          "2025": "0.85"
+        },
+        "best_two_years": [
+          "2013",
+          "2019"
+        ],
+        "best_two_share_pct": "58",
+        "losing_years": [
+          "2006",
+          "2007",
+          "2008",
+          "2011",
+          "2016",
+          "2018",
+          "2022"
+        ]
+      }
+    }
+  }
+}
