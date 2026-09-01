@@ -1,4 +1,5 @@
-"""Rolling-window circuit breakers, ported from trade-copilot ``libs/risk/protections.py``.
+"""
+Rolling-window circuit breakers, ported from trade-copilot ``libs/risk/protections.py``.
 
 Ported rather than imported: trade-copilot is a separate repository that is not on
 this path, and the point of the port is that this overlay stands alone. The logic and
@@ -29,7 +30,8 @@ from enum import StrEnum
 
 
 class ProtectionTrigger(StrEnum):
-    """Which rolling-window breaker refused new trading.
+    """
+    Which rolling-window breaker refused new trading.
 
     Named separately from a generic "rejected" because the operator's first question
     on being alerted is exactly which breaker fired.
@@ -41,7 +43,8 @@ class ProtectionTrigger(StrEnum):
 
 @dataclass(frozen=True)
 class ProtectionPolicy:
-    """Account-wide rolling-window breaker settings.
+    """
+    Account-wide rolling-window breaker settings.
 
     **Enabled by default, deliberately.** A breaker the operator has to remember to
     switch on is not a breaker, and its whole purpose is the stretch of an unattended
@@ -70,6 +73,7 @@ class ProtectionPolicy:
     cooldown_days: int = 3
 
     def __post_init__(self) -> None:
+        """Refuse settings that cannot mean anything."""
         if self.max_consecutive_stops < 0:
             raise ValueError("max_consecutive_stops must be >= 0")
         if not (Decimal(0) <= self.max_drawdown_pct <= Decimal(1)):
@@ -82,7 +86,8 @@ class ProtectionPolicy:
 
 @dataclass(frozen=True)
 class TradeOutcome:
-    """One closed round trip, as a breaker needs to see it.
+    """
+    One closed round trip, as a breaker needs to see it.
 
     Deliberately narrow: a breaker judges *when* a position closed, *how much* it made
     or lost, and *whether the stop decided it*. Symbol, direction and prices are not
@@ -111,6 +116,7 @@ class ProtectionBreach:
     until: datetime
 
     def is_active_at(self, moment: datetime) -> bool:
+        """Whether this breach still bars trading at ``moment``."""
         return moment < self.until
 
 
@@ -121,7 +127,8 @@ def evaluate_protections(
     now: datetime,
     account_value: Decimal,
 ) -> ProtectionBreach | None:
-    """The breach in force at ``now``, or ``None`` to trade normally.
+    """
+    Return the breach in force at ``now``, or ``None`` to trade normally.
 
     ``outcomes`` may be in any order and may extend further back than the window;
     this filters and sorts, so a caller cannot introduce a bug by handing over a
@@ -161,7 +168,8 @@ def _consecutive_stops(
     recent: Sequence[TradeOutcome],
     policy: ProtectionPolicy,
 ) -> ProtectionBreach | None:
-    """Fires on a run of stop-outs ending at the most recent trade.
+    """
+    Report a run of stop-outs ending at the most recent trade.
 
     The streak must be *current*: a run of four stops followed by a win means the
     strategy has since done something right, and holding it in penalty for a
@@ -197,7 +205,8 @@ def _drawdown(
     policy: ProtectionPolicy,
     account_value: Decimal,
 ) -> ProtectionBreach | None:
-    """Fires on peak-to-trough decline of the window's realised equity curve.
+    """
+    Report peak-to-trough decline of the window's realised equity curve.
 
     Peak-to-trough, not the window's net: a run that made 5% and then gave back 9% is
     net down 4% but has just lost 9% from its high, and it is the 9% that says

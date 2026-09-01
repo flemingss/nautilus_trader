@@ -1,4 +1,5 @@
-"""Risk-based position sizing, ported from trade-copilot ``libs/risk/sizing.py``.
+"""
+Risk-based position sizing, ported from trade-copilot ``libs/risk/sizing.py``.
 
 Size from the stop, not from a fixed quantity. A fixed share count makes every
 reported number price-level dependent: the same percentage move on an instrument at
@@ -32,7 +33,8 @@ def stop_distance(
     entry_price: Decimal,
     stop_price: Decimal,
 ) -> Decimal:
-    """Distance from entry to stop, or zero when the stop cannot be honoured.
+    """
+    Distance from entry to stop, or zero when the stop cannot be honoured.
 
     Returns zero — rather than a negative number or an exception — when the stop sits
     on the wrong side of the entry, because that is a signal that cannot be sized at
@@ -57,7 +59,8 @@ def position_size(
     distance: Decimal,
     lot_size: Decimal = Decimal(1),
 ) -> Decimal:
-    """Largest whole-lot size whose stop-out costs at most ``risk_budget``.
+    """
+    Largest whole-lot size whose stop-out costs at most ``risk_budget``.
 
     Floored, never rounded: rounding up would put more at risk than the budget
     allows, which is the one direction a risk control must not err in.
@@ -76,7 +79,8 @@ def position_size(
 
 
 def risk_amount(*, quantity: Decimal, distance: Decimal) -> Decimal:
-    """Currency actually at risk once the size has been floored.
+    """
+    Currency actually at risk once the size has been floored.
 
     Recorded per trade rather than assumed equal to the budget: quantity is floored to
     whole lots, so realised risk sits at or just under the budget and differs slightly
@@ -96,7 +100,8 @@ def size_from_levels(
     risk_budget: Decimal,
     lot_size: Decimal = Decimal(1),
 ) -> tuple[Decimal, Decimal]:
-    """Convenience: ``(quantity, risk_amount)`` for one signal.
+    """
+    Return ``(quantity, risk_amount)`` for one signal.
 
     Both zero when the trade cannot be sized, so a caller can refuse on a single check.
     """

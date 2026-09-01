@@ -1,4 +1,5 @@
-"""Performance summary and trial deflation, ported from trade-copilot.
+"""
+Performance summary and trial deflation, ported from trade-copilot.
 
 Two things a human needs before believing a validation result, and neither is an
 expectancy.
@@ -28,12 +29,16 @@ from math import comb, sqrt
 
 from copilot.validation.types import BacktestRunResult, ClosedTrade
 
-TRADING_DAYS_PER_YEAR = Decimal("252")
+TRADING_DAYS_PER_YEAR = Decimal(252)
+
+# Standard deviation is undefined below this many samples.
+MIN_TRADES_FOR_DEVIATION = 2
 
 
 @dataclass(frozen=True)
 class Tearsheet:
-    """What a run did, in R, beyond its expectancy.
+    """
+    What a run did, in R, beyond its expectancy.
 
     Every currency-denominated figure is in R, so a tearsheet from one symbol is
     comparable with one from another.
@@ -71,7 +76,8 @@ class Tearsheet:
     trades_per_year: Decimal
 
     def as_dict(self) -> dict[str, object]:
-        """JSON-safe form, for logging and persistence.
+        """
+        JSON-safe form, for logging and persistence.
 
         Decimals become strings rather than floats: a float round trip would quietly
         change a reported figure.
@@ -173,14 +179,15 @@ def _max_drawdown(multiples: list[Decimal]) -> Decimal:
 
 
 def _sharpe(multiples: list[Decimal]) -> Decimal | None:
-    """Mean over sample standard deviation of per-trade R.
+    """
+    Mean over sample standard deviation of per-trade R.
 
     Sample (n-1) rather than population: these trades are a sample of the rule's
     behaviour, not the population of everything it will ever do, and the population
     form flatters a small sample by dividing by a larger number.
     """
     n = len(multiples)
-    if n < 2:
+    if n < MIN_TRADES_FOR_DEVIATION:
         return None
     mean = sum(multiples, Decimal(0)) / Decimal(n)
     variance = sum(((r - mean) ** 2 for r in multiples), Decimal(0)) / Decimal(n - 1)
@@ -190,7 +197,8 @@ def _sharpe(multiples: list[Decimal]) -> Decimal | None:
 
 
 def _exposure(ordered: list[ClosedTrade], span_days: int) -> Decimal:
-    """Share of the span with at least one position open.
+    """
+    Share of the span with at least one position open.
 
     Union of the holding intervals, so two overlapping positions count once. The
     alternative — summing position-days — can exceed the span, and would report a
@@ -214,7 +222,8 @@ def _exposure(ordered: list[ClosedTrade], span_days: int) -> Decimal:
 
 
 def deflated_pass_probability(*, attempts: int, folds: int, folds_passed: int) -> Decimal:
-    """Chance that **some** candidate out of ``attempts`` passes this well on noise.
+    """
+    Chance that **some** candidate out of ``attempts`` passes this well on noise.
 
     A cheap form of the deflated Sharpe idea, computed from what the gate already
     holds rather than from a new statistic.
@@ -240,7 +249,7 @@ def deflated_pass_probability(*, attempts: int, folds: int, folds_passed: int) -
 
     passed = max(0, min(folds_passed, folds))
     tail = sum(Decimal(comb(folds, k)) for k in range(passed, folds + 1)) / Decimal(2**folds)
-    if tail >= 1:
+    if tail >= Decimal(1):
         return Decimal(1)
     return Decimal(1) - (Decimal(1) - tail) ** attempts
 

@@ -1,4 +1,5 @@
-"""A ``Replay`` backed by a Nautilus ``BacktestEngine``.
+"""
+A ``Replay`` backed by a Nautilus ``BacktestEngine``.
 
 The trade-copilot validation gate takes its replay as an argument:
 
@@ -60,7 +61,8 @@ from copilot.validation.types import (
 
 
 class RiskAmountRegistry:
-    """Per-run record of what each position put at risk.
+    """
+    Per-run record of what each position put at risk.
 
     A plain dict behind a named type, because the coupling it represents — the
     strategy must tell the replay what it risked — is easy to forget and expensive to
@@ -68,15 +70,19 @@ class RiskAmountRegistry:
     """
 
     def __init__(self) -> None:
+        """Start with nothing recorded."""
         self._by_position_id: dict[str, Decimal] = {}
 
     def record(self, position_id: str, risk_amount: Decimal) -> None:
+        """Note what one position put at risk when it opened."""
         self._by_position_id[str(position_id)] = Decimal(risk_amount)
 
     def get(self, position_id: str) -> Decimal | None:
+        """Return recorded risk for a position, or ``None`` if the strategy never said."""
         return self._by_position_id.get(str(position_id))
 
     def __len__(self) -> int:
+        """How many positions reported their risk."""
         return len(self._by_position_id)
 
 
@@ -90,7 +96,9 @@ class StrategyFactory(Protocol):
         instrument_id: Any,
         bar_type: BarType,
         risk_registry: RiskAmountRegistry,
-    ) -> Any: ...
+    ) -> Any:
+        """Return a strategy configured for ``parameters``."""
+        ...
 
 
 @dataclass(frozen=True)
@@ -113,7 +121,8 @@ def bars_to_nautilus(
     instrument: Any,
     bar_type: BarType,
 ) -> list[Bar]:
-    """Convert vendored ``DailyBar`` records into Nautilus ``Bar`` objects.
+    """
+    Convert vendored ``DailyBar`` records into Nautilus ``Bar`` objects.
 
     Prices and quantities go through the instrument's own precision so the engine
     sees values it can represent exactly, rather than floats that round differently
@@ -169,13 +178,17 @@ def run_nautilus_replay(
     }
     # Only pass the optional models when supplied: the engine's own defaults are
     # better than a None we invented.
-    for key, value in (
-        ("fill_model", venue.fill_model),
-        ("fee_model", venue.fee_model),
-        ("latency_model", venue.latency_model),
-    ):
-        if value is not None:
-            add_venue_kwargs[key] = value
+    add_venue_kwargs.update(
+        {
+            key: value
+            for key, value in (
+                ("fill_model", venue.fill_model),
+                ("fee_model", venue.fee_model),
+                ("latency_model", venue.latency_model),
+            )
+            if value is not None
+        },
+    )
     if venue.modules:
         add_venue_kwargs["modules"] = list(venue.modules)
 
@@ -228,9 +241,7 @@ def _closed_trades(
                 # once a position closes, so every closed trade would map to SHORT.
                 # `entry` records the side the position was opened on and stays
                 # valid afterwards.
-                direction=Direction.LONG
-                if position.entry == OrderSide.BUY
-                else Direction.SHORT,
+                direction=Direction.LONG if position.entry == OrderSide.BUY else Direction.SHORT,
                 quantity=int(position.peak_qty.as_double()),
                 entry_price=Decimal(str(position.avg_px_open)),
                 exit_price=Decimal(str(position.avg_px_close)),
@@ -268,7 +279,8 @@ def make_replay(
     strategy_factory: StrategyFactory,
     venue: ReplayVenue | None = None,
 ) -> Callable[[Sequence[DailyBar], Any], BacktestRunResult]:
-    """Bind the fixed arguments and return a gate-compatible ``Replay``.
+    """
+    Bind the fixed arguments and return a gate-compatible ``Replay``.
 
     The result matches ``Callable[[Sequence[DailyBar], StrategyParameters],
     BacktestRunResult]`` and can be passed straight to ``walk_forward(replay=...)``.

@@ -12,11 +12,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
-from nautilus_trader.model import BarType, InstrumentId, OrderSide
-from nautilus_trader.testkit.providers import TestInstrumentProvider
-from nautilus_trader.trading import Strategy, StrategyConfig
-
 from copilot.validation.nautilus_replay import (
     ReplayVenue,
     RiskAmountRegistry,
@@ -25,6 +20,9 @@ from copilot.validation.nautilus_replay import (
     run_nautilus_replay,
 )
 from copilot.validation.types import DailyBar, Direction, expectancy_r
+from nautilus_trader.model import BarType, OrderSide
+from nautilus_trader.testkit.providers import TestInstrumentProvider
+from nautilus_trader.trading import Strategy, StrategyConfig
 
 INSTRUMENT = TestInstrumentProvider.default_fx_ccy("AUD/USD")
 BAR_TYPE = BarType.from_str(f"{INSTRUMENT.id}-1-DAY-LAST-EXTERNAL")
@@ -61,8 +59,8 @@ class _FlipFlopConfig(StrategyConfig):
 
     def __init__(
         self,
-        instrument_id,  # noqa: ANN001
-        bar_type,  # noqa: ANN001
+        instrument_id,
+        bar_type,
         trade_size: int = 10_000,
         stop_distance: str = "0.0050",
         **_kwargs: object,
@@ -88,7 +86,7 @@ class _FlipFlop(Strategy):
     def on_start(self) -> None:
         self.subscribe_bars(self.config.bar_type)
 
-    def on_bar(self, bar) -> None:  # noqa: ANN001
+    def on_bar(self, bar) -> None:
         self._bars_seen += 1
         instrument_id = self.config.instrument_id
         if self.portfolio.is_net_flat(instrument_id):
@@ -103,14 +101,14 @@ class _FlipFlop(Strategy):
         else:
             self.close_all_positions(instrument_id)
 
-    def on_position_opened(self, event) -> None:  # noqa: ANN001
+    def on_position_opened(self, event) -> None:
         # The contract the replay depends on: report what this position put at risk.
         if self._registry is not None:
             risk = Decimal(self.config.stop_distance) * Decimal(self.config.trade_size)
             self._registry.record(str(event.position_id), risk)
 
 
-def strategy_factory(parameters, *, instrument_id, bar_type, risk_registry):  # noqa: ANN001,ANN201
+def strategy_factory(parameters, *, instrument_id, bar_type, risk_registry):
     strategy = _FlipFlop(
         _FlipFlopConfig(
             instrument_id=instrument_id,
@@ -139,8 +137,8 @@ class TestBarConversion:
 class TestRiskAmountRegistry:
     def test_records_and_reads_back(self):
         registry = RiskAmountRegistry()
-        registry.record("P-1", Decimal("50"))
-        assert registry.get("P-1") == Decimal("50")
+        registry.record("P-1", Decimal(50))
+        assert registry.get("P-1") == Decimal(50)
         assert registry.get("P-2") is None
         assert len(registry) == 1
 
@@ -189,7 +187,7 @@ class TestReplay:
     def test_missing_risk_amount_raises_rather_than_scoring_zero(self):
         # The failure this guards is silent: without the registry every trade would
         # score r_multiple == 0 and the gate would report "no edge" everywhere.
-        def forgetful_factory(parameters, *, instrument_id, bar_type, risk_registry):  # noqa: ANN001,ANN202
+        def forgetful_factory(parameters, *, instrument_id, bar_type, risk_registry):
             return strategy_factory(
                 parameters,
                 instrument_id=instrument_id,

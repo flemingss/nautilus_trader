@@ -10,7 +10,6 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-
 from copilot.risk.protections import (
     ProtectionPolicy,
     ProtectionTrigger,
@@ -19,7 +18,7 @@ from copilot.risk.protections import (
 )
 
 NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
-ACCOUNT = Decimal("100000")
+ACCOUNT = Decimal(100000)
 
 
 def outcome(days_ago: float, pnl: str, *, stopped: bool) -> TradeOutcome:

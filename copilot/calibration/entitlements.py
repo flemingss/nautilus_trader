@@ -1,4 +1,5 @@
-"""Probe what market data this IB account can actually read.
+"""
+Probe what market data this IB account can actually read.
 
 Entitlements change — a release form, a subscription purchase, or a trading-day
 boundary can each move them — and the failure modes are quiet: an unentitled
@@ -33,6 +34,8 @@ DEFAULT_END = dt.datetime(2026, 8, 28, 16, 0, tzinfo=dt.UTC)
 
 @dataclass(frozen=True)
 class Probe:
+    """One instrument to ask about, and how to ask."""
+
     label: str
     instrument_id: str
     bar_spec: str
@@ -100,14 +103,14 @@ async def probe_historical(
             use_rth=True,
             timeout=45,
         )
-        if bars:
-            return f"OK - {len(bars)} bars"
-        return "instrument OK, but zero bars"
     except Exception as exc:  # noqa: BLE001 - the error text is the finding
         return f"FAIL: {str(exc).splitlines()[0][:76]}"
+    else:
+        return f"OK - {len(bars)} bars" if bars else "instrument OK, but zero bars"
 
 
 async def main() -> None:
+    """Probe every instrument under each requested market data type."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--market-data-types",
@@ -127,8 +130,8 @@ async def main() -> None:
     print(f"historical end = {end.isoformat()}\n")
 
     client_id = args.client_id_base
-    for market_data_type in args.market_data_types.split(","):
-        market_data_type = market_data_type.strip().upper()
+    for raw_type in args.market_data_types.split(","):
+        market_data_type = raw_type.strip().upper()
         print(f"== historical bars, market_data_type={market_data_type} ==")
         for probe in PROBES:
             client_id += 1

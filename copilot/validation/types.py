@@ -1,4 +1,5 @@
-"""Contract types for the validation gate, vendored from trade-copilot.
+"""
+Contract types for the validation gate, vendored from trade-copilot.
 
 The gate (in-sample search -> purged walk-forward -> single-use holdout) is written
 against a small set of value types and an **injected** replay:
@@ -25,13 +26,16 @@ from typing import Any
 
 
 class Direction(StrEnum):
+    """Which way a position was opened."""
+
     LONG = "LONG"
     SHORT = "SHORT"
 
 
 @dataclass(frozen=True)
 class DailyBar:
-    """One daily OHLCV observation.
+    """
+    One daily OHLCV observation.
 
     ``closed_at`` is the bar's close instant and is the only ordering key the gate
     uses; everything downstream sorts on it rather than trusting input order.
@@ -73,7 +77,8 @@ class ClosedTrade:
 
     @property
     def r_multiple(self) -> Decimal:
-        """P&L in units of the risk taken — the scale-free unit of account.
+        """
+        P&L in units of the risk taken — the scale-free unit of account.
 
         Zero risk cannot happen for a trade that opened, but the guard keeps a corrupt
         record from raising here rather than being reported.
@@ -95,7 +100,8 @@ class BacktestRunResult:
 
 
 def expectancy_r(result: BacktestRunResult) -> Decimal:
-    """Mean R per closed trade — the scale-free objective.
+    """
+    Mean R per closed trade — the scale-free objective.
 
     Scoring dollars instead would put each symbol's price level inside its score and
     leave no two symbols comparable.

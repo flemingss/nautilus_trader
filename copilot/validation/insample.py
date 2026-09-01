@@ -1,4 +1,5 @@
-"""In-sample parameter search, ported from trade-copilot.
+"""
+In-sample parameter search, ported from trade-copilot.
 
 Selects a **stability plateau, not a peak**, and vetoes candidates whose neighbours
 fall off sharply.
@@ -60,7 +61,8 @@ DEFAULT_CLIFF_DROP = Decimal("0.25")
 
 
 def parameter_version(values: Mapping[str, Any]) -> str:
-    """Deterministic identity for one parameter set.
+    """
+    Deterministic identity for one parameter set.
 
     Replaces the original contract's ``version`` property. Sorted so that dictionary
     insertion order cannot change a candidate's identity, which would make the search
@@ -71,7 +73,8 @@ def parameter_version(values: Mapping[str, Any]) -> str:
 
 @dataclass(frozen=True)
 class ParameterGrid:
-    """Candidate values per parameter, in a deliberate order.
+    """
+    Candidate values per parameter, in a deliberate order.
 
     The order defines adjacency: ``stop_atr=[2, 3, 4]`` makes 3 a neighbour of both 2
     and 4, and 2 not a neighbour of 4. Supply values sorted, or adjacency stops meaning
@@ -96,7 +99,7 @@ class ParameterGrid:
         return cls(axes_by_name={k: v for k, v in axes.items() if v})
 
     def with_base(self, base: Mapping[str, Any]) -> ParameterGrid:
-        """The same search, starting from ``base``."""
+        """Return the same search, starting from ``base``."""
         return ParameterGrid(axes_by_name=self.axes_by_name, base=dict(base), factory=self.factory)
 
     def axes(self) -> dict[str, Sequence[Any]]:
@@ -104,7 +107,8 @@ class ParameterGrid:
         return {name: values for name, values in self.axes_by_name.items() if values}
 
     def expand(self) -> tuple[tuple[Any, dict[str, int], str], ...]:
-        """Every valid combination, with its integer coordinate and its identity.
+        """
+        Every valid combination, with its integer coordinate and its identity.
 
         Combinations the factory rejects are skipped rather than raised: a grid is a
         sweep of intent, and a few invalid corners are expected, not a caller error.
@@ -152,6 +156,7 @@ class CandidateResult:
 
     @property
     def win_rate(self) -> Decimal:
+        """Share of this candidate's trades that made money."""
         if not self.trades:
             return Decimal(0)
         return Decimal(self.wins) / Decimal(self.trades)
@@ -159,7 +164,8 @@ class CandidateResult:
 
 @dataclass(frozen=True)
 class InSampleReport:
-    """Everything the search saw, not only what it chose.
+    """
+    Everything the search saw, not only what it chose.
 
     Rejections carry their reason so a record can show *why* a better-scoring set was
     passed over — the audit that makes "we did not pick the peak" a checkable claim
@@ -181,6 +187,7 @@ class InSampleReport:
 
     @property
     def selected_the_peak(self) -> bool:
+        """Whether the search landed on the raw peak, which it exists to avoid."""
         peak = self.peak
         return (
             peak is not None and self.selected is not None and peak.version == self.selected.version
@@ -188,7 +195,8 @@ class InSampleReport:
 
 
 def expectancy_r(result: BacktestRunResult) -> Decimal:
-    """Mean R per closed trade — the scale-free objective.
+    """
+    Mean R per closed trade — the scale-free objective.
 
     R is ``realized_pnl / risk_amount``: what the trade made per unit of what it put at
     risk. Scoring dollars instead would put each symbol's price level inside its score
@@ -225,7 +233,8 @@ def search_in_sample(
     min_trades: int = DEFAULT_MIN_TRADES,
     cliff_drop: Decimal = DEFAULT_CLIFF_DROP,
 ) -> InSampleReport:
-    """Replay ``bars`` for every grid point and select a stability plateau.
+    """
+    Replay ``bars`` for every grid point and select a stability plateau.
 
     Cost is one full replay per grid point, so a six-axis grid is expensive by
     construction — that is the nature of the search, not an inefficiency to hide. Size

@@ -1,4 +1,5 @@
-"""Purged walk-forward analysis, ported from trade-copilot.
+"""
+Purged walk-forward analysis, ported from trade-copilot.
 
 Rolling train/test windows with **purge gaps** to prevent leakage, and a
 **majority-pass gate**: the strategy must pass in a majority of out-of-sample folds,
@@ -60,7 +61,7 @@ from copilot.validation.types import BacktestRunResult, ClosedTrade, DailyBar
 # margin: costs are already modelled in the fill, so "better than not trading" is the
 # honest bar, and setting it higher would quietly re-tune the gate rather than the
 # strategy. Zero also means the same thing whether the objective is dollars or R.
-DEFAULT_FOLD_PASS_THRESHOLD = Decimal("0")
+DEFAULT_FOLD_PASS_THRESHOLD = Decimal(0)
 
 
 @dataclass(frozen=True)
@@ -75,10 +76,12 @@ class FoldWindows:
 
     @property
     def train(self) -> slice:
+        """Bars the in-sample search may select on."""
         return slice(self.train_start, self.train_end)
 
     @property
     def test(self) -> slice:
+        """Bars scored out of sample, after the purge gap."""
         return slice(self.purge_end, self.test_end)
 
 
@@ -90,7 +93,8 @@ def build_folds(
     purge_bars: int,
     step_bars: int | None = None,
 ) -> tuple[FoldWindows, ...]:
-    """Rolling train/purge/test windows over ``total_bars``.
+    """
+    Build rolling train/purge/test windows over ``total_bars``.
 
     ``step_bars`` defaults to ``test_bars``, which tiles the test windows without
     overlap — overlapping test windows would score the same bars more than once and
@@ -157,6 +161,7 @@ class FoldResult:
 
     @property
     def selected_version(self) -> str | None:
+        """Identity of the parameter set this fold chose, if any."""
         return self.selected.version if self.selected else None
 
 
@@ -169,7 +174,8 @@ class WalkForwardReport:
 
     @property
     def evaluated(self) -> tuple[FoldResult, ...]:
-        """Folds whose in-sample search produced a set to test.
+        """
+        Folds whose in-sample search produced a set to test.
 
         A fold where the search selected nothing is not a pass and not a fail — there
         was no strategy to evaluate. Counting it either way would misstate the gate.
@@ -178,11 +184,13 @@ class WalkForwardReport:
 
     @property
     def passed_count(self) -> int:
+        """How many evaluated folds cleared the threshold."""
         return sum(1 for fold in self.evaluated if fold.passed)
 
     @property
     def majority_passed(self) -> bool:
-        """Strictly more than half of the evaluated folds passed.
+        """
+        Strictly more than half of the evaluated folds passed.
 
         Strict, so an even split fails: a coin flip is not evidence of an edge.
         """
@@ -191,7 +199,8 @@ class WalkForwardReport:
 
     @property
     def mean_score(self) -> Decimal:
-        """Reported for context, deliberately **not** the gate.
+        """
+        Reported for context, deliberately **not** the gate.
 
         One spectacular fold can carry a mean while the rule loses money in most
         windows, which is exactly what the majority gate exists to catch.
@@ -203,7 +212,8 @@ class WalkForwardReport:
 
     @property
     def tearsheet(self) -> Tearsheet:
-        """Every evaluated fold's out-of-sample trades, pooled.
+        """
+        Every evaluated fold's out-of-sample trades, pooled.
 
         Pooled rather than averaged across folds: a mean of per-fold win rates weights
         a three-trade fold equally with a thirty-trade one. Pooling asks the question a
@@ -217,11 +227,13 @@ class WalkForwardReport:
 
     @property
     def selected_versions(self) -> tuple[str, ...]:
+        """What each evaluated fold chose, for the stability report."""
         return tuple(f.selected_version or "" for f in self.evaluated)
 
     @property
     def parameter_stability(self) -> Decimal:
-        """Share of evaluated folds that chose the most common parameter set.
+        """
+        Share of evaluated folds that chose the most common parameter set.
 
         Not a gate, a warning light: folds that all pass while each choosing something
         different mean the process finds *something* in every window — which is also
@@ -235,7 +247,8 @@ class WalkForwardReport:
 
     @property
     def attempts(self) -> int:
-        """Total candidates replayed across every fold's search.
+        """
+        Total candidates replayed across every fold's search.
 
         The input the deflation statistic needs: how hard was this searched.
         """
@@ -258,7 +271,8 @@ def walk_forward(
     fold_min_trades: int = 1,
     threshold: Decimal = DEFAULT_FOLD_PASS_THRESHOLD,
 ) -> WalkForwardReport:
-    """Run the in-sample search per fold and test what each fold chose.
+    """
+    Run the in-sample search per fold and test what each fold chose.
 
     ``warmup_bars`` is drawn from the bars **immediately preceding** the test window:
     the purge gap and, if the gap is shorter than the warm-up, the tail of training.

@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
+from itertools import pairwise
 
 import pytest
-
 from copilot.validation.insample import (
     ParameterGrid,
     expectancy_r,
@@ -28,7 +28,7 @@ START = datetime(2026, 1, 1, tzinfo=UTC)
 
 
 def bar(i: int) -> DailyBar:
-    price = Decimal("100")
+    price = Decimal(100)
     return DailyBar(
         symbol="TEST",
         closed_at=START + timedelta(days=i),
@@ -52,8 +52,8 @@ def trade(day: int, r: str, *, risk: str = "100") -> ClosedTrade:
         symbol="TEST",
         direction=Direction.LONG,
         quantity=1,
-        entry_price=Decimal("100"),
-        exit_price=Decimal("100"),
+        entry_price=Decimal(100),
+        exit_price=Decimal(100),
         exit_reason="TEST",
         signal_created_at=when,
         opened_at=when,
@@ -76,7 +76,7 @@ class TestFoldConstruction:
         # Test windows must not overlap, or the majority gate divides by an inflated
         # fold count and the same bars are scored twice.
         spans = [(f.purge_end, f.test_end) for f in folds]
-        for (_, end), (nxt, _) in zip(spans, spans[1:], strict=False):
+        for (_, end), (nxt, _) in pairwise(spans):
             assert nxt >= end
 
     def test_purge_gap_sits_between_train_and_test(self):
@@ -106,7 +106,16 @@ class TestInSampleSelection:
     def test_picks_the_plateau_not_the_peak(self):
         # Score surface over one axis: a lone spike at 3, a flat plateau at 6-8.
         # The peak is the spike; the plateau is what should survive out of sample.
-        surface = {1: "0.10", 2: "0.10", 3: "0.90", 4: "0.10", 5: "0.30", 6: "0.50", 7: "0.50", 8: "0.50"}
+        surface = {
+            1: "0.10",
+            2: "0.10",
+            3: "0.90",
+            4: "0.10",
+            5: "0.30",
+            6: "0.50",
+            7: "0.50",
+            8: "0.50",
+        }
 
         def replay(_bars, params):
             return result(*([surface[params["x"]]] * 40))
@@ -149,7 +158,7 @@ class TestInSampleSelection:
         # Two valid candidates that are not adjacent: neither can demonstrate a
         # plateau, so neither may be selected however good it scores. Selecting one
         # would be selecting a peak, which is what this search exists to avoid.
-        def factory(**values):
+        def factory(**values: object):
             if (values["x"], values["y"]) not in {(0, 0), (2, 2)}:
                 raise ValueError("invalid corner")
             return values
@@ -167,7 +176,7 @@ class TestInSampleSelection:
     def test_a_lone_candidate_is_selectable(self):
         # With one candidate there is no surface to overfit to, so the isolation rule
         # does not apply — the guard is `len(expanded) > 1` for exactly this reason.
-        def factory(**values):
+        def factory(**values: object):
             if values["x"] != 2:
                 raise ValueError("invalid corner")
             return values

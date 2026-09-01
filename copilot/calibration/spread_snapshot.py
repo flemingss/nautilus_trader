@@ -1,4 +1,5 @@
-"""Measure real quoted spreads from Interactive Brokers.
+"""
+Measure real quoted spreads from Interactive Brokers.
 
 Closes the circular dependency recorded in trade-copilot ``docs/SYSTEM.md`` §14: the
 validation gate's verdicts depend on a cost model, calibrating the cost model needs
@@ -50,7 +51,7 @@ from nautilus_trader.model import InstrumentId, TraderId
 DEFAULT_SYMBOLS = ("AAPL=STK.SMART", "MSFT=STK.SMART", "SPY=STK.SMART")
 
 # The value being replaced, for reporting only.
-INCUMBENT_SPREAD_BPS_PER_SIDE = Decimal("5")
+INCUMBENT_SPREAD_BPS_PER_SIDE = Decimal(5)
 
 OUT_DIR = Path(__file__).parent / "out"
 
@@ -66,6 +67,7 @@ class SymbolSamples:
     """Quotes discarded as unusable (crossed, locked, or non-positive mid)."""
 
     def add(self, bid: float, ask: float) -> None:
+        """Record one quote, discarding it if the book is crossed or locked."""
         mid = (bid + ask) / 2.0
         # A crossed or locked book, or a non-positive mid, says nothing about cost.
         if mid <= 0.0 or ask <= bid:
@@ -74,6 +76,7 @@ class SymbolSamples:
         self.spreads_bps.append((ask - bid) / mid * 10_000.0)
 
     def summary(self) -> dict[str, object]:
+        """Report the distribution, or say plainly that nothing arrived."""
         n = len(self.spreads_bps)
         if n == 0:
             return {
@@ -86,7 +89,7 @@ class SymbolSamples:
 
         def pct(p: float) -> float:
             # Nearest-rank; n is small enough that interpolation adds nothing.
-            idx = min(n - 1, max(0, int(round(p * (n - 1)))))
+            idx = min(n - 1, max(0, round(p * (n - 1))))
             return round(ordered[idx], 4)
 
         median_full = statistics.median(ordered)
@@ -119,7 +122,8 @@ class SymbolSamples:
 
 
 class SpreadRecorder(DataActor):
-    """Subscribes to quotes and records the spread of each tick.
+    """
+    Subscribes to quotes and records the spread of each tick.
 
     ``DataActor`` is a pyo3 class whose ``__new__`` accepts only the config, so the
     instruments are attached after construction by :func:`build_node` rather than
@@ -127,23 +131,26 @@ class SpreadRecorder(DataActor):
     """
 
     def configure(self, instrument_ids: list[InstrumentId]) -> None:
+        """Attach the instruments to record, after pyo3 construction."""
         self._instrument_ids = instrument_ids
         self.samples: dict[str, SymbolSamples] = {
             str(i): SymbolSamples(instrument_id=str(i)) for i in instrument_ids
         }
 
     def on_start(self) -> None:
+        """Subscribe to quotes for every configured instrument."""
         for instrument_id in self._instrument_ids:
             self.subscribe_quotes(instrument_id)
             self.log.info(f"Subscribed quotes for {instrument_id}")
 
     def on_quote(self, quote) -> None:  # noqa: ANN001 - QuoteTick from the engine
+        """Accumulate the spread of one quote."""
         bucket = self.samples.get(str(quote.instrument_id))
         if bucket is not None:
             bucket.add(float(quote.bid_price), float(quote.ask_price))
 
 
-def build_node(
+def build_node(  # noqa: PLR0913 - each argument is an independent connection knob
     instrument_ids: list[InstrumentId],
     *,
     host: str,
@@ -152,6 +159,7 @@ def build_node(
     market_data_type: MarketDataType,
     symbology: SymbologyMethod = SymbologyMethod.RAW,
 ) -> tuple[LiveNode, SpreadRecorder]:
+    """Build a data-only node with a recorder attached."""
     provider_config = InteractiveBrokersInstrumentProviderConfig(
         symbology_method=symbology,
         load_ids=set(instrument_ids),
@@ -183,6 +191,7 @@ def build_node(
 
 
 def main() -> None:
+    """Record spreads for the configured window, then write the report."""
     host = os.getenv("IB_V2_HOST", "172.17.112.1")
     port = int(os.getenv("IB_V2_PORT", "7497"))
     client_id = int(os.getenv("COPILOT_CAL_CLIENT_ID", "701"))
@@ -214,7 +223,7 @@ def main() -> None:
     # upstream IB examples.
     if seconds > 0:
         subprocess.Popen(  # noqa: S603
-            ["/bin/sh", "-c", f"sleep {seconds}; kill -{int(signal.SIGINT)} {os.getpid()}"],
+            ["/bin/sh", "-c", f"sleep {seconds}; kill -{signal.SIGINT.value} {os.getpid()}"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )

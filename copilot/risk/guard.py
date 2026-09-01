@@ -1,4 +1,5 @@
-"""Wires :mod:`copilot.risk.protections` into a running Nautilus node.
+"""
+Wires :mod:`copilot.risk.protections` into a running Nautilus node.
 
 Nautilus enforces risk per-order (``max_notional_per_order``, submit/modify rate
 limits). This adds the account-wide, sequence-aware layer: a run of stop-outs or a
@@ -28,11 +29,11 @@ as an engine-level gate.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 from nautilus_trader.model import InstrumentId, OrderType
-from nautilus_trader.trading import Strategy, StrategyConfig
+from nautilus_trader.trading import Strategy
 
 from copilot.risk.protections import (
     ProtectionBreach,
@@ -71,13 +72,15 @@ class ProtectionGuardSettings:
 
 
 class ProtectionGuard(Strategy):
-    """Portfolio-level breaker. Holds no positions of its own.
+    """
+    Portfolio-level breaker. Holds no positions of its own.
 
     Implemented as a ``Strategy`` rather than a ``DataActor`` only because order
     cancellation and position closing live on ``Strategy``.
     """
 
     def configure(self, settings: ProtectionGuardSettings) -> None:
+        """Attach operator settings, after pyo3 construction."""
         self._settings = settings
         self._breach: ProtectionBreach | None = None
 
@@ -87,18 +90,21 @@ class ProtectionGuard(Strategy):
         return self._breach
 
     def on_start(self) -> None:
+        """Announce the policy and start the evaluation timer."""
         self.log.info(
             f"ProtectionGuard active: {self._settings.policy}",
         )
         self.clock.set_timer(
             name="copilot-protection-eval",
-            interval=_timedelta_seconds(self._settings.evaluate_seconds),
+            interval=timedelta(seconds=self._settings.evaluate_seconds),
         )
 
-    def on_time_event(self, event) -> None:  # noqa: ANN001 - TimeEvent from the engine
+    def on_time_event(self, _event) -> None:  # noqa: ANN001 - TimeEvent from the engine
+        """Re-evaluate on the timer."""
         self.evaluate()
 
-    def on_position_closed(self, event) -> None:  # noqa: ANN001 - PositionClosed
+    def on_position_closed(self, _event) -> None:  # noqa: ANN001 - PositionClosed
+        """Re-evaluate immediately on new evidence."""
         # Evaluate immediately on new evidence rather than waiting for the timer;
         # the breaker exists to react to a losing sequence, and a whole timer
         # interval of delay is exactly the window it is meant to remove.
@@ -140,7 +146,8 @@ class ProtectionGuard(Strategy):
         return outcomes
 
     def _closed_by_stop(self, position) -> bool:  # noqa: ANN001 - Position
-        """Whether a stop order closed this position.
+        """
+        Whether a stop order closed this position.
 
         Nautilus does not record an exit reason, so this reads the closing order's
         type. An unknown or missing closing order is treated as *not* a stop-out:
@@ -169,10 +176,4 @@ class ProtectionGuard(Strategy):
         self.publish_signal("copilot_protection_breach", str(breach.trigger))
 
 
-def _timedelta_seconds(seconds: int):  # noqa: ANN202 - timedelta
-    from datetime import timedelta
-
-    return timedelta(seconds=seconds)
-
-
-__all__ = ["ProtectionGuard", "ProtectionGuardSettings", "STOP_ORDER_TYPES"]
+__all__ = ["STOP_ORDER_TYPES", "ProtectionGuard", "ProtectionGuardSettings"]
