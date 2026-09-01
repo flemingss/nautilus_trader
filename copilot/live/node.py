@@ -51,6 +51,7 @@ from __future__ import annotations
 from typing import Protocol
 
 from copilot.live.session import PaperSession
+from copilot.live.symbology import ROUTING_BY_VENUE
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientFactory
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersExecutionClientConfig
@@ -60,6 +61,8 @@ from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.adapters.interactive_brokers import SymbologyMethod
 from nautilus_trader.common import Environment
 from nautilus_trader.live import LiveNode
+from nautilus_trader.live import LiveRiskEngineConfig
+from nautilus_trader.live import RoutingConfig
 from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import TraderId
 from nautilus_trader.model import TradingState
@@ -93,6 +96,7 @@ def build_paper_node(
     market_data_type: MarketDataType = MarketDataType.DELAYED,
     symbology: SymbologyMethod = SymbologyMethod.RAW,
     strategies: tuple[object, ...] = (),
+    risk_engine_config: LiveRiskEngineConfig | None = None,
 ) -> tuple[LiveNode, SupportsTradingState]:
     """
     Build the paper node and return it with its risk engine handle.
@@ -108,9 +112,14 @@ def build_paper_node(
         load_ids=instrument_ids,
     )
 
+    builder = LiveNode.builder(NODE_NAME, TraderId.from_str(TRADER_ID), Environment.LIVE)
+    if risk_engine_config is not None:
+        # Order limits belong outside the strategy, per playbook/OPERATIONS.md. A
+        # strategy cannot relax its own cap if the cap is engine configuration.
+        builder = builder.with_risk_engine_config(risk_engine_config)
+
     node = (
-        LiveNode.builder(NODE_NAME, TraderId.from_str(TRADER_ID), Environment.LIVE)
-        .add_data_client(
+        builder.add_data_client(
             None,
             InteractiveBrokersDataClientFactory(),
             InteractiveBrokersDataClientConfig(
@@ -133,6 +142,16 @@ def build_paper_node(
                 connection_timeout=CONNECTION_TIMEOUT_SECS,
                 instrument_provider=provider,
             ),
+            # Orders route by the instrument's venue, and the execution client does not
+            # register under one - the account reads `IB-DUT067974` while instruments
+            # resolve on `SMART`. Without this the engine finds no client for `SMART` and
+            # denies every order with NO_EXECUTION_CLIENT.
+            #
+            # The routing destinations are listed rather than `default=True` on purpose.
+            # A default would route *any* venue here, including a research-form id like
+            # `AAPL.XNAS` that nothing should be able to trade; listing them keeps the
+            # deny as a backstop against exactly that mistake.
+            RoutingConfig(venues=sorted(set(ROUTING_BY_VENUE.values()))),
         )
         .build()
     )

@@ -1,0 +1,39 @@
+{
+  "started_at": "2026-09-01T12:45:21.650783+00:00",
+  "finished_at": "2026-09-01T12:46:04.460646+00:00",
+  "stage": "3",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "instrument_id": "AAPL=STK.SMART",
+  "limit_price": "135.93",
+  "reference_price": "271.86",
+  "quantity": 1,
+  "max_notional_per_order": "543.72",
+  "passed": true,
+  "outcome": {
+    "submitted": true,
+    "accepted": true,
+    "canceled": true,
+    "filled": false,
+    "rejected": false,
+    "denied": false,
+    "client_order_id": "O-20260901-124533-001-000-1",
+    "venue_order_id": "832000001",
+    "events": [
+      {
+        "at": "2026-09-01T12:45:33.252677+00:00",
+        "kind": "submitted",
+        "detail": "O-20260901-124533-001-000-1 at 135.93"
+      },
+      {
+        "at": "2026-09-01T12:45:33.253758+00:00",
+        "kind": "accepted",
+        "detail": "832000001"
+      },
+      {
+        "at": "2026-09-01T12:45:33.949911+00:00",
+        "kind": "canceled",
+        "detail": "O-20260901-124533-001-000-1"
+      }
+    ]
+  }
+}

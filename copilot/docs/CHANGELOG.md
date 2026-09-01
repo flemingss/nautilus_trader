@@ -2,6 +2,44 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 3)
+
+### Added
+
+- **`live/symbology.py`** - the bridge between the id research scores (`AAPL.XNAS`) and the
+  id the broker trades (`AAPL=STK.SMART`). The MIC venue stays on the research side because
+  `SMART` is an order *routing destination*, not a listing venue, and is meaningless in a
+  stored bar. Routing is a table rather than a default, so an unmapped venue raises instead
+  of quietly acquiring `SMART` at the moment an order is placed. 10 tests, one of which
+  asserts every registered activation can reach a broker id.
+- **`live/controlled_order.py`** - paper stage three. Four independent safeguards, because
+  one is a preference and four are a design: a limit at half the reference price, one share,
+  an engine-level `max_notional_per_order` set outside the strategy, and a fill recorded as
+  a failure.
+- **`live/cancel_working.py`** - cancels working orders across strategies, as
+  `OPERATIONS.md` requires at the end of every monitoring window.
+
+### Passed
+
+- **Paper stage three.** `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue
+  order id `832000001`), cancelled. No fill, no reject, no deny.
+
+### Found
+
+- **`Strategy.cancel_order` takes a `ClientOrderId`, not an `Order`** - unlike
+  `ExecutionAlgorithm.cancel_order`, which takes the order. Passing the order did nothing at
+  all: no cancel, no exception, no log line, and a working GTC order left at the broker after
+  the node stopped. Only a missing event distinguished that run from a clean one.
+- **The execution client needs an explicit `RoutingConfig`.** Without it every order was
+  denied `NO_EXECUTION_CLIENT: client_id=NONE, venue=SMART`. Destinations are listed rather
+  than `default=True`, so a research-form id like `AAPL.XNAS` still gets denied.
+- **Nautilus cannot cancel an external order in `SUBMITTED` status.** Reconciliation matches
+  seven statuses and drops the rest with a warning, so an order left working by a previous
+  run never enters the cache and is invisible to `cancel_all_orders`. That is the "unknown
+  working broker order" scenario `OPERATIONS.md` requires a stage-six test for, and the
+  framework cannot currently recover from it. Filed as ready-to-build; `cancel_working.py`
+  now reports `CACHE CLEAR` rather than `PASS` and states what it cannot see.
+
 ## 2026-09-01 (paper stage 2)
 
 ### Passed

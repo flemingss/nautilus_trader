@@ -1,0 +1,190 @@
+"""
+Cancel every working order for an instrument, and confirm the broker agrees.
+
+    export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
+    python -m copilot.live.cancel_working --account DUT067974
+
+``playbook/OPERATIONS.md`` makes this the non-optional end of every monitoring window:
+*"Block new entry intents; cancel every working entry order; wait for and verify broker
+cancellation acknowledgements."* It exists as a tool rather than a paragraph because the
+first stage-three attempt left a live GTC order at the broker and there was nothing to
+clean it up with.
+
+``strategy_only=False`` is the point
+------------------------------------
+A residual order belongs to the strategy instance that placed it, and that instance died
+with the run that owns it. A strategy-scoped cancel would find nothing and report success,
+which is the worst possible outcome for a tool whose entire job is to leave nothing behind.
+
+**What this tool cannot see**
+-----------------------------
+It cancels what is in the cache, and an order only enters the cache if reconciliation
+adopted it. Nautilus reconciliation does **not** adopt an external order the broker reports
+as ``SUBMITTED``: ``crates/execution/src/reconciliation/orders.rs`` matches ``Accepted``,
+``Triggered``, ``PartiallyFilled``, ``Filled``, ``Canceled``, ``Expired`` and ``Rejected``,
+and everything else falls through to a warning and an empty event list.
+
+Measured on 2026-09-01: an order left working by a previous run was reported by IB, logged
+as *"Unhandled order status SUBMITTED for external order"*, never entered the cache, and so
+could not be cancelled through this tool - which then reported success because the cache it
+consulted was empty.
+
+A clean result therefore means **"everything this node knew about is cancelled"**, which is
+weaker than "nothing is working at the broker". Confirm the broker's own order list before
+treating a session as closed. Per ``OPERATIONS.md``, an order whose status cannot be
+confirmed is an alert, not a pass.
+
+"""
+
+from __future__ import annotations
+
+import argparse
+import asyncio
+import os
+from datetime import UTC
+from datetime import datetime
+from typing import Any
+
+from copilot.live.node import build_paper_node
+from copilot.live.session import PaperSession
+from copilot.live.symbology import broker_instrument_id
+from nautilus_trader.adapters.interactive_brokers import MarketDataType
+from nautilus_trader.trading import Strategy
+from nautilus_trader.trading import StrategyConfig
+
+
+class CancelWorkingConfig(StrategyConfig):
+    """
+    Which instrument to sweep.
+    """
+
+    _CUSTOM_FIELDS = ("instrument_id",)
+
+    def __new__(cls, *args: object, **kwargs: object):  # noqa: ANN204 - pyo3 base
+        """
+        Strip the custom fields before the pyo3 base sees them.
+        """
+        for field_name in cls._CUSTOM_FIELDS:
+            kwargs.pop(field_name, None)
+        return super().__new__(cls, *args, **kwargs)
+
+    def __init__(self, instrument_id: Any, **_kwargs: object) -> None:
+        """
+        Configure the sweep.
+        """
+        super().__init__()
+        self.instrument_id = instrument_id
+
+
+class CancelWorking(Strategy):
+    """
+    Cancels every working order on the instrument, across strategies.
+    """
+
+    def __init__(self, config: CancelWorkingConfig) -> None:
+        """
+        Start with nothing observed.
+        """
+        super().__init__(config)
+        self.before: list[str] = []
+        self.canceled: list[str] = []
+
+    def on_start(self) -> None:
+        """
+        Sweep, across strategies rather than only this one.
+        """
+        self.before = [str(o.client_order_id) for o in self.cache.orders_open()]
+        self.log.info(f"Working orders before sweep: {self.before or 'none'}")
+        self.cancel_all_orders(self.config.instrument_id, strategy_only=False)
+
+    def on_order_canceled(self, event: Any) -> None:
+        """
+        Record each acknowledgement, since the acknowledgement is the evidence.
+        """
+        self.canceled.append(str(event.client_order_id))
+
+
+async def sweep(session: PaperSession, *, instrument_id: Any, settle_secs: int) -> CancelWorking:
+    """
+    Run the node long enough to cancel and hear back.
+    """
+    strategy = CancelWorking(CancelWorkingConfig(instrument_id=instrument_id))
+    node, _risk_engine = build_paper_node(
+        session,
+        market_data_type=MarketDataType.DELAYED,
+        strategies=(strategy,),
+    )
+    handle = node.handle()
+    task = asyncio.create_task(node.run_async())
+    try:
+        await asyncio.sleep(settle_secs)
+    finally:
+        handle.stop()
+        try:
+            await asyncio.wait_for(task, timeout=60)
+        except (TimeoutError, asyncio.CancelledError) as e:
+            # Worth saying loudly: a node that will not stop may still hold a
+            # connection, and the sweep's result is only meaningful once it has.
+            strategy.log.error(f"Node did not stop cleanly: {e!r}")
+    return strategy
+
+
+def main(argv: list[str] | None = None) -> int:
+    """
+    Cancel working orders.
+
+    Non-zero exit if anything was still working at the end.
+
+    """
+    parser = argparse.ArgumentParser(
+        prog="python -m copilot.live.cancel_working",
+        description="Cancel every working order for an instrument and verify the broker agrees.",
+    )
+    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
+    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
+    parser.add_argument("--symbol", default="AAPL")
+    parser.add_argument("--venue", default="XNAS")
+    parser.add_argument("--settle-secs", type=int, default=30)
+    parser.add_argument("--data-client-id", type=int, default=821)
+    parser.add_argument("--exec-client-id", type=int, default=822)
+    args = parser.parse_args(argv)
+
+    if not args.account:
+        print("error: no paper account; pass --account or set COPILOT_PAPER_ACCOUNT")
+        return 2
+
+    instrument_id = broker_instrument_id(args.symbol, args.venue)
+    session = PaperSession(
+        account_id=args.account,
+        host=args.host,
+        port=args.port,
+        data_client_id=args.data_client_id,
+        exec_client_id=args.exec_client_id,
+        # Cancelling is an order command, so the engine must not be halted.
+        orders_enabled=True,
+        instrument_ids=(str(instrument_id),),
+    )
+
+    started = datetime.now(UTC)
+    print(f"Sweeping working orders on {instrument_id} at {started.isoformat()}")
+    strategy = asyncio.run(
+        sweep(session, instrument_id=instrument_id, settle_secs=args.settle_secs),
+    )
+
+    print(f"\nworking before: {strategy.before or 'none'}")
+    print(f"cancelled:      {strategy.canceled or 'none'}")
+    outstanding = [o for o in strategy.before if o not in strategy.canceled]
+    print(f"still working:  {outstanding or 'none'}")
+    print(f"\nRESULT: {'CACHE CLEAR' if not outstanding else 'FAIL'}")
+    print(
+        "\nThis is not proof the broker has nothing working. An external order in "
+        "SUBMITTED\nstatus is never adopted into the cache and is invisible here - see the "
+        "module docstring.\nCheck the broker's own order list before calling a session "
+        "closed.",
+    )
+    return 0 if not outstanding else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
