@@ -103,12 +103,12 @@ holds one position at a time and a run of gap days therefore blocks its own re-e
 
 ## Open work, grouped by what unblocks it
 
-Nine items. Grouped by blocking condition rather than by component, because that is
+Eight items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
 
-### Waiting on a decision (3)
+### Waiting on a decision (2)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
@@ -116,9 +116,9 @@ Investigated as far as they can be. **No further work is useful until each is ca
 | --------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | Pick the spread coefficient             | 10     | Median, p75 or p95. The distribution has a real tail, so a median model understates bad days. Should be chosen, not defaulted to.               |
 | Buy consolidated US equity data, or not | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, so this is only worth it if intraday comes with it. |
-| Choose which setup ports first          | 02     | One name. Porting all three before validating any is how the gate gets gamed.                                                                   |
 
-**Resolved 2026-09-01: upstream files may be changed.** `set_trading_state` moves to
+**Resolved 2026-09-01:** which setup ports first (gap fade, chosen on V1-31 evidence), and
+that upstream files may be changed. `set_trading_state` moves to
 ready-to-build below. The condition attached to the clearance is that every upstream file
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
