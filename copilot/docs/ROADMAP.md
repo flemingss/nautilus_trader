@@ -27,9 +27,11 @@ covers, and it is pinned.
 | 4 | Validation gate port | **Done.** Tearsheet, deflation, plateau search, purged walk-forward. |
 | 5 | Risk-based position sizing | **Done.** |
 | 6 | Entitlement probe | **Done.** |
-| 7 | `set_trading_state` pyo3 binding | **Blocked** — needs a Rust toolchain. |
-| 8 | Marketstack -> `ParquetDataCatalog` | **Not started.** The only route to US equity history. |
-| 9 | Screener / universe selection | **Pinned**, out of repo by decision. |
+| 7 | Rust toolchain | **Installed.** Source build works; see below. |
+| 8 | IB adapter defects | **Fixed**, both verified. |
+| 9 | `set_trading_state` pyo3 binding | **Open** — needs a design decision, see below. |
+| 10 | Marketstack -> `ParquetDataCatalog` | **Not started.** The only route to US equity history. |
+| 11 | Screener / universe selection | **Pinned**, out of repo by decision. |
 
 82 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
@@ -197,6 +199,10 @@ Three items are blocked on a source build: the `set_trading_state` pyo3 binding,
 IB adapter bugs, and `make pre-commit` / `make format`. This environment currently has
 `curl`, `git`, `uv` and `python3` and nothing else from the build chain.
 
+**Status: installed and working.** `rustc 1.98.0`, Cap'n Proto 1.5.0 under `~/.local`,
+uv 0.12.6, and `make build-debug` produces an editable install. `target/` is ~26 GB.
+`make install-tools` has **not** been run, so `make pre-commit` is still unavailable.
+
 **Needs root — the only step an agent cannot do:**
 
 ```bash
@@ -222,6 +228,33 @@ expect the first full workspace build to be long regardless.
 lychee and more). Only a subset is needed to *build*, but the full set is what
 `make pre-commit` expects, so installing it once is what makes that checklist item
 satisfiable in future pull requests.
+
+## Open design question: reaching `set_trading_state` from Python
+
+Now that the toolchain exists this is no longer blocked on tooling, but it is not a small
+binding either, and the shape matters more than the code.
+
+What the investigation found:
+
+- The kernel holds `risk_engine: Rc<RefCell<RiskEngine>>` with a public accessor, so a
+  same-thread caller can reach it.
+- `LiveNodeHandle` is the thread-safe control surface, but it **cannot** hold the risk
+  engine: `Rc` is not `Send`, and the message bus is thread-local too.
+- `PyLiveNode` can reach the kernel, but its borrow is unavailable while a hosted run owns
+  the node — which is exactly when a halt would be wanted.
+- `TradingCommand` has no variant for trading state, and adding one touches the enum and
+  every match arm across the execution path.
+- A Python `Strategy` has no message bus access at all, so the guard cannot send a command
+  even if one existed.
+
+The least invasive option that would actually work is an additive message bus endpoint —
+`MessagingSwitchboard` entries are just named strings with a `OnceCell`, so adding
+`risk_engine_set_trading_state` and registering a handler is contained. It still needs a
+way for a Python component to send to an endpoint.
+
+That is three upstream files including `crates/common`, which is a larger commitment than
+the two adapter fixes and deserves a deliberate decision rather than being assumed. Until
+it lands, the guard stays reactive and says so.
 
 ## 2. Risk breakers — what they actually enforce
 
@@ -262,18 +295,43 @@ per-position risk through `RiskAmountRegistry`; a missing record raises rather t
 silently scoring `r_multiple == 0`, which would make the gate report "no edge"
 everywhere.
 
-## Bugs found upstream, worth fixing on the fork
+## Bugs found upstream — fixed
 
-1. **A failed subscription silently kills sibling subscriptions.** AAPL in DELAYED
-   mode: quotes-only → 15 ticks; quotes + failing tick-by-tick trades → 0; quotes +
-   failing L2 book → 0. The adapter warns about what broke and says nothing about the
-   working stream it took down.
-2. **`request_ticks` ignores its `timeout` and hangs.** `TRADES` on a forex pair (IB
-   never responds, since IDEALPRO has no trade ticks) with `timeout=20` was still
-   running when killed at 97s.
+Both are fixed and proposed on their own branch. **One of them corrects a claim made
+earlier in this document.**
 
-Both are in `crates/adapters/interactive_brokers/src/data/`. Neither is fixed here —
-both need a Rust build.
+### 1. `request_ticks` ignored its `timeout`
+
+The timeout wrapped only the request that opens the subscription, not the loop that drains
+it, so a request IB accepts but never answers hung forever. Reachable by asking for
+`TRADES` ticks on a forex pair, which IDEALPRO does not have.
+
+Measured before and after against paper TWS: `timeout=20` was still running when killed at
+**97s**; it now returns empty at **22.0s**, while `BID_ASK` over the same window still
+returns its **1022 ticks in 0.4s**.
+
+### 2. Subscriptions were keyed by instrument alone — *not* what was claimed here before
+
+**Correction.** This document previously stated that a failed subscription silently tears
+down sibling subscriptions on the same instrument. Reading the code does not support that
+mechanism: every subscription gets its own `child_token()` from the client's cancellation
+token, and a per-task error is logged rather than propagated, so one stream failing cannot
+cancel another. The claim was inferred from three correlated observations and should not
+have been stated as a mechanism.
+
+What the code *does* contain is a different, provable defect. The subscriptions map was
+keyed by `InstrumentId` while its value carried a `subscription_type`, so it could hold
+only one subscription per instrument. Subscribing to trades on an instrument that already
+had quotes silently evicted the quote entry — leaving that task running untracked, and
+sending a later `unsubscribe_quotes` to cancel the *trades* stream instead. The key is now
+`(InstrumentId, SubscriptionType)`.
+
+**The original observation is still unexplained.** Quotes stopped when an unpermissioned
+trades or depth subscription was added to the same instrument, reproducibly across three
+runs. The eviction defect does not account for it, since the evicted task was never
+cancelled. The likeliest remaining explanation is IB-side — a rejected request disturbing
+the market data line for that contract — and confirming it needs a session window and a
+deliberate test. Until then it is an open observation, not a diagnosed bug.
 
 ## Environment facts that cost time
 

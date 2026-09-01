@@ -50,10 +50,21 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   paid subscription is still required for both. Recheck after the next trading session
   before concluding a purchase has not landed.
 
+### Corrected
+
+- The claim that a failed subscription tears down sibling subscriptions is **withdrawn**.
+  The code gives each subscription its own `child_token()` and logs per-task errors without
+  propagating them, so that mechanism does not exist. It was inferred from correlated
+  observations and stated with more confidence than the evidence supported. The underlying
+  observation — quotes stopping when an unpermissioned subscription is added to the same
+  instrument — remains real and unexplained, most likely IB-side.
+
 ### Known issues, not fixed
 
-- Two IB adapter bugs (silent sibling-subscription teardown; `request_ticks` ignoring
-  its timeout). Both need a Rust build.
+- Two IB adapter defects, both now **fixed and verified**: `request_ticks` ignored its
+  timeout and hung, and the subscriptions map was keyed by instrument alone so one
+  subscription type silently evicted another. A remaining collision between two bar types
+  on one instrument is recorded but out of scope.
 - No route to US equity historical bars. All 16 request shapes tried return IB 2188,
   so the backtest evidence base must come from another vendor.
 
