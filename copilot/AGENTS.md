@@ -4,6 +4,11 @@ Read this **in addition to** the repository root `AGENTS.md`, not instead of it.
 rules still apply; this file records where fork-local work deliberately departs from
 them, and why.
 
+**Read [`docs/CHARTER.md`](docs/CHARTER.md) first.** It says what this system is for, what
+counts as success, and which gate a candidate is standing at. The playbook beside it says
+how the work is done: preflight, research, risk and operations. Together they govern the
+out-of-repo half too, so they outrank this file where the two overlap.
+
 For *why things are this way*, read `docs/decisions/`. Those records are immutable: a
 decision that stops being true is superseded by a new one, never rewritten. If this file
 and an ADR disagree, the ADR is the record and this file is the bug.

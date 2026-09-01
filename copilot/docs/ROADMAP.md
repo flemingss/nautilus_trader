@@ -103,7 +103,7 @@ holds one position at a time and a run of gap days therefore blocks its own re-e
 
 ## Open work, grouped by what unblocks it
 
-Eight items. Grouped by blocking condition rather than by component, because that is
+Thirteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -128,6 +128,45 @@ this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 | Item                               | Stage | Notes                                                                                                                                        |
 | ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | Make the cost model per-instrument | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
+
+### Charter conflicts, opened 2026-09-01 (3)
+
+Adopting [`CHARTER.md`](CHARTER.md) surfaced four places where the code does not match the
+process it is now governed by. One is resolved as
+[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md); these three are
+open.
+
+| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                    |
+| ------------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Carve out the locked holdout**     | 04    | The charter reserves the most recent 15-20%. `walk_forward` runs over the whole history and no holdout exists, while every verdict record carries `holdout_spent: false`, which implies one does. **No verdict from this repository currently has an out-of-sample estimate behind it.** |
+| Move entry to the next session       | 02    | The gap fade fills at the signal bar's close. The charter requires next-eligible-session entry. Changing it is a new experiment rather than a fix, so it resets the premise's evidence.                                                                                                  |
+| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities.                                                                                                                   |
+
+### Waiting on a market session (2)
+
+US cash session opens 13:30 UTC. Both need live ticks, so neither can be settled outside
+that window. **Do not open the IB web portal during either run** - it triggers error 162.
+
+| Item                                   | Stage | Notes                                                                                                                                                                                                  |
+| -------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Recheck realtime quote entitlement     | 10    | Release forms unlocked delayed quotes across the US equity universe, not realtime. With the session closed a null result proves nothing. `entitlements.py` runs the check.                             |
+| Explain the sibling-subscription stall | 00    | Reproducible across three runs, and neither the withdrawn teardown claim nor the eviction bug that was fixed accounts for it. Likeliest explanation is IB-side. Open observation, not a diagnosed bug. |
+
+### Waiting on spend (2)
+
+No code closes these.
+
+| Item                         | Stage | Notes                                                                                                                                  |
+| ---------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| US equity history through IB | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                |
+| Intraday history             | 00    | Marketstack EOD cannot support anything acting within a session. Databento was preferred and deferred until the system earns its cost. |
+
+### Deferred by decision (1)
+
+**Tabletop: subscriptions, operations, strategy.** Under way. Operations and strategy
+governance are settled and recorded in [`CHARTER.md`](CHARTER.md), the
+[playbook](playbook/README.md) and ADRs 0004 through 0009. **Subscriptions remain open**,
+and both of the decisions above resolve inside that half.
 
 ### Carrying cost, tracked (9 files)
 
