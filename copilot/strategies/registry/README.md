@@ -27,3 +27,13 @@ activation can never quietly narrow its own declared search.
 
 `RESEARCH` never trades. `PAPER` trades a paper account. `LIVE` trades real capital and
 nothing reaches it without a spent holdout. Promotion is a diff someone reviewed.
+
+## Why every activation here is long-only
+
+Not a coincidence, and as of 2026-09-01 not only a preference. The broker account is
+**cash**, and a cash account cannot sell short - so a `long = false` activation could not be
+promoted past `RESEARCH` even if it validated. The premise's own asymmetry points the same
+way (gap-downs revert materially more often than gap-ups), which is why the legs are
+separate strategies rather than one rule taking the absolute gap. The short leg becomes
+available only if the account moves to margin; see
+[`../../docs/playbook/PREFLIGHT.md`](../../docs/playbook/PREFLIGHT.md).

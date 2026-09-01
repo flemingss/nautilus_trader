@@ -16,6 +16,18 @@ reads as confirmation.
   currency conversion - not from headline equity. Confirm with the carrying entity how
   settlement, buying power, same-day sale and reinvestment, and automatic FX conversion
   apply to the real account.
+
+  **This account is cash**, as of 2026-09-01, pending a margin decision. Two consequences
+  follow and neither is a preference:
+
+  - **No short sales.** Reg T places short sales in a margin account. The gap fade's short
+    leg (`long = false`) is therefore unavailable at any price, and only the long leg can
+    be activated. All three registered activations are already long-only, so nothing
+    currently registered is blocked.
+  - **Settled cash, not equity, is the sizing base**, and concurrent positions are capped
+    by it. Good-faith violations need an intraday round trip, which an entry at the close
+    cannot produce - but that is a property of the current entry rule, not of the account,
+    and it stops holding if entry moves.
 - **Intraday margin rules.** Do not hard-code pattern-day-trader assumptions. FINRA has a
   newer intraday-margin framework with a phase-in, and broker implementation timing varies.
   **Verify the rules applied to this account** rather than relying on a summary, including
@@ -34,6 +46,19 @@ reads as confirmation.
 
 Confirm for **every** field used in research and live whether it is real-time, delayed,
 frozen, consolidated or non-consolidated.
+
+**Subscriptions can be gated on account equity.** As of 2026-09-01 this account sits below
+IBKR's bar, funds have been added, and settlement is expected on or after 2026-09-08. Until
+it clears, the only US equity quotes available are the complimentary delayed,
+non-consolidated feed - which is enough for broker-integration testing and **not** enough to
+set a cost coefficient anyone should trade on.
+
+**Top of book is the requirement; depth is not.** Both candidate entry mechanics are
+auctions - market-on-close today, next-session-open under the charter - and an auction
+clears at a single price rather than against the continuous book, so depth describes
+something the execution model never touches. Position sizes are low single-digit to low
+tens of shares against inside quotes of hundreds to thousands, so no order can walk a book.
+The open question is **consolidated versus non-consolidated at L1**, not L1 versus L2.
 
 IBKR Securities Japan describes its complimentary US stock and ETF feed as real-time but
 **non-consolidated**. A non-consolidated feed is not proof of the consolidated best bid,

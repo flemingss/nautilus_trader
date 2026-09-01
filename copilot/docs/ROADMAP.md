@@ -52,7 +52,7 @@ stalls.
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Never run.** Paper run pending                          |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Never run.** No paper node exists; see below            |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
 | 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 
@@ -101,12 +101,58 @@ holds one position at a time and a run of gap days therefore blocks its own re-e
 
 214 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
+### Stage 08 - what a paper run actually needs
+
+**No paper node exists.** The only IB connection code in the overlay is
+`calibration/spread_snapshot.py`, which builds a **data-only** `LiveNode` - one data client,
+no execution client, no account, no strategy. Everything from stage 00 to 07 is research
+plumbing that has never had a broker on the other end of it.
+
+That matters less than it sounds, because [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md)
+splits the work in two and only one half is blocked:
+
+> Broker-integration testing and strategy forward testing are different activities.
+> Controlled connectivity, read-only reconciliation and minimum-size order-lifecycle tests
+> may begin before a strategy passes the research gate, and they validate no edge whatever.
+
+**Paper stages 1 through 6 are integration testing.** They need a paper account, delayed
+quotes and a connection. They do **not** need a market-data subscription, settled cash,
+margin, a chosen spread coefficient, or a strategy anyone believes in - they answer "does
+the machine behave", and the answer is currently unknown.
+
+**Paper stages 7 and 8 are forward testing.** They need a frozen candidate that passed the
+research gate. We do not have one: the gap fade is negative at the target account size
+([ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md)) and no holdout
+has been carved out. Forward-testing it would measure a premise already known to lose.
+
+What stages 1 to 6 need built, none of it blocked:
+
+| Piece                           | Notes                                                                                                                                                                                   |
+| ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution client wiring         | `InteractiveBrokersExecClientFactory` alongside the data client. `spread_snapshot.build_node` is the working template for the data half.                                                |
+| A paper node builder            | Separate account, credentials, client ID and alert destination from live, per PREFLIGHT. **Validate the account identifier at startup** and refuse to start if it is not the paper one. |
+| An orders-disabled mode         | Stage 1 is "connect with strategy orders disabled". Needs to be a real switch, not a commented-out line.                                                                                |
+| Guard handle taken before start | `risk/guard.py` degrades silently to reactive behaviour without it, and `node.risk_engine` stops resolving once a hosted run owns the node.                                             |
+| A preflight check script        | The "Before" list in OPERATIONS: instruments, account, currency, feed type, session calendar, non-crossed quotes, kill switch.                                                          |
+| Failure injection               | Stage 6: stale data, disconnect, reject, reconciliation mismatch.                                                                                                                       |
+
 ## Open work, grouped by what unblocks it
 
-Thirteen items. Grouped by blocking condition rather than by component, because that is
+Sixteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
+
+### Waiting on the account (3)
+
+Recorded 2026-09-01. **The operator's to close, not the repository's.** Three items in the
+groups below inherit their block, which is why they sit first.
+
+| Item                                                              | Stage  | The action                                                                                                                                                                                                                                                              |
+| ----------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Clear the IBKR market-data equity minimum**                     | 10     | Market-data subscriptions are gated on account equity and the account is below the bar. Funds have been added; settlement expected **on or after 2026-09-08**. Until then the only US equity quotes available are the complimentary **delayed, non-consolidated** feed. |
+| **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
+| **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
 ### Waiting on a decision (2)
 
