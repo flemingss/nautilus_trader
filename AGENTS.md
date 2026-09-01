@@ -1,70 +1,88 @@
 # Agent Instructions
 
-Read [AI_POLICY.md](AI_POLICY.md) and [CONTRIBUTING.md](CONTRIBUTING.md) before making changes.
-Follow the [coding standards](docs/developer_guide/coding_standards.md) and the relevant developer
-guide for the area you change.
+**Read [`copilot/docs/CHARTER.md`](copilot/docs/CHARTER.md) first.** It and the
+[playbook](copilot/docs/playbook/README.md) govern the out-of-repo half of this project too,
+so they outrank this file where the two overlap.
+
+This repository is **ours**, not a fork ([ADR-0010](copilot/docs/decisions/0010-the-repository-is-ours.md)).
+It began as a copy of NautilusTrader and has been detached from the fork network. There is no
+parent repository, no pull-request relationship with anyone, and no change here is a
+contribution to another project.
+
+Follow the [coding standards](docs/developer_guide/coding_standards.md) and the relevant
+developer guide for the area you change. Those documents were inherited and are good; they
+are kept because they are good, not because we owe anyone conformance.
 
 ## Working rules
 
-**NautilusTrader can execute live trades involving real capital. Hold every change to a very high
-standard for correctness, reliability, testing, clarity, and maintainability.**
+**This system can execute live trades involving real capital. Hold every change to a very
+high standard for correctness, reliability, testing, clarity, and maintainability.**
 
 - Read the affected code and search for existing patterns before proposing or making changes.
-- Keep each change focused on the requested outcome. Note unrelated issues instead of fixing them.
+- Keep each change focused on the requested outcome. Note unrelated issues instead of fixing
+  them.
 - Match the existing style and use established functions, types, names, and dependencies.
-- Preserve exact arithmetic for prices, quantities, money, fees, and other discrete values. Use the
-  project domain types or `Decimal`.
+- Preserve exact arithmetic for prices, quantities, money, fees, and other discrete values.
+  Use the project domain types or `Decimal`.
 - Do not add test-only behavior, branches, attributes, or interfaces to production code.
-- Do not weaken, remove, bypass, or rewrite tests or required behavior merely to obtain a passing
-  result. Fix the underlying problem and preserve the behavior the tests are intended to protect.
-  Change a test only when the task intentionally changes the required behavior or when you can
-  independently verify that the test is wrong.
-- Expose the minimum public API and keep the patch focused. Avoid drive-by refactors, renames, and
-  abstractions unrelated to the contribution.
+- Do not weaken, remove, bypass, or rewrite tests or required behavior merely to obtain a
+  passing result. Fix the underlying problem and preserve the behavior the tests are intended
+  to protect. Change a test only when the task intentionally changes the required behavior or
+  when you can independently verify that the test is wrong.
 - Change generated artifacts through their source and generator. Never edit them by hand.
-- Do not modify `RELEASES.md`. Maintainers keep it current.
-- Do not modify `.github/workflows` or `.github/actions` for an external contribution. These paths
-  are maintainer-only.
-- Do not use Conventional Commits syntax for commit messages or pull request titles.
-- Do not put an issue or pull request number in a commit subject or pull request title. A squash
-  merge appends the number; reference issues from the commit body instead.
+
+## Inherited code
+
+**Any file here may be changed on its merits.** Nothing is off limits because of where it came
+from, and a defect in inherited code is a defect in our code.
+
+Two obligations come with that, and they are the whole substance of the register:
+
+- **Record it.** Every file we change outside `copilot/` is listed in
+  [`copilot/docs/UPSTREAM_DELTA.md`](copilot/docs/UPSTREAM_DELTA.md), enforced by
+  `copilot/tests/test_upstream_delta.py`. The register answers *"what do we own and have to
+  test ourselves"*, which is the question that matters now that no one else is testing it for
+  us.
+- **Test it here.** Upstream's CI is not ours. A change to inherited code carries its own
+  regression test in this repository, and a test that fails without the change is worth more
+  than one that merely passes with it.
+
+**Upstream is a source we read, never a base we merge.** `git fetch upstream` is safe and
+useful for deciding whether to harvest a fix. Do not merge or rebase onto it. If an upstream
+change is worth having, take it deliberately, with its own branch and its own tests.
 
 ## Pull request readiness
 
 **Prepare a complete, review-ready change before opening a pull request.**
 
-Run the smallest relevant test while developing. Before opening or updating a pull request, run
-`make format`, `make pre-commit`, and all tests relevant to the change locally. Follow
-`CONTRIBUTING.md` and the pull request template when preparing the pull request description.
+Run the smallest relevant test while developing. Before opening or updating a pull request,
+run `make format`, `make pre-commit`, and all tests relevant to the change locally. For higher
+assurance, run `make pre-flight`.
 
-For higher assurance, run `make pre-flight`, which performs the project's broad local validation
-suite.
+Some hooks need tooling that may not be installed (`cargo` on `PATH`, `ty`, `pyarrow` in the
+virtualenv). **Declare what did not run rather than implying it passed.**
 
-Treat project CI as confirmation of a locally validated change, not as a development loop or a
-substitute for local compute. If a maintainer asks for an early draft, agree on its scope before
-opening it. After review feedback, batch related fixes and rerun the relevant local checks so the
-contributor can push one coherent update.
+CI confirms a locally validated change. It is not a development loop.
 
-## Git and public interaction
+## Git
 
-- Base contributor work on `develop` and target `develop` when preparing a pull request.
-- Do not commit, amend, push, or change remote state unless the user explicitly asks.
-- Do not open, edit, comment on, review, or otherwise interact with GitHub issues or pull requests
-  unless the user explicitly asks. The human contributor controls every public interaction and
-  remains responsible for the final communication.
-- AI may assist with drafting, but the contributor must understand the text and verify its accuracy.
-  When drafting, help preserve the contributor's choices and voice rather than replacing them with
-  generic prose.
+- Work on a branch off `develop` and target `develop`.
+- Commit, amend, push, and change remote state freely on this repository. The project owner
+  has standing authorization for pull requests here, including merge and branch deletion.
+- **Never push to, or open anything on, `nautechsystems/*`.** The `upstream` remote's push URL
+  is disabled and `gh` is pinned with `gh repo set-default`. Both live in `.git/config` and do
+  **not** survive a fresh clone, so re-establish them after one.
+- Never commit credentials. `trade-copilot/` holds a real `.env` and is excluded locally only,
+  which likewise does not survive a fresh clone.
 
-## Disclosure and attribution
+## Conventions we chose
 
-- NautilusTrader does not require disclosure of AI assistance.
-- The [AI Policy](AI_POLICY.md) does not override any legal, contractual, or license obligation that
-  applies to the contributor or submitted material.
-- If the contributor chooses to disclose AI assistance in a commit message, keep the wording
-  general, such as `Developed with assistance from AI.`
-- The project is neutral among AI labs, vendors, models, and tools, so do not name or promote a
-  specific one as attribution in commit messages, pull request titles, or pull request descriptions.
-- Do not add an AI tool or model as an author, co-author, or contributor.
-- Do not add `Co-authored-by:` trailers for AI tools or models.
-- Do not add branded footers such as `Generated with ...` to commit messages or pull request text.
+These were our preferences, not obligations to anyone, so they stay:
+
+- No Conventional Commits syntax in commit messages or pull request titles.
+- No issue or pull request number in a commit subject or pull request title; a squash merge
+  appends the number, and issues are referenced from the body.
+- No AI tool or model as an author, co-author or contributor, and no `Co-authored-by:` trailers
+  for them.
+- No branded footers such as `Generated with ...`.
+- Disclosure of AI assistance is optional; if used, keep it general and vendor-neutral.

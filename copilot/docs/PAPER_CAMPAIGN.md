@@ -55,7 +55,7 @@ strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are bloc
 | 3   | One controlled order (**passed 2026-09-01**)      | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
 | 4   | Order types and TIF (**passed 2026-09-01**)       | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
 | 5   | A full supervised session (**passed 2026-09-01**) | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
-| 6   | Failure injection (**failed 2026-09-01**)         | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
+| 6   | Failure injection (**passed 2026-09-01**)         | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
 | 7   | Repeat sessions, frozen strategy                  | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
 | 8   | Unattended                                        | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
 
@@ -313,6 +313,57 @@ Recovering an unknown working order remains impossible - reconciliation drops an
 order reported as `SUBMITTED`. Not re-run, because re-running strands another live order to
 re-learn something already evidenced.
 
+## Stage six, second run: the engine was fixed rather than the test
+
+The first run failed because `max_notional_per_order` does nothing on IB. Under
+[ADR-0010](decisions/0010-the-repository-is-ours.md) that is now ours to fix, so it was
+fixed.
+
+`RiskEngine::check_orders_risk_for_account` resolved the account by the instrument's venue
+and, on failure, returned `true` for every order - skipping the balance, margin **and**
+notional checks together. A per-order notional cap is a bound on the order, not on the
+account, so it now applies whether an account resolves or not. The account-resolution failure
+also moved from `DEBUG` to `WARN`: an operator who cannot see it believes risk checks are
+running when they are not.
+
+Two Rust tests pin it, and the pair was checked by stashing the fix - the denial test fails
+without it, the companion still passes, so they pin the behaviour rather than the
+implementation.
+
+```text
+denied_by_risk_engine   PASS   NOTIONAL_EXCEEDS_MAX_PER_ORDER: max=1000.00 USD
+stale_feed_detected     PASS   no quote for 20.6s
+left working: none
+```
+
+### Two cases are excluded, and named rather than scored
+
+**`rejected_by_broker` - paper cannot decide it.** IB paper accepted a 100,000-share order
+worth USD 24M on a USD 1M account. The probe is still submitted, because that is how we would
+notice if IB ever started enforcing it, but scoring it would make stage six permanently
+unpassable for a reason that has nothing to do with our system. **The rejection path must be
+verified on the live account before any size increase.**
+
+**`recover_unknown_working_order` - still a known failure.** Reconciliation drops an external
+order reported as `SUBMITTED`. Now fixable under ADR-0010; not yet fixed.
+
+### The bug the reclassification introduced
+
+Moving `rejected_by_broker` out of the scored list left its order in the id map, and the
+probe lookup used a bare `next()`. That raised `StopIteration` inside the accepted handler,
+which **skipped the cancel** and left a live order at the broker - reported only as "left
+working", with no hint of the cause.
+
+Two changes, and the second matters more than the first: the lookup returns `None` for an
+unscored case, and **the cancel now runs before any bookkeeping**. Recording is bookkeeping;
+leaving a live order at the broker is the failure, so nothing that might go wrong in
+bookkeeping is allowed to run first.
+
+The runner also waits for cancellations to be acknowledged before stopping, which
+`OPERATIONS.md` requires and the first version skipped - reading `orders_open` while a cancel
+is in flight reported a live order that was already on its way out. **A false alarm from a
+safety check is as corrosive as a missed one.**
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
@@ -336,6 +387,7 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`        |
 | 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.             | `live/out/supervised_session_20260901T133242Z.json` |
 | 2026-09-01 | 6     | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                  | `live/out/failure_injection_20260901T134539Z.json`  |
+| 2026-09-01 | 6     | **Pass**, after fixing the engine it failed against. Both scored probes pass: the notional cap now denies (`NOTIONAL_EXCEEDS_MAX_PER_ORDER`), stale-feed detection fires at 20.6s, nothing left working. Two cases excluded and named: one paper cannot decide, one is a known gap.       | `live/out/failure_injection_*.json`                 |
 
 ## Where the code is
 

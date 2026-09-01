@@ -389,3 +389,47 @@ def test_leaving_an_order_working_fails_the_stage():
 
 def test_a_position_that_never_closed_fails():
     assert not a_complete_round_trip(position_closed=False).passed
+
+
+# ------------------------------------------------------------- failure injection
+
+
+def test_an_unscored_case_does_not_break_the_scored_ones():
+    """
+    Reclassifying a probe must not silently disable the cancel that follows it.
+
+    `rejected_by_broker` was moved out of the scored list once paper proved it could not
+    decide the case, but its order stayed in the id map. A bare `next()` lookup then raised
+    StopIteration inside the accepted handler, which skipped `cancel_order` and left a live
+    order at the broker - reported only as "left working", with no hint of the cause.
+
+    """
+    from copilot.live.failure_injection import FailureInjection
+    from copilot.live.failure_injection import InjectionResult
+    from copilot.live.failure_injection import Probe
+
+    result = InjectionResult(probes=[Probe(name="denied_by_risk_engine", expected="denied")])
+    lookup = FailureInjection._probe.__get__(
+        type("Stub", (), {"result": result})(),
+    )
+
+    assert lookup("denied_by_risk_engine") is not None
+    assert lookup("rejected_by_broker") is None
+
+
+def test_the_injection_passes_only_when_nothing_is_left_working():
+    from copilot.live.failure_injection import InjectionResult
+    from copilot.live.failure_injection import Probe
+
+    scored = [Probe(name="p", expected="denied", observed="denied")]
+
+    assert InjectionResult(probes=scored).passed
+    assert not InjectionResult(probes=scored, orders_left_working=["O-1 [ACCEPTED]"]).passed
+
+
+def test_a_probe_that_never_observed_anything_fails():
+    """Silence is not success: a probe with no outcome has not been answered."""
+    from copilot.live.failure_injection import InjectionResult
+    from copilot.live.failure_injection import Probe
+
+    assert not InjectionResult(probes=[Probe(name="p", expected="denied")]).passed

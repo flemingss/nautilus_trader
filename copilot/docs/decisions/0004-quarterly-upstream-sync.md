@@ -1,6 +1,6 @@
 # 4. Sync with upstream on demand, reviewed quarterly
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0010](0010-the-repository-is-ours.md)
 - **Date:** 2026-09-01
 - **Deciders:** Project owner
 
