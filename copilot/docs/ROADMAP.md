@@ -53,7 +53,7 @@ stalls.
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Paper node built, unrun.** Campaign open; see below     |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Stage 1 passed** 2026-09-01; stage 2 blocked            |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
 | 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 
@@ -130,23 +130,24 @@ The campaign, its gates and its evidence log live in [`PAPER_CAMPAIGN.md`](PAPER
 
 What stages 1 to 6 need built, none of it blocked:
 
-| Piece                           | State                                                                                                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                               |
-| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests. |
-| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.        |
-| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                             |
-| A preflight check script        | **Open.** Stage 2: instruments, account, currency, feed type, calendar, non-crossed quotes, kill switch.                                                                        |
-| Failure injection               | **Open.** Stage 6: stale data, disconnect, reject, reconciliation mismatch.                                                                                                     |
+| Piece                           | State                                                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                                           |
+| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests.             |
+| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.                    |
+| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                                         |
+| A preflight check script        | **Built and run**, `live/preflight.py`. Stage 1 passed: the halt survives node startup, against a real broker. Stage 2 failed on a TWS setting, not on code.                                |
+| Map catalog ids to broker ids   | **Open, and blocking stage 3.** Research scores `AAPL.XNAS`; the broker trades `AAPL=STK.SMART` on venue `SMART`. Nothing maps between them, so no activation can currently reach an order. |
+| Failure injection               | **Open.** Stage 6: stale data, disconnect, reject, reconciliation mismatch.                                                                                                                 |
 
 ## Open work, grouped by what unblocks it
 
-Seventeen items. Grouped by blocking condition rather than by component, because that is
+Eighteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
 
-### Waiting on the account (3)
+### Waiting on the account (4)
 
 Recorded 2026-09-01. **The operator's to close, not the repository's.** Three items in the
 groups below inherit their block, which is why they sit first.
@@ -155,6 +156,7 @@ groups below inherit their block, which is why they sit first.
 | ----------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Clear the IBKR market-data equity minimum**                     | 10     | Market-data subscriptions are gated on account equity and the account is below the bar. Funds have been added; settlement expected **on or after 2026-09-08**. Until then the only US equity quotes available are the complimentary **delayed, non-consolidated** feed. |
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
+| **Turn off Read-Only API in TWS**                                 | 08     | Global Configuration, API, Settings. With it enabled the execution client fails with IB 321 and no account ever reconciles, which is what blocked paper stage 2 on 2026-09-01. Correct for stage 1, wrong from stage 2 onward.                                          |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
 ### Waiting on a decision (2)

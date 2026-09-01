@@ -78,6 +78,23 @@ What this fork has measured, which is a working example of why the distinction m
 
 Full detail in [`../ROADMAP.md`](../ROADMAP.md).
 
+## The API interface itself
+
+Confirmed by a failed run on 2026-09-01, not from documentation.
+
+- **Read-Only API.** TWS has a *Read-Only API* setting (Global Configuration, API,
+  Settings). With it enabled the execution client fails to connect with IB **321**, and the
+  only visible consequence is that no account and no balances ever reach the cache - the
+  failure text names read-only mode, but the checks that fail are two steps downstream of
+  it. Read-only is the right setting while orders are disabled and the wrong one from the
+  moment an account needs confirming.
+- **Instrument identifiers differ between research and the broker.** The catalog names an
+  instrument by MIC venue, `AAPL.XNAS`; the IB adapter resolves `AAPL=STK.SMART` under
+  `SymbologyMethod.RAW` and reports the venue as `SMART`. An instrument id that a
+  walk-forward scored is therefore **not** an instrument id that can be traded, and nothing
+  currently maps between them. Confirm the broker-side form before assuming an activation
+  can reach an order.
+
 ## Session and connection
 
 - **One session per login.** Opening Client Portal, Account Management or the mobile app

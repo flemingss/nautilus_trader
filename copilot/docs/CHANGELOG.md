@@ -2,6 +2,35 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 1)
+
+### Added
+
+- **`live/preflight.py`** - paper stages one and two, runnable, writing a dated evidence
+  record and exiting non-zero if any check failed, so it can gate the next stage rather than
+  merely inform it.
+
+### Verified against a real broker
+
+- **The risk engine halt survives node startup.** `HALTED` before the start and `HALTED`
+  after it, on paper account `DUT067974` via `172.17.112.1:7497`. Stage one's whole claim,
+  and the thing that makes orders-disabled mode real rather than a comment.
+- Instruments resolve, and the node shuts down cleanly on demand.
+
+### Found
+
+- **TWS had Read-Only API enabled.** The execution client failed with IB **321** and no
+  account or balances ever reached the cache. The two checks that fail say nothing about the
+  cause, because the account is missing two steps downstream of a checkbox in the TWS GUI.
+  The preflight now names the cause in its own record. Stage two is blocked on the setting,
+  not on code.
+- **Research instrument ids are not broker instrument ids.** The catalog names `AAPL.XNAS`;
+  the broker resolves `AAPL=STK.SMART` on venue `SMART`. Nothing in the overlay maps between
+  them, so no activation can currently reach an order. Filed as blocking stage three.
+- **`node.cache` raises once a hosted run owns the node**, exactly as `node.risk_engine`
+  does. Both must be captured before the run. The risk engine handle already was; the cache
+  was not, and the first attempt died on it.
+
 ## 2026-09-01 (paper node)
 
 ### Added
