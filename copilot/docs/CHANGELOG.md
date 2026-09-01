@@ -2,6 +2,41 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (strategy + toolchain)
+
+### Added
+
+- **`copilot/strategies/gap_reversal.py`** - the overnight-gap fade, ported from
+  trade-copilot `libs/setups/gap_reversal.py` (V1-32). Chosen over the RSI reversal and
+  the trend rule because its trigger *is* its quality measure, so it clears the gate's
+  trade-count floor where a filtered RSI trigger did not. 18 tests, most of them pinning
+  the direction discipline the leg split depends on.
+
+### Measured
+
+- **First real verdict**, 20 years of history, three symbols, 39 folds each:
+  AAPL 20/39 folds passed at **+0.0492 R** over 612 trades; MSFT 24/39 at **+0.0906 R**
+  over 571; SPY 22/38 at **+0.0637 R** over 609. All three majority-pass.
+- **Gross of costs**, holdout unspent, and entry fills at the signal bar's close rather
+  than the next open. A first result, not a green light.
+
+### Changed
+
+- **`copilot/ruff.toml` deleted; the ignores now live in `python/pyproject.toml`.** The
+  scoped config never governed these files: the repository's pre-commit runs
+  `ruff --config python/pyproject.toml` over every Python file, `copilot/` included, so
+  the first `make pre-commit` reported **728 errors** on the overlay - mostly upstream's
+  own `tests/**` exemptions failing to match `copilot/tests/**`. Registered as an
+  upstream delta. This removes a documented departure rather than adding one.
+- **`make pre-commit` works.** It needs only `prek`, not the whole `make install-tools`
+  chain that compiles ten cargo tools this fork does not use:
+  `uv tool install prek==$(bash scripts/tool-version.sh prek)`.
+
+### Verified
+
+- The delta register caught its own first real case: changing `python/pyproject.toml`
+  failed `test_every_changed_upstream_file_is_registered` until a row was added.
+
 ## 2026-09-01 (sync policy)
 
 ### Changed
@@ -11,7 +46,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   debugging our own work and someone else's refactor on two moving bases at once.
 - The delta report's conflict line is now stated as a **forecast** for whenever a sync is
   chosen, not a work item. The report also prints the date of the local upstream snapshot,
-  which under this policy ages by design — a conflict verdict computed against a stale ref
+  which under this policy ages by design - a conflict verdict computed against a stale ref
   must not read as current.
 - **Contributing the two IB fixes upstream is deferred.** It remains the cheapest way to
   retire a register entry, but a pull request opens a review front on someone else's
@@ -28,19 +63,19 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 ### Added
 
-- **`copilot/docs/UPSTREAM_DELTA.md`** — the register. One row per upstream file this
+- **`copilot/docs/UPSTREAM_DELTA.md`** - the register. One row per upstream file this
   fork changes: what, why, and what it would cost to drop.
-- **`copilot/tools/upstream_delta.py`** — reports the delta, whether upstream has since
+- **`copilot/tools/upstream_delta.py`** - reports the delta, whether upstream has since
   touched the same files, and whether a merge would conflict today. `--check` exits 1 on
   an unregistered file.
-- **`copilot/tests/test_upstream_delta.py`** — 5 tests. Fails on an unregistered file, a
+- **`copilot/tests/test_upstream_delta.py`** - 5 tests. Fails on an unregistered file, a
   stale row, a path typo, or a maintainer-owned path being touched. Skips cleanly when no
   `upstream` remote is configured, so a fresh clone does not fail.
 
 ### Measured
 
 - Current delta: **2 files, 52 lines**, both in the IB adapter.
-- `historical/client.rs` is **quiet** — upstream has not touched it since our merge base.
+- `historical/client.rs` is **quiet** - upstream has not touched it since our merge base.
 - `data/core.rs` is **churning**: upstream changed +160/-64 against our +16/-12, and
   **a merge already conflicts** one sync in, in the `subscriptions` field declaration.
   Upstream moved the adapter to `parking_lot` and standardised task lifecycles
@@ -50,7 +85,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 - The delta check originally compared only `base..HEAD`, so it stayed silent through an
   entire editing session and only fired after a change was committed. It now counts
-  working-tree, index and untracked changes too — the useful moment to be told a file
+  working-tree, index and untracked changes too - the useful moment to be told a file
   needs a row is while it is being edited.
 - The register parser read every table in the document, registering `quiet`, `touched`
   and `churning` from the risk legend as if they were paths. It now reads only rows under
@@ -72,23 +107,23 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   are a test fixture and the risk guard, so the gate, engine, sizing and breakers all
   currently have nothing to evaluate. The status tables read as near-complete because every
   stage that *has* a component was marked ready.
-- **The paper-run prerequisites were incomplete.** Both listed items — a multi-symbol spread
-  calibration and a ported walk-forward gate — have landed, which read as "unblocked". The
+- **The paper-run prerequisites were incomplete.** Both listed items - a multi-symbol spread
+  calibration and a ported walk-forward gate - have landed, which read as "unblocked". The
   list never named a strategy, without which there is nothing to validate or deploy.
 
 ## 2026-09-01 (later)
 
 ### Added
 
-- **`copilot/data/marketstack.py`** — Marketstack EOD client and normalizer, ported
+- **`copilot/data/marketstack.py`** - Marketstack EOD client and normalizer, ported
   from trade-copilot `services/ingestion/marketstack.py`. Pages to exhaustion, retries
   transient failures only, and rejects rows with the reason they failed rather than
   dropping them.
-- **`copilot/data/calendar.py`** — rule-based US equity trading calendar. No new
+- **`copilot/data/calendar.py`** - rule-based US equity trading calendar. No new
   dependency; validated against 15,851 real vendor rows rather than by assertion.
-- **`copilot/data/catalog.py`** — Nautilus `Bar` conversion and `ParquetDataCatalog`
+- **`copilot/data/catalog.py`** - Nautilus `Bar` conversion and `ParquetDataCatalog`
   read/write, with an exactness guard on every converted price.
-- **`copilot/data/backfill.py`** — operator CLI. Reports the rejection breakdown and
+- **`copilot/data/backfill.py`** - operator CLI. Reports the rejection breakdown and
   fails the run past `--max-rejection-ratio` rather than writing a partial history.
 - **74 tests** across ingestion, the calendar and the catalog bridge.
 
@@ -103,7 +138,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   2020-08-31 reads **+3.39%** off disk, not -75%.
 - **Marketstack emits bars on days the market was closed.** SPY has full bars for
   Thanksgiving 2023 and Good Friday 2024.
-- **`price_currency` is unreliable** — MSFT's single continuous USD series is tagged
+- **`price_currency` is unreliable** - MSFT's single continuous USD series is tagged
   `USD`, `usd`, `EUR` and nothing, across 5,283 rows.
 - **Price precision 4 is exact**: no more than four decimal places in 63,404 values.
 
@@ -124,29 +159,29 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 - End to end on real market data: catalog -> Nautilus replay -> purged walk-forward.
   1,000 AAPL bars, five folds, 62 scored trades per fold, full tearsheets. The driving
-  strategy is the suite's coin-flip, so the verdict is meaningless — the machinery is
+  strategy is the suite's coin-flip, so the verdict is meaningless - the machinery is
   what was proven.
 
 ## 2026-09-01
 
 ### Added
 
-- **`copilot/calibration/spread_snapshot.py`** — measures real quoted spreads from
+- **`copilot/calibration/spread_snapshot.py`** - measures real quoted spreads from
   Interactive Brokers and writes a JSON record per run. Read-only: it constructs no
   execution client, so it cannot place an order. Configurable symbols, duration,
   market data type and symbology.
-- **`copilot/risk/protections.py`** — account-wide rolling-window circuit breakers
+- **`copilot/risk/protections.py`** - account-wide rolling-window circuit breakers
   ported from trade-copilot `libs/risk/protections.py` (ADR-0025): consecutive
   stop-outs, peak-to-trough realised drawdown, cooldown, longest-breach-wins. Pure
   functions, no I/O or clock. Contract types converted from pydantic to stdlib
   dataclasses so the overlay adds no dependency.
-- **`copilot/risk/guard.py`** — wires the breakers into a running node. Cancels
+- **`copilot/risk/guard.py`** - wires the breakers into a running node. Cancels
   working orders account-wide, flattens configured instruments, publishes a signal.
   Reactive rather than engine-enforced; see the `set_trading_state` decision in ROADMAP.
-- **`copilot/validation/types.py`** — `DailyBar`, `ClosedTrade`, `BacktestRunResult`
+- **`copilot/validation/types.py`** - `DailyBar`, `ClosedTrade`, `BacktestRunResult`
   and `expectancy_r`, vendored so the overlay does not depend on trade-copilot being
   on the path.
-- **`copilot/validation/nautilus_replay.py`** — a `Replay` backed by a Nautilus
+- **`copilot/validation/nautilus_replay.py`** - a `Replay` backed by a Nautilus
   `BacktestEngine`, matching the signature the trade-copilot gate injects. Includes
   `RiskAmountRegistry`, the contract by which a strategy reports what each position
   put at risk.
@@ -155,7 +190,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 ### Measured
 
 - AAPL median quoted spread **0.6381 bps full / 0.3190 bps per side** over 654s of
-  delayed IB quotes (111 usable), against an incumbent model of 5 bps/side — roughly
+  delayed IB quotes (111 usable), against an incumbent model of 5 bps/side - roughly
   **15.7x** overstated. Distribution has a tail: p95 2.87 bps full, max 5.74.
 - A first 148s / 24-quote run gave 1.2753 bps and 7.8x, so **sample size moved the
   result by 2x**. The short run is superseded and its artifact discarded; do not set
@@ -171,7 +206,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 - IB market data release forms completed. Delayed quotes now work for MSFT and SPY,
   which previously returned no data and no error. Realtime quotes and US equity
-  historical bars are unchanged — still no data and still IB 2188 respectively, so a
+  historical bars are unchanged - still no data and still IB 2188 respectively, so a
   paid subscription is still required for both. Recheck after the next trading session
   before concluding a purchase has not landed.
 
@@ -181,8 +216,8 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   The code gives each subscription its own `child_token()` and logs per-task errors without
   propagating them, so that mechanism does not exist. It was inferred from correlated
   observations and stated with more confidence than the evidence supported. The underlying
-  observation — quotes stopping when an unpermissioned subscription is added to the same
-  instrument — remains real and unexplained, most likely IB-side.
+  observation - quotes stopping when an unpermissioned subscription is added to the same
+  instrument - remains real and unexplained, most likely IB-side.
 
 ### Known issues, not fixed
 
@@ -195,6 +230,6 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 ### Repo hygiene
 
-- `trade-copilot/` added to `.git/info/exclude` — local only, so it produces no diff
+- `trade-copilot/` added to `.git/info/exclude` - local only, so it produces no diff
   against upstream. It is a 376MB nested git repository containing a real `.env`; it
   must never be committed.

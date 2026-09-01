@@ -5,7 +5,7 @@ Selects a **stability plateau, not a peak**, and vetoes candidates whose neighbo
 fall off sharply.
 
 The distinction is the whole point. The peak of a noisy surface is usually the
-luckiest sample, not the best rule — pick it and the out-of-sample result reverts. A
+luckiest sample, not the best rule - pick it and the out-of-sample result reverts. A
 plateau is a region where the neighbours also work, which is what survives contact
 with data the search never saw.
 
@@ -14,7 +14,7 @@ Three mechanisms, in the order they run:
 1. **Eligibility.** A candidate whose sample is too small has an expectancy that means
    nothing; it is rejected before it can win on noise.
 2. **Cliff veto.** A candidate any of whose neighbours falls off sharply is rejected
-   however good it looks itself — that shape is the signature of a fit to noise, not
+   however good it looks itself - that shape is the signature of a fit to noise, not
    of an edge.
 3. **Plateau score.** Survivors are ranked by the **worst** score in their own
    neighbourhood (themselves included), so a candidate is only as good as the weakest
@@ -33,19 +33,25 @@ Port note
 ---------
 The original typed its candidates as a pydantic ``StrategyParameters`` subclass and
 keyed them by that contract's ``version`` property. Here a parameter set is whatever
-``ParameterGrid.factory`` returns — a plain ``dict`` by default — and identity is
+``ParameterGrid.factory`` returns - a plain ``dict`` by default - and identity is
 derived from the values themselves. The selection algorithm is unchanged.
+
 """
 
 from __future__ import annotations
 
 import itertools
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from collections.abc import Callable
+from collections.abc import Mapping
+from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import field
 from decimal import Decimal
 from typing import Any
 
-from copilot.validation.types import BacktestRunResult, DailyBar
+from copilot.validation.types import BacktestRunResult
+from copilot.validation.types import DailyBar
+
 
 # A sample this small cannot support an expectancy; the default is deliberately blunt
 # rather than a statistical test, because the honest answer at n=8 is "run it over more
@@ -67,6 +73,7 @@ def parameter_version(values: Mapping[str, Any]) -> str:
     Replaces the original contract's ``version`` property. Sorted so that dictionary
     insertion order cannot change a candidate's identity, which would make the search
     non-deterministic in a way that is very hard to see.
+
     """
     return "|".join(f"{name}={values[name]!r}" for name in sorted(values))
 
@@ -79,31 +86,45 @@ class ParameterGrid:
     The order defines adjacency: ``stop_atr=[2, 3, 4]`` makes 3 a neighbour of both 2
     and 4, and 2 not a neighbour of 4. Supply values sorted, or adjacency stops meaning
     what it should.
+
     """
 
     axes_by_name: Mapping[str, Sequence[Any]] = field(default_factory=dict)
     base: Mapping[str, Any] = field(default_factory=dict)
-    """Values every candidate starts from, before the searched axes are applied.
+    """
+    Values every candidate starts from, before the searched axes are applied.
 
     A strategy's *unsearched* parameters are part of its identity, not placeholders for
     the search to fill in. Searched axes win over ``base``, so supplying a base can
     never quietly narrow a search.
+
     """
     factory: Callable[..., Any] = dict
-    """Builds a parameter set from keyword values. Defaults to ``dict``. A factory that
-    raises ``ValueError`` for an invalid combination has that candidate skipped."""
+    """
+    Builds a parameter set from keyword values.
+
+    Defaults to ``dict``. A factory that
+    raises ``ValueError`` for an invalid combination has that candidate skipped.
+
+    """
 
     @classmethod
     def of(cls, **axes: Sequence[Any]) -> ParameterGrid:
-        """Explicit axes; an axis left out is not searched."""
+        """
+        Explicit axes; an axis left out is not searched.
+        """
         return cls(axes_by_name={k: v for k, v in axes.items() if v})
 
     def with_base(self, base: Mapping[str, Any]) -> ParameterGrid:
-        """Return the same search, starting from ``base``."""
+        """
+        Return the same search, starting from ``base``.
+        """
         return ParameterGrid(axes_by_name=self.axes_by_name, base=dict(base), factory=self.factory)
 
     def axes(self) -> dict[str, Sequence[Any]]:
-        """Only the parameters this grid actually varies."""
+        """
+        Only the parameters this grid actually varies.
+        """
         return {name: values for name, values in self.axes_by_name.items() if values}
 
     def expand(self) -> tuple[tuple[Any, dict[str, int], str], ...]:
@@ -112,6 +133,7 @@ class ParameterGrid:
 
         Combinations the factory rejects are skipped rather than raised: a grid is a
         sweep of intent, and a few invalid corners are expected, not a caller error.
+
         """
         axes = self.axes()
         if not axes:
@@ -139,24 +161,37 @@ class ParameterGrid:
 
 @dataclass(frozen=True)
 class CandidateResult:
-    """One parameter set's in-sample outcome."""
+    """
+    One parameter set's in-sample outcome.
+    """
 
     parameters: Any
     coordinate: Mapping[str, int]
     version: str
     trades: int
     score: Decimal
-    """The objective — expectancy per trade in R by default. Zero when there are no
-    trades, which the eligibility gate rejects anyway."""
+    """
+    The objective - expectancy per trade in R by default.
+
+    Zero when there are no trades, which the eligibility gate rejects anyway.
+
+    """
     net: Decimal
-    """Total realised P&L in currency. Reported, never optimised on: it is what the run
+    """
+    Total realised P&L in currency.
+
+    Reported, never optimised on: it is what the run
     made, while ``score`` is what the run is judged by. Keeping the currency figure is
-    what makes a cost analysis possible at all."""
+    what makes a cost analysis possible at all.
+
+    """
     wins: int
 
     @property
     def win_rate(self) -> Decimal:
-        """Share of this candidate's trades that made money."""
+        """
+        Share of this candidate's trades that made money.
+        """
         if not self.trades:
             return Decimal(0)
         return Decimal(self.wins) / Decimal(self.trades)
@@ -168,8 +203,9 @@ class InSampleReport:
     Everything the search saw, not only what it chose.
 
     Rejections carry their reason so a record can show *why* a better-scoring set was
-    passed over — the audit that makes "we did not pick the peak" a checkable claim
+    passed over - the audit that makes "we did not pick the peak" a checkable claim
     rather than an assertion.
+
     """
 
     candidates: tuple[CandidateResult, ...]
@@ -179,7 +215,9 @@ class InSampleReport:
 
     @property
     def peak(self) -> CandidateResult | None:
-        """The highest raw score, selected or not — the set a naive search takes."""
+        """
+        The highest raw score, selected or not - the set a naive search takes.
+        """
         eligible = [c for c in self.candidates if c.trades]
         if not eligible:
             return None
@@ -187,7 +225,9 @@ class InSampleReport:
 
     @property
     def selected_the_peak(self) -> bool:
-        """Whether the search landed on the raw peak, which it exists to avoid."""
+        """
+        Whether the search landed on the raw peak, which it exists to avoid.
+        """
         peak = self.peak
         return (
             peak is not None and self.selected is not None and peak.version == self.selected.version
@@ -196,11 +236,12 @@ class InSampleReport:
 
 def expectancy_r(result: BacktestRunResult) -> Decimal:
     """
-    Mean R per closed trade — the scale-free objective.
+    Mean R per closed trade - the scale-free objective.
 
     R is ``realized_pnl / risk_amount``: what the trade made per unit of what it put at
     risk. Scoring dollars instead would put each symbol's price level inside its score
     and leave no two symbols comparable.
+
     """
     if not result.trades:
         return Decimal(0)
@@ -214,7 +255,9 @@ expectancy = expectancy_r
 
 
 def _are_neighbours(left: Mapping[str, int], right: Mapping[str, int]) -> bool:
-    """Differ in exactly one axis, by exactly one step along it."""
+    """
+    Differ in exactly one axis, by exactly one step along it.
+    """
     if left.keys() != right.keys():
         return False
     diffs = [abs(left[name] - right[name]) for name in left]
@@ -237,13 +280,14 @@ def search_in_sample(
     Replay ``bars`` for every grid point and select a stability plateau.
 
     Cost is one full replay per grid point, so a six-axis grid is expensive by
-    construction — that is the nature of the search, not an inefficiency to hide. Size
+    construction - that is the nature of the search, not an inefficiency to hide. Size
     the grid against the bar count being replayed.
 
     ``replay`` is injected because the selection rule is the thing worth testing, and
     it should be testable against a controlled score surface rather than against
     whatever a real engine produces. It is required here rather than defaulted, since
     this overlay has no single canonical replay.
+
     """
     expanded = grid.expand()
     candidates: list[CandidateResult] = []
@@ -277,7 +321,7 @@ def search_in_sample(
     for candidate in candidates:
         own = neighbours[candidate.version]
         window = [candidate.score, *(n.score for n in own)]
-        # The floor of the neighbourhood, not its mean — see the module docstring.
+        # The floor of the neighbourhood, not its mean - see the module docstring.
         plateau_scores[candidate.version] = min(window)
 
         if candidate.trades < min_trades:
@@ -287,7 +331,7 @@ def search_in_sample(
             continue
         if len(expanded) > 1 and not own:
             # An isolated point cannot demonstrate a plateau, so it cannot be selected
-            # on stability grounds — only on being the peak, which is exactly what this
+            # on stability grounds - only on being the peak, which is exactly what this
             # search exists to avoid.
             rejections[candidate.version] = "no_neighbours: stability is undemonstrable"
             continue

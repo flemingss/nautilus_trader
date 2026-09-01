@@ -1,4 +1,4 @@
-# copilot — downstream overlay
+# copilot - downstream overlay
 
 Fork-local capability that NautilusTrader does not ship, carried in one directory so
 this fork stays easy to keep current with upstream.
@@ -11,7 +11,7 @@ file that can conflict on the next merge, so overlay code lives entirely under
 upstream file**, so a `git merge upstream/develop` cannot conflict with the overlay
 itself.
 
-The fork *as a whole* does carry upstream changes — currently two files in the IB
+The fork *as a whole* does carry upstream changes - currently two files in the IB
 adapter. Every one is listed in [`docs/UPSTREAM_DELTA.md`](docs/UPSTREAM_DELTA.md) with
 the reason and what it would cost to drop, and a test fails if a change appears without
 a row:
@@ -20,28 +20,27 @@ a row:
 python -m copilot.tools.upstream_delta --fetch    # report + conflict risk at next sync
 ```
 
-`trade-copilot/` is excluded from git via `.git/info/exclude` — local only, so it adds
+`trade-copilot/` is excluded from git via `.git/info/exclude` - local only, so it adds
 no diff against upstream. Verify with `git status` before any commit.
 
 ## For agents
 
 [`AGENTS.md`](AGENTS.md) in this directory records every departure from the repository's
-root process, with the reasoning for each. Read it alongside the root `AGENTS.md` — it
+root process, with the reasoning for each. Read it alongside the root `AGENTS.md` - it
 supplements those rules rather than replacing them.
 
 ## What is here
 
-| Path | Purpose |
-| --- | --- |
-| `calibration/` | Measure real quoted spreads from IB to calibrate the backtest cost model |
-| `data/` | Marketstack EOD ingestion, a US trading calendar, and the Nautilus catalog bridge |
-| `risk/` | Account-wide rolling-window circuit breakers (consecutive stops, drawdown) |
-| `validation/` | Types and a Nautilus-backed `Replay` for the walk-forward gate |
-| `tests/` | Tests for all of the above |
-| `tools/` | Fork maintenance — the upstream delta reporter |
-| `docs/` | **`ROADMAP.md` is the central record** — kill chain, open work, and the detail behind both. Plus the changelog and fusion plan |
-| `AGENTS.md` | Fork-local process departures and their reasoning |
-| `ruff.toml` | Lint config, scoped here so upstream files stay untouched |
+| Path           | Purpose                                                                                                                        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `calibration/` | Measure real quoted spreads from IB to calibrate the backtest cost model                                                       |
+| `data/`        | Marketstack EOD ingestion, a US trading calendar, and the Nautilus catalog bridge                                              |
+| `risk/`        | Account-wide rolling-window circuit breakers (consecutive stops, drawdown)                                                     |
+| `validation/`  | Types and a Nautilus-backed `Replay` for the walk-forward gate                                                                 |
+| `tests/`       | Tests for all of the above                                                                                                     |
+| `tools/`       | Fork maintenance - the upstream delta reporter                                                                                 |
+| `docs/`        | **`ROADMAP.md` is the central record** - kill chain, open work, and the detail behind both. Plus the changelog and fusion plan |
+| `AGENTS.md`    | Fork-local process departures and their reasoning                                                                              |
 
 ## Provenance
 

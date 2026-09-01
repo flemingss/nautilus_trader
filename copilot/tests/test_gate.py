@@ -1,28 +1,34 @@
-"""Tests for the ported validation gate.
+"""
+Tests for the ported validation gate.
 
 The replay is injected throughout, so these exercise the *selection and verdict rules*
-against a controlled score surface rather than against whatever a real engine happens
-to produce. That is the point of the injection seam.
+against a controlled score surface rather than against whatever a real engine happens to
+produce. That is the point of the injection seam.
+
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 from itertools import pairwise
 
 import pytest
-from copilot.validation.insample import (
-    ParameterGrid,
-    expectancy_r,
-    search_in_sample,
-)
-from copilot.validation.tearsheet import (
-    deflated_pass_probability,
-    tearsheet_for,
-)
-from copilot.validation.types import BacktestRunResult, ClosedTrade, DailyBar, Direction
-from copilot.validation.walkforward import build_folds, walk_forward
+
+from copilot.validation.insample import ParameterGrid
+from copilot.validation.insample import expectancy_r
+from copilot.validation.insample import search_in_sample
+from copilot.validation.tearsheet import deflated_pass_probability
+from copilot.validation.tearsheet import tearsheet_for
+from copilot.validation.types import BacktestRunResult
+from copilot.validation.types import ClosedTrade
+from copilot.validation.types import DailyBar
+from copilot.validation.types import Direction
+from copilot.validation.walkforward import build_folds
+from copilot.validation.walkforward import walk_forward
+
 
 START = datetime(2026, 1, 1, tzinfo=UTC)
 
@@ -45,7 +51,9 @@ def bars(n: int) -> list[DailyBar]:
 
 
 def trade(day: int, r: str, *, risk: str = "100") -> ClosedTrade:
-    """A closed trade whose r_multiple is exactly ``r``."""
+    """
+    A closed trade whose r_multiple is exactly ``r``.
+    """
     risk_amount = Decimal(risk)
     when = START + timedelta(days=day)
     return ClosedTrade(
@@ -175,7 +183,7 @@ class TestInSampleSelection:
 
     def test_a_lone_candidate_is_selectable(self):
         # With one candidate there is no surface to overfit to, so the isolation rule
-        # does not apply — the guard is `len(expanded) > 1` for exactly this reason.
+        # does not apply - the guard is `len(expanded) > 1` for exactly this reason.
         def factory(**values: object):
             if values["x"] != 2:
                 raise ValueError("invalid corner")

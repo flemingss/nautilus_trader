@@ -18,7 +18,7 @@ same gate run on this replay is scored against a materially better cost model.
 Scope
 -----
 This builds and runs the engine and maps its positions onto ``ClosedTrade``. It does
-**not** supply the strategy — that is the caller's, because the parameter set under
+**not** supply the strategy - that is the caller's, because the parameter set under
 search is exactly what varies per gate candidate. Provide a ``StrategyFactory`` that
 turns one parameter set into a configured Nautilus ``Strategy``.
 
@@ -30,64 +30,76 @@ report it. Any strategy used with this replay must publish its per-position risk
 through :class:`RiskAmountRegistry`, or every trade scores ``r_multiple == 0`` and the
 gate silently sees no edge anywhere. :func:`run_nautilus_replay` raises rather than
 returning that silently.
+
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from collections.abc import Callable
+from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import field
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
-from typing import Any, Protocol
+from typing import Any
+from typing import Protocol
 
-from nautilus_trader.backtest import BacktestEngine, BacktestEngineConfig
-from nautilus_trader.model import (
-    AccountType,
-    Bar,
-    BarType,
-    Money,
-    OmsType,
-    OrderSide,
-    TraderId,
-    Venue,
-)
-
-from copilot.validation.types import (
-    BacktestRunResult,
-    ClosedTrade,
-    DailyBar,
-    Direction,
-)
+from copilot.validation.types import BacktestRunResult
+from copilot.validation.types import ClosedTrade
+from copilot.validation.types import DailyBar
+from copilot.validation.types import Direction
+from nautilus_trader.backtest import BacktestEngine
+from nautilus_trader.backtest import BacktestEngineConfig
+from nautilus_trader.model import AccountType
+from nautilus_trader.model import Bar
+from nautilus_trader.model import BarType
+from nautilus_trader.model import Money
+from nautilus_trader.model import OmsType
+from nautilus_trader.model import OrderSide
+from nautilus_trader.model import TraderId
+from nautilus_trader.model import Venue
 
 
 class RiskAmountRegistry:
     """
     Per-run record of what each position put at risk.
 
-    A plain dict behind a named type, because the coupling it represents — the
-    strategy must tell the replay what it risked — is easy to forget and expensive to
-    get wrong, and a named type is somewhere to say so.
+    A plain dict behind a named type, because the coupling it represents - the strategy
+    must tell the replay what it risked - is easy to forget and expensive to get wrong,
+    and a named type is somewhere to say so.
+
     """
 
     def __init__(self) -> None:
-        """Start with nothing recorded."""
+        """
+        Start with nothing recorded.
+        """
         self._by_position_id: dict[str, Decimal] = {}
 
     def record(self, position_id: str, risk_amount: Decimal) -> None:
-        """Note what one position put at risk when it opened."""
+        """
+        Note what one position put at risk when it opened.
+        """
         self._by_position_id[str(position_id)] = Decimal(risk_amount)
 
     def get(self, position_id: str) -> Decimal | None:
-        """Return recorded risk for a position, or ``None`` if the strategy never said."""
+        """
+        Return recorded risk for a position, or ``None`` if the strategy never said.
+        """
         return self._by_position_id.get(str(position_id))
 
     def __len__(self) -> int:
-        """How many positions reported their risk."""
+        """
+        How many positions reported their risk.
+        """
         return len(self._by_position_id)
 
 
 class StrategyFactory(Protocol):
-    """Builds a configured strategy for one parameter set."""
+    """
+    Builds a configured strategy for one parameter set.
+    """
 
     def __call__(
         self,
@@ -97,21 +109,31 @@ class StrategyFactory(Protocol):
         bar_type: BarType,
         risk_registry: RiskAmountRegistry,
     ) -> Any:
-        """Return a strategy configured for ``parameters``."""
+        """
+        Return a strategy configured for ``parameters``.
+        """
         ...
 
 
 @dataclass(frozen=True)
 class ReplayVenue:
-    """Venue setup for the simulated exchange."""
+    """
+    Venue setup for the simulated exchange.
+    """
 
     name: str | None = None
-    """Defaults to the instrument's own venue. A venue that does not match the
+    """
+    Defaults to the instrument's own venue.
+
+    A venue that does not match the
     instrument's is rejected by the engine at ``add_instrument``, so guessing a name
-    here can only ever be wrong."""
+    here can only ever be wrong.
+
+    """
 
     oms_type: Any = OmsType.HEDGING
-    """HEDGING, not NETTING, and the gate's scoring depends on it.
+    """
+    HEDGING, not NETTING, and the gate's scoring depends on it.
 
     Under NETTING, Nautilus reuses one position id per instrument and strategy, so
     ``cache.positions_closed()`` holds a single position object that is reopened and
@@ -126,6 +148,7 @@ class ReplayVenue:
 
     A strategy that genuinely wants netting semantics should net its own exposure;
     the *record* of what was traded has to stay per round trip for R to mean anything.
+
     """
     account_type: Any = AccountType.MARGIN
     starting_balance: str = "100_000"
@@ -144,9 +167,10 @@ def bars_to_nautilus(
     """
     Convert vendored ``DailyBar`` records into Nautilus ``Bar`` objects.
 
-    Prices and quantities go through the instrument's own precision so the engine
-    sees values it can represent exactly, rather than floats that round differently
-    from the venue.
+    Prices and quantities go through the instrument's own precision so the engine sees
+    values it can represent exactly, rather than floats that round differently from the
+    venue.
+
     """
     out: list[Bar] = []
     for daily in sorted(daily_bars, key=lambda b: b.closed_at):
@@ -176,7 +200,9 @@ def run_nautilus_replay(
     venue: ReplayVenue | None = None,
     require_risk_amounts: bool = True,
 ) -> BacktestRunResult:
-    """Run one parameter set over ``daily_bars`` and return scoreable trades."""
+    """
+    Run one parameter set over ``daily_bars`` and return scoreable trades.
+    """
     if not daily_bars:
         return BacktestRunResult(diagnostics={"reason": "no bars supplied"})
 
@@ -242,7 +268,9 @@ def _closed_trades(
     *,
     require_risk_amounts: bool,
 ) -> list[ClosedTrade]:
-    """Map the engine's closed positions onto the gate's scoring type."""
+    """
+    Map the engine's closed positions onto the gate's scoring type.
+    """
     trades: list[ClosedTrade] = []
     missing: list[str] = []
 
@@ -304,6 +332,7 @@ def make_replay(
 
     The result matches ``Callable[[Sequence[DailyBar], StrategyParameters],
     BacktestRunResult]`` and can be passed straight to ``walk_forward(replay=...)``.
+
     """
 
     def _replay(bars: Sequence[DailyBar], parameters: Any) -> BacktestRunResult:

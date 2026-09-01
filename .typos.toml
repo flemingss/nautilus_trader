@@ -8,6 +8,7 @@ NoiceHax = "NoiceHax"
 
 [default.extend-words]
 # Industry standard abbreviations and technical terms
+CPY = "CPY" # Ruff rule prefix for flake8-copyright (CPY001)
 CMO = "CMO" # Chande Momentum Oscillator
 BSE = "BSE" # Bombay Stock Exchange
 Pn = "Pn" # Part of PnL (Profit and Loss)

@@ -1,16 +1,17 @@
 """
 Probe what market data this IB account can actually read.
 
-Entitlements change — a release form, a subscription purchase, or a trading-day
-boundary can each move them — and the failure modes are quiet: an unentitled
-subscription returns no data and logs no error, which reads exactly like a code fault.
-This answers the question directly so a session can start from fact rather than from
-last week's assumption.
+Entitlements change - a release form, a subscription purchase, or a trading-day boundary
+can each move them - and the failure modes are quiet: an unentitled subscription returns
+no data and logs no error, which reads exactly like a code fault. This answers the
+question directly so a session can start from fact rather than from last week's
+assumption.
 
 Read-only. Constructs no execution client, so it cannot place an order.
 
-Run it after any change to the IB account, and at the start of any session that
-depends on data access.
+Run it after any change to the IB account, and at the start of any session that depends
+on data access.
+
 """
 
 from __future__ import annotations
@@ -24,17 +25,20 @@ from dataclasses import dataclass
 from nautilus_trader.adapters import interactive_brokers as ib
 from nautilus_trader.model import InstrumentId
 
+
 HOST = os.getenv("IB_V2_HOST", "172.17.112.1")
 PORT = int(os.getenv("IB_V2_PORT", "7497"))
 
-# A past weekday, so historical requests are not asking for "up to now" — which is a
+# A past weekday, so historical requests are not asking for "up to now" - which is a
 # separate failure mode from lacking the entitlement itself.
 DEFAULT_END = dt.datetime(2026, 8, 28, 16, 0, tzinfo=dt.UTC)
 
 
 @dataclass(frozen=True)
 class Probe:
-    """One instrument to ask about, and how to ask."""
+    """
+    One instrument to ask about, and how to ask.
+    """
 
     label: str
     instrument_id: str
@@ -47,7 +51,7 @@ class Probe:
 # feeds on this account cover FX (IDEALPRO), US non-consolidated equities, bonds,
 # Korea equities, alternative European equities and ZEROHASH crypto.
 PROBES = (
-    # Consolidated US equities — the gap. SMART-routed historical needs every
+    # Consolidated US equities - the gap. SMART-routed historical needs every
     # exchange the name trades on, which non-consolidated (IEX-only) does not cover.
     Probe("US equity SMART", "AAPL.NASDAQ", "1-HOUR-LAST"),
     Probe("US ETF SMART", "SPY.ARCA", "1-HOUR-LAST"),
@@ -68,11 +72,13 @@ async def probe_historical(
     client_id: int,
     end: dt.datetime,
 ) -> str:
-    """Return a one-line verdict for one instrument under one market data type."""
+    """
+    Return a one-line verdict for one instrument under one market data type.
+    """
     try:
         iid = InstrumentId.from_str(probe.instrument_id)
-    except Exception as exc:  # noqa: BLE001 - reported, not raised
-        return f"bad instrument id: {exc}"
+    except Exception as e:  # noqa: BLE001 - reported, not raised
+        return f"bad instrument id: {e}"
 
     provider_config = ib.InteractiveBrokersInstrumentProviderConfig(
         symbology_method=getattr(ib.SymbologyMethod, probe.symbology),
@@ -103,14 +109,16 @@ async def probe_historical(
             use_rth=True,
             timeout=45,
         )
-    except Exception as exc:  # noqa: BLE001 - the error text is the finding
-        return f"FAIL: {str(exc).splitlines()[0][:76]}"
+    except Exception as e:  # noqa: BLE001 - the error text is the finding
+        return f"FAIL: {str(e).splitlines()[0][:76]}"
     else:
         return f"OK - {len(bars)} bars" if bars else "instrument OK, but zero bars"
 
 
 async def main() -> None:
-    """Probe every instrument under each requested market data type."""
+    """
+    Probe every instrument under each requested market data type.
+    """
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--market-data-types",

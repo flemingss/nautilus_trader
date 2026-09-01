@@ -1,28 +1,37 @@
-"""End-to-end test of the Nautilus-backed ``Replay``.
+"""
+End-to-end test of the Nautilus-backed ``Replay``.
 
 Runs a real ``BacktestEngine`` over synthetic bars with a deliberately trivial
-strategy, so the thing under test is the *plumbing* — bar conversion, the risk
-registry contract, and the position-to-``ClosedTrade`` mapping — rather than any
+strategy, so the thing under test is the *plumbing* - bar conversion, the risk
+registry contract, and the position-to-``ClosedTrade`` mapping - rather than any
 trading idea.
+
 """
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC
+from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
-from copilot.validation.nautilus_replay import (
-    ReplayVenue,
-    RiskAmountRegistry,
-    bars_to_nautilus,
-    make_replay,
-    run_nautilus_replay,
-)
-from copilot.validation.types import DailyBar, Direction, expectancy_r
-from nautilus_trader.model import BarType, OmsType, OrderSide
+
+from copilot.validation.nautilus_replay import ReplayVenue
+from copilot.validation.nautilus_replay import RiskAmountRegistry
+from copilot.validation.nautilus_replay import bars_to_nautilus
+from copilot.validation.nautilus_replay import make_replay
+from copilot.validation.nautilus_replay import run_nautilus_replay
+from copilot.validation.types import DailyBar
+from copilot.validation.types import Direction
+from copilot.validation.types import expectancy_r
+from nautilus_trader.model import BarType
+from nautilus_trader.model import OmsType
+from nautilus_trader.model import OrderSide
 from nautilus_trader.testkit.providers import TestInstrumentProvider
-from nautilus_trader.trading import Strategy, StrategyConfig
+from nautilus_trader.trading import Strategy
+from nautilus_trader.trading import StrategyConfig
+
 
 INSTRUMENT = TestInstrumentProvider.default_fx_ccy("AUD/USD")
 BAR_TYPE = BarType.from_str(f"{INSTRUMENT.id}-1-DAY-LAST-EXTERNAL")
@@ -48,7 +57,9 @@ def make_bars(closes: list[str]) -> list[DailyBar]:
 
 
 class _FlipFlopConfig(StrategyConfig):
-    """Custom fields follow the pyo3 subclassing pattern used by the tutorials."""
+    """
+    Custom fields follow the pyo3 subclassing pattern used by the tutorials.
+    """
 
     _CUSTOM_FIELDS = ("instrument_id", "bar_type", "trade_size", "stop_distance")
 
@@ -73,7 +84,9 @@ class _FlipFlopConfig(StrategyConfig):
 
 
 class _FlipFlop(Strategy):
-    """Opens on one bar and closes on the next, recording what it risked."""
+    """
+    Opens on one bar and closes on the next, recording what it risked.
+    """
 
     def __init__(self, config: _FlipFlopConfig) -> None:
         super().__init__(config)
@@ -179,7 +192,7 @@ class TestReplay:
         `_FlipFlop` alternates in and out, so eight bars are four complete round trips.
         Under `OmsType.NETTING` Nautilus reuses a single position id per instrument and
         strategy, `cache.positions_closed()` keeps one object, and only the final round
-        trip survives to be scored — while everything else about the run looks healthy.
+        trip survives to be scored - while everything else about the run looks healthy.
 
         Asserting an exact count rather than "at least one" is the whole point. The
         original test asserted non-emptiness and passed throughout.
@@ -205,9 +218,10 @@ class TestReplay:
         """
         Pins the behaviour the default exists to avoid.
 
-        Not a wish that NETTING worked — a record of what it actually does, so that
+        Not a wish that NETTING worked - a record of what it actually does, so that
         anyone who sets it deliberately can see the cost in the test suite rather than
         in a walk-forward run that quietly selects nothing on every fold.
+
         """
         bars = make_bars(
             ["0.7000", "0.7100", "0.7050", "0.7150", "0.7100", "0.7200", "0.7150", "0.7250"],
@@ -223,7 +237,9 @@ class TestReplay:
         assert len(netting.trades) == 1
 
     def test_the_venue_defaults_to_the_instruments_own(self):
-        """A venue name that does not match the instrument is rejected by the engine."""
+        """
+        A venue name that does not match the instrument is rejected by the engine.
+        """
         bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150"])
         result = run_nautilus_replay(
             bars,
@@ -281,7 +297,8 @@ class TestReplay:
 
 
 class TestGateOnNautilusReplay:
-    """The fusion itself: trade-copilot's gate driven by a Nautilus BacktestEngine.
+    """
+    The fusion itself: trade-copilot's gate driven by a Nautilus BacktestEngine.
 
     This is what the whole overlay exists to make possible, so it is worth an
     end-to-end check rather than trusting that two tested halves compose.
@@ -317,7 +334,7 @@ class TestGateOnNautilusReplay:
 
         assert report.folds, "the series should support at least one fold"
         assert report.evaluated, "the search should select something to test"
-        # The verdict itself is not asserted — this rule has no edge and the point is
+        # The verdict itself is not asserted - this rule has no edge and the point is
         # that the machinery produces a verdict at all, not which one.
         assert isinstance(report.majority_passed, bool)
         assert report.tearsheet.trades >= 0

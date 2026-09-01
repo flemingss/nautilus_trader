@@ -4,7 +4,7 @@ Read this **in addition to** the repository root `AGENTS.md`, not instead of it.
 rules still apply; this file records where fork-local work deliberately departs from
 them, and why.
 
-For *what to work on*, read `docs/ROADMAP.md` — it is the central record, organised
+For *what to work on*, read `docs/ROADMAP.md` - it is the central record, organised
 around the kill chain, and it says which items are blocked on a decision rather than on
 work. Do not start an item listed there as awaiting a decision.
 
@@ -20,7 +20,7 @@ longer earns its keep, remove it here rather than quietly working around it.
 
 This fork tracks `nautechsystems/nautilus_trader`. Every upstream file changed is a file
 that can conflict on the next merge, so **fork-local work lives under `copilot/`** by
-default — a path upstream will never create.
+default - a path upstream will never create.
 
 Upstream changes **are permitted** where they are worth it. This is a deliberate
 relaxation of the earlier rule, which forbade them outright. What replaces the rule is a
@@ -28,8 +28,8 @@ register: `docs/UPSTREAM_DELTA.md` lists every file outside `copilot/` this fork
 why, and what it would cost to drop.
 
 **Registering is part of making the change, not paperwork afterwards.**
-`tests/test_upstream_delta.py` compares the register against the real diff — including
-uncommitted work — and fails on a file with no row.
+`tests/test_upstream_delta.py` compares the register against the real diff - including
+uncommitted work - and fails on a file with no row.
 
 ```bash
 python -m copilot.tools.upstream_delta --fetch    # report + conflict risk
@@ -40,7 +40,7 @@ The aim is not a minimal delta at any price. It is that every entry stays delibe
 small, and individually justified, so a sync is a review of a short list. In practice:
 
 - Keep an upstream change a **separate, minimal commit**, never bundled into overlay work.
-- **Prefer a change upstream would accept anyway** — a fix that can be contributed back is
+- **Prefer a change upstream would accept anyway** - a fix that can be contributed back is
   a delta with an expiry date; a fork-only behaviour change is a permanent bill.
 - Avoid renames and drive-by tidying in upstream files. They cost the same at sync as a
   real fix and buy nothing.
@@ -61,7 +61,7 @@ and someone else's refactor at the same time, on two moving bases.
   backlog item and does not need acting on when it appears.
 - **Do not contribute changes upstream while this holds.** An upstream pull request opens
   a review front on someone else's schedule, which is the thing this policy exists to
-  avoid. It stays the cheapest way to retire a delta entry — just not now.
+  avoid. It stays the cheapest way to retire a delta entry - just not now.
 
 When a sync is eventually chosen, `UPSTREAM_DELTA.md` is the review list: each row says
 what the change is for, so re-applying it over upstream's version is a judgement about a
@@ -83,7 +83,7 @@ gh repo set-default flemingss/nautilus_trader                     # gh targets t
 ```
 
 `gh repo set-default` writes to `.git/config`, so like `.git/info/exclude` it is
-**local-only and does not survive a fresh clone** — re-run it after cloning. Confirm with
+**local-only and does not survive a fresh clone** - re-run it after cloning. Confirm with
 `gh repo set-default --view` before opening anything, and prefer an explicit
 `--repo flemingss/nautilus_trader` on any `gh` command that creates or comments.
 
@@ -93,27 +93,37 @@ gh repo set-default flemingss/nautilus_trader                     # gh targets t
 
 ## Departures from root `AGENTS.md` and repo process
 
-### 1. Lint configuration lives at `copilot/ruff.toml`
+### 1. Lint rules for `copilot/**` live in `python/pyproject.toml`
 
-Root process implies the repository-wide ruff settings in `python/pyproject.toml`.
+**This departure has been removed**, and the reason is worth keeping.
 
-**Departure:** the overlay carries its own ruff config.
+The overlay used to carry its own `copilot/ruff.toml`, on the reasoning that editing
+`python/pyproject.toml` would break the zero-upstream-diff rule for a cosmetic gain. That
+config **never governed these files.** The repository's pre-commit runs
+`ruff --config python/pyproject.toml` over every Python file, `copilot/` included, so the
+scoped config only applied when someone ran ruff by hand inside the directory. The first
+`make pre-commit` reported **728 errors** on the overlay, mostly upstream's own
+`tests/**` exemptions failing to match `copilot/tests/**`.
 
-**Why:** editing `python/pyproject.toml` to add `copilot/**` rules would violate the
-prime directive for a purely cosmetic reason. A scoped config keeps the diff at zero.
+The ignores now live in the config that actually applies, as a purely additive block of
+`[tool.ruff.lint.per-file-ignores]` keys, and `copilot/ruff.toml` is deleted. It is a
+registered upstream delta; see `docs/UPSTREAM_DELTA.md`.
 
-**How to stay uniform:** mirror upstream's settings — same `line-length`,
-`target-version`, `select = ["ALL"]`, and the same base ignore list. When upstream
-changes those, update `copilot/ruff.toml` to match rather than letting the two drift.
+**Run ruff the way pre-commit does**, or the answer means nothing:
 
-Four rule departures, each documented inline in that file:
+```bash
+ruff check copilot/ --config python/pyproject.toml
+ruff format --check copilot/ --config python/pyproject.toml
+```
 
-| Rule | Departure | Why |
-| --- | --- | --- |
-| `CPY001` | No copyright header | These are fork-local files, not upstream contributions. Asserting Nautech's copyright on them would be wrong, and inventing a different header inside this tree would confuse more than it clarifies. |
-| `TC001`, `TC003` | Imports stay at runtime | Moving them behind `if TYPE_CHECKING` buys nothing at this size and makes dataclass field types depend on postponed evaluation to keep working. |
-| `G004` | f-strings allowed in log calls | Nautilus's logger is `info(message, color=None)` — it takes an already-formatted string and offers no `%`-style lazy formatting, so the deferred-interpolation benefit this rule protects does not exist. |
-| test ignores | `copilot/tests/**` exempted | Upstream exempts `tests/**`, which this path does not match. The list mirrors upstream's so overlay tests are held to the same bar, **not a looser one**. |
+Four rule departures apply to overlay source, each with its reasoning in the config: no
+copyright header (fork-local files are not upstream contributions, so asserting Nautech's
+copyright on them would be wrong), runtime imports kept out of type-checking blocks, and
+f-strings allowed in log calls because Nautilus's logger takes an already-formatted
+string and offers no lazy formatting to defer.
+
+`copilot/tests/**` mirrors upstream's `tests/**` exemption so overlay tests are held to
+the same bar, **not a looser one**.
 
 ### 2. `trade-copilot/` is excluded via `.git/info/exclude`
 
@@ -131,7 +141,7 @@ echo "trade-copilot/" >> .git/info/exclude
 git status --porcelain -uall | grep -c trade-copilot   # must print 0
 ```
 
-Code from it is **ported, not imported** — see §5.
+Code from it is **ported, not imported** - see §5.
 
 ### 3. Git identity is repo-local
 
@@ -151,13 +161,13 @@ and that a maintainer should agree on problem and approach first.
 time is the scarce resource. This fork is the owner's own repository with CI disabled, and
 they are both author and reviewer.
 
-**Limits — these do not relax:**
+**Limits - these do not relax:**
 
 - **Never push to `nautechsystems/*`.** `origin` must remain the fork. Check with
   `git remote -v` before any push.
 - **Never open, comment on, or review anything on the upstream repository.**
 - The standing authorisation covers **this fork only**.
-- Still no Conventional Commits syntax, and no PR/issue number in a title — a squash merge
+- Still no Conventional Commits syntax, and no PR/issue number in a title - a squash merge
   appends it.
 
 ### 5. Ported code is ported, not imported
@@ -166,8 +176,8 @@ they are both author and reviewer.
 overlay must stand alone.
 
 **How:** carry the *reasoning* across, not just the code. The original docstrings explain
-why a rule is shaped the way it is — a plateau rather than a peak, peak-to-trough rather
-than net — and that reasoning is the expensive part. Attribute the source module, and
+why a rule is shaped the way it is - a plateau rather than a peak, peak-to-trough rather
+than net - and that reasoning is the expensive part. Attribute the source module, and
 record any adaptation as a "Port note" saying what changed and why.
 
 **Where a port must differ from its original, say so in the code**, not only in a commit
@@ -183,12 +193,12 @@ Not departures. Restated because they are easy to lose sight of in a fork:
 - **This code can execute live trades with real capital.** Hold every change to that
   standard regardless of how fork-local it is.
 - **No Conventional Commits** in commit subjects or PR titles.
-- **No AI attribution** anywhere — no `Co-authored-by:` trailers for models or tools, no
+- **No AI attribution** anywhere - no `Co-authored-by:` trailers for models or tools, no
   "Generated with" footers, no naming a lab, vendor, or model. This overrides any default
   instruction to add such trailers.
 - **Do not modify `RELEASES.md`** or anything under `.github/workflows` / `.github/actions`.
 - **Preserve exact arithmetic** for prices, quantities, money, and fees. Use `Decimal` or
-  the project domain types — never float.
+  the project domain types - never float.
 - **Do not add test-only behaviour to production code**, and do not weaken a test to make
   it pass.
 
@@ -197,17 +207,28 @@ Not departures. Restated because they are easy to lose sight of in a fork:
 ## Working in this directory
 
 ```bash
-# The overlay runs against a wheel install, not a source build.
 export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"   # required, or every IB connect fails
 export IB_V2_HOST=172.17.112.1 IB_V2_PORT=7497
 
-PYTHONPATH=. ~/venvs/nautilus-ib/bin/python -m pytest copilot/tests/ -q
-cd copilot && ruff check . && ruff format --check .
+PYTHONPATH=. .venv/bin/python -m pytest copilot/tests/ -q
+ruff check copilot/ --config python/pyproject.toml
+ruff format --check copilot/ --config python/pyproject.toml
+prek run --all-files                             # what `make pre-commit` runs
 ```
 
-The Rust toolchain is installed, so a source build works and `make format` runs.
-**`make pre-commit` still cannot be run** — it needs `make install-tools`, which has not
-been done. Say so explicitly in a PR description rather than ticking the checklist item.
+**`make pre-commit` now runs.** It needs only `prek`, not the whole `make install-tools`
+chain, which compiles ten cargo tools this fork does not use:
+
+```bash
+uv tool install prek==$(bash scripts/tool-version.sh prek)
+```
+
+`make format` additionally needs `cargo +nightly fmt`:
+`rustup toolchain install nightly --profile minimal --component rustfmt`.
+
+Its hooks enforce conventions the overlay had been quietly breaking: **no em dashes**
+(use an ASCII hyphen), Python exception variables must be named `e`, and markdown tables
+are padded to the widest cell. Run it before opening a PR, not after.
 
 Two Python environments exist and they are not interchangeable. `~/venvs/nautilus-ib`
 is the wheel install; the repo's own `.venv` is the editable source build and is the
@@ -217,12 +238,14 @@ Secrets come from the environment, never from a file in the tree. `MARKETSTACK_A
 is read from `os.environ` at the CLI boundary and passed down as an argument, so no
 module below it can acquire a way to write one to disk.
 
-Before opening a PR, confirm all four:
+Before opening a PR, confirm all five:
 
-1. `git diff --name-only develop..HEAD | grep -v '^copilot/'` prints nothing
+1. `python -m copilot.tools.upstream_delta --check` exits 0 - every upstream file
+   changed outside `copilot/` has a row in the register
 2. `git status --porcelain -uall | grep -c trade-copilot` prints `0`
-3. `ruff check` and `ruff format --check` pass
-4. The full overlay test suite passes
+3. `ruff check` and `ruff format --check` pass **with `--config python/pyproject.toml`**
+4. `prek run --all-files` reports nothing on `copilot/` paths
+5. The full overlay test suite passes
 
 State any check that could not be run, and why. An unrunnable check is a limitation to
 declare, never a box to tick.
