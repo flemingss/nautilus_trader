@@ -2,6 +2,75 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (making the calibrator runnable, and two market-session answers)
+
+### Fixed
+
+- **`LiveNode.add_actor` is now exposed to Python** (`crates/live/src/python/node.rs`). The
+  Rust node has always accepted actors and `BacktestEngine` already exposed the instance form,
+  but the live node offered only `add_actor_from_config` - so an actor configured with state
+  decided at runtime could be backtested and not deployed. `calibration/spread_snapshot.py`
+  was exactly that shape and raised `AttributeError` before recording a quote, which meant the
+  spread numbers under the cost analysis came from code that was not in the repository.
+
+  **The calibrator now runs from a commit, and its snapshots are reproducible for the first
+  time.** Three tests, the load-bearing one being that state assigned to the actor after
+  construction survives registration - which is the whole difference between the two entry
+  points, and the thing `add_actor_from_config` cannot do.
+
+- **A connection failure in `calibration/entitlements.py` is now a probe verdict, not an
+  exception.** The client is constructed inside the `try`, because constructing it connects.
+  Sixteen probes were reduced to one traceback about the first when the timezone alias was
+  unset.
+
+### Measured
+
+- **Realtime quotes are still not entitled, and this time the run can prove it.**
+  `spread_snapshot` recorded **zero** usable quotes across AAPL, MSFT and SPY over 107s under
+  `REALTIME`, and **55** across the same three over 106s under `DELAYED`, two minutes apart in
+  the same session. The delayed run is the
+  control, and without it a realtime run recording nothing cannot be told apart from a broken
+  subscription. Historical bars agree: all five US equity probes still return `[2188]` under
+  both market data types, while both FX probes return bars.
+
+  Release forms unlocked **delayed** quotes across the US equity universe. They did not
+  unlock realtime, and the equity minimum is still the gate.
+
+- **The sibling-subscription stall does not reproduce.** Both treatments the original
+  observation named were run against a control instrument: tick-by-tick trades left AAPL at
+  36 quotes against a 39 baseline (control 36 / 38), and an L2 book subscription left it at
+  37 against 39 (control 38 / 38). Neither run drew an IB refusal, and the original stall came
+  with 10189 and a depth-entitlement refusal - so the reading is that the account's widened
+  entitlements mean IB no longer refuses these requests and therefore cannot trigger it. The
+  mechanism is untested rather than disproven, and the practical risk is gone.
+
+- **A directed-exchange historical request is not satisfied by the non-consolidated feed.**
+  `AAPL=STK.IEX` and `AAPL=STK.ISLAND` both return 2188 under both market data types, the
+  same as SMART. There is no free route to some history; consolidated data is a purchase.
+
+- **Delayed spreads, 90s per symbol** (full spread, basis points of mid): AAPL median 1.24 /
+  p95 4.33, MSFT 2.20 / 5.59, SPY 0.26 / 0.79. Consistent with the longer runs of 2026-08-31
+  and still far below the incumbent 5 bps per-side placeholder - 4.5x to 38x conservative
+  depending on the name, which is the same evidence that the coefficient has to become
+  per-instrument.
+
+### Added
+
+- **`copilot/live/subscription_interference.py`** - a controlled test of the reported stall
+  where quotes stop once a second subscription is added to the same instrument. A treated
+  instrument gets the second subscription, a control instrument does not, and both are counted
+  across the same two windows. Without the control, quotes stopping everywhere at once reads
+  as a result; with it, that is visibly a session-wide event and says nothing about the
+  subscription. A baseline with no quotes is reported inconclusive rather than as evidence in
+  either direction.
+
+  **A treatment that raised also reports inconclusive**, which the first depth run needed:
+  `subscribe_book_depth10` is not implemented for Interactive Brokers, the call raised on a
+  missing argument, quotes carried on undisturbed, and the run read NOT REPRODUCED from an
+  experiment with no treatment in it. The treatment is now an L2 `subscribe_book_deltas`,
+  which the adapter does forward, and a clean negative can no longer come from a test that
+  never ran.
+
 ## 2026-09-01 (recovering an unknown working order)
 
 ### Fixed

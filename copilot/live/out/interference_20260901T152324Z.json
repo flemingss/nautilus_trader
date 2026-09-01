@@ -1,0 +1,29 @@
+{
+  "measured_at": "2026-09-01T15:23:24.056344+00:00",
+  "finished_at": "2026-09-01T15:29:58.748874+00:00",
+  "duration_seconds": 394.7,
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "market_data_type": "DELAYED",
+  "treatment": "trades",
+  "phase_seconds": 180,
+  "treatment_applied_at": "2026-09-01T15:26:40.545058+00:00",
+  "treatment_error": null,
+  "verdict": "NOT REPRODUCED",
+  "reasoning": "AAPL=STK.SMART kept receiving quotes after the second subscription (36 against a baseline of 39).",
+  "instruments": [
+    {
+      "instrument_id": "AAPL=STK.SMART",
+      "role": "treated",
+      "quotes_baseline": 39,
+      "quotes_after_treatment": 36,
+      "trades_received": 0
+    },
+    {
+      "instrument_id": "MSFT=STK.SMART",
+      "role": "control",
+      "quotes_baseline": 38,
+      "quotes_after_treatment": 36,
+      "trades_received": 0
+    }
+  ]
+}

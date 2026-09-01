@@ -397,6 +397,11 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/cancel_working.py" = ["ANN401", "T201", "TRY400"]
 "copilot/live/order_types.py" = ["ANN401", "T201", "TRY400"]
 "copilot/live/supervised_session.py" = ["ANN401", "T201", "TRY400"]
+"copilot/live/subscription_interference.py" = [
+  "ANN401",
+  "PLR0913",
+  "T201",
+] # Operator CLI: the verdict it prints is the product
 "copilot/live/failure_injection.py" = [
   "ANN401",
   "E501",

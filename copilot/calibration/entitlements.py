@@ -12,6 +12,15 @@ Read-only. Constructs no execution client, so it cannot place an order.
 Run it after any change to the IB account, and at the start of any session that depends
 on data access.
 
+Scope: historical bars only
+---------------------------
+Every probe here is a `request_bars` call, so a run says what **history** the account can
+read. Streaming quotes are a separate entitlement and are not tested here - they were the
+question this tool was assumed to answer, and it does not. To settle streaming, run
+``calibration.spread_snapshot`` inside a session once under ``REALTIME`` and once under
+``DELAYED``: the delayed run is the control, and without it a realtime run recording zero
+quotes cannot be told apart from a broken subscription.
+
 """
 
 from __future__ import annotations
@@ -93,11 +102,15 @@ async def probe_historical(
         market_data_type=getattr(ib.MarketDataType, market_data_type),
         instrument_provider=provider_config,
     )
-    client = ib.HistoricalInteractiveBrokersClient(
-        ib.InteractiveBrokersInstrumentProvider(provider_config),
-        config,
-    )
+    # Constructing the client connects, so a connection failure is this probe's verdict
+    # rather than an exception. Raising it discards every other answer in the run, which
+    # is what happened on 2026-09-01 when the timezone alias was unset: sixteen probes
+    # were reduced to one traceback about the first.
     try:
+        client = ib.HistoricalInteractiveBrokersClient(
+            ib.InteractiveBrokersInstrumentProvider(provider_config),
+            config,
+        )
         instruments = await client.request_instruments(instrument_ids=[iid])
         if not instruments:
             return "instrument NOT resolved"

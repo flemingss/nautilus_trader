@@ -1117,6 +1117,106 @@ impl PyLiveNode {
         stop_result
     }
 
+    /// Adds a constructed actor instance to the trader.
+    ///
+    /// The Rust node has accepted actors since it was written and `BacktestEngine` exposes
+    /// the instance form to Python, but the live node exposed only `add_actor_from_config`.
+    /// A Python actor that has to be handed its configuration as an object - a recorder
+    /// wired to a symbol list decided at runtime, say - could therefore run in a backtest
+    /// and not against a live node.
+    ///
+    /// The actor ID and logging flags are read from the instance's retained `config`, which
+    /// is the same source `add_actor_from_config` reads, so both entry points agree on the
+    /// identity an actor registers under.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The node is currently running.
+    /// - The object is not a `DataActor`.
+    /// - An actor with the same ID is already registered.
+    #[pyo3(name = "add_actor")]
+    fn py_add_actor(&self, actor: &Bound<'_, PyAny>) -> PyResult<()> {
+        if self.node()?.state() != NodeState::Idle {
+            return Err(to_pyruntime_err(
+                "Cannot add actor while node is running, add actors before running the node",
+            ));
+        }
+
+        log::debug!("`add_actor` with a constructed instance");
+
+        let actor = actor.clone().unbind();
+
+        let actor_id = Python::attach(|py| -> anyhow::Result<ActorId> {
+            let bound = actor.bind(py);
+
+            // Read before taking the mutable borrow: the lookup can run Python code.
+            let config_instance = bound
+                .getattr("config")
+                .ok()
+                .filter(|config| !config.is_none());
+
+            let mut py_data_actor_ref = bound
+                .extract::<PyRefMut<PyDataActor>>()
+                .map_err(Into::<PyErr>::into)
+                .map_err(|e| anyhow::anyhow!("Failed to extract PyDataActor: {e}"))?;
+
+            if let Some(config_obj) = config_instance.as_ref() {
+                if let Ok(actor_id) = config_obj.getattr("actor_id")
+                    && !actor_id.is_none()
+                {
+                    let actor_id_val = if let Ok(aid) = actor_id.extract::<ActorId>() {
+                        aid
+                    } else if let Ok(aid_str) = actor_id.extract::<String>() {
+                        ActorId::new_checked(&aid_str)?
+                    } else {
+                        anyhow::bail!("Invalid `actor_id` type");
+                    };
+                    py_data_actor_ref.set_actor_id(actor_id_val);
+                }
+
+                if let Some(val) = extract_bool_config_attr(config_obj, "log_events") {
+                    py_data_actor_ref.set_log_events(val);
+                }
+
+                if let Some(val) = extract_bool_config_attr(config_obj, "log_commands") {
+                    py_data_actor_ref.set_log_commands(val);
+                }
+            }
+
+            py_data_actor_ref.set_python_instance(bound)?;
+
+            apply_class_derived_actor_id(&mut py_data_actor_ref, bound)?;
+
+            Ok(py_data_actor_ref.actor_id())
+        })
+        .map_err(to_pyruntime_err)?;
+
+        // Validate no duplicate before any mutations
+        if self
+            .node_mut()?
+            .kernel()
+            .trader
+            .borrow()
+            .actor_ids()
+            .contains(&actor_id)
+        {
+            return Err(to_pyruntime_err(format!(
+                "Actor '{actor_id}' is already registered"
+            )));
+        }
+
+        self.node_mut()?
+            .kernel_mut()
+            .trader
+            .borrow_mut()
+            .add_python_actor_instance(&actor, actor_id)
+            .map_err(to_pyruntime_err)?;
+
+        log::info!("Registered Python actor {actor_id}");
+        Ok(())
+    }
+
     #[pyo3(name = "add_actor_from_config")]
     #[expect(clippy::needless_pass_by_value)]
     fn py_add_actor_from_config(&self, _py: Python, config: ImportableActorConfig) -> PyResult<()> {
@@ -4271,6 +4371,152 @@ class ClaimsStrategy(Strategy):
                 .to_string()
                 .contains("already exists for CLAIMS-001")
         );
+    }
+
+    fn install_recorder_actor_module(py: Python<'_>, module_name: &str) {
+        let module = PyModule::new(py, module_name).expect("test module should create");
+        module
+            .setattr("DataActor", py.get_type::<super::PyDataActor>())
+            .expect("DataActor type should bind");
+
+        let code = CString::new(
+            "
+class RecorderConfig:
+    def __init__(self, actor_id=None):
+        self.actor_id = actor_id
+
+class RecorderActor(DataActor):
+    def __init__(self, config):
+        super().__init__(config)
+        self.symbols = []
+
+    def configure(self, symbols):
+        self.symbols = list(symbols)
+",
+        )
+        .expect("python test code should be valid CString");
+
+        py.run(code.as_c_str(), Some(&module.dict()), None)
+            .expect("test actor code should execute");
+
+        let sys_modules = py
+            .import("sys")
+            .expect("sys should import")
+            .getattr("modules")
+            .expect("sys.modules should exist");
+        sys_modules
+            .set_item(module_name, module)
+            .expect("test actor module should register");
+    }
+
+    fn idle_test_node() -> PyLiveNode {
+        LiveNode::builder(TraderId::from("TESTER-001"), Environment::Sandbox)
+            .unwrap()
+            .with_reconciliation(false)
+            .with_delay_post_stop_secs(0)
+            .with_timeout_connection(1)
+            .build()
+            .map(PyLiveNode::new)
+            .unwrap()
+    }
+
+    /// The point of the instance form: state assigned to the actor after construction has
+    /// to survive registration. `add_actor_from_config` builds its own actor from an import
+    /// path, so anything the caller configured on a constructed object is lost there.
+    #[rstest]
+    fn test_add_actor_registers_the_constructed_instance_it_was_given() {
+        Python::initialize();
+
+        let module_name = "test_live_node_add_actor_instance";
+        Python::attach(|py| install_recorder_actor_module(py, module_name));
+
+        let node = idle_test_node();
+        let actor_id = ActorId::from("SPREAD-RECORDER");
+
+        Python::attach(|py| {
+            let module = py.import(module_name).expect("test module should import");
+            let config = module
+                .getattr("RecorderConfig")
+                .unwrap()
+                .call1((actor_id.to_string(),))
+                .unwrap();
+            let actor = module
+                .getattr("RecorderActor")
+                .unwrap()
+                .call1((config,))
+                .unwrap();
+
+            actor
+                .call_method1("configure", (vec!["AAPL=STK.SMART"],))
+                .expect("actor should accept runtime configuration");
+
+            node.py_add_actor(&actor).expect("actor should register");
+
+            let registered: Vec<String> = actor
+                .getattr("symbols")
+                .unwrap()
+                .extract()
+                .expect("symbols should still be readable");
+            assert_eq!(registered, vec!["AAPL=STK.SMART".to_string()]);
+        });
+
+        let guard = node.node_mut().unwrap();
+        assert!(
+            guard
+                .kernel()
+                .trader
+                .borrow()
+                .actor_ids()
+                .contains(&actor_id)
+        );
+    }
+
+    #[rstest]
+    fn test_add_actor_rejects_a_second_actor_under_the_same_id() {
+        Python::initialize();
+
+        let module_name = "test_live_node_add_actor_duplicate";
+        Python::attach(|py| install_recorder_actor_module(py, module_name));
+
+        let node = idle_test_node();
+
+        Python::attach(|py| {
+            let module = py.import(module_name).expect("test module should import");
+            let build = || {
+                let config = module
+                    .getattr("RecorderConfig")
+                    .unwrap()
+                    .call1(("DUPLICATE-RECORDER",))
+                    .unwrap();
+                module
+                    .getattr("RecorderActor")
+                    .unwrap()
+                    .call1((config,))
+                    .unwrap()
+            };
+
+            node.py_add_actor(&build()).expect("first should register");
+
+            let err = node
+                .py_add_actor(&build())
+                .expect_err("second should be refused");
+            assert!(err.to_string().contains("already registered"));
+        });
+    }
+
+    #[rstest]
+    fn test_add_actor_refuses_an_object_that_is_not_an_actor() {
+        Python::initialize();
+
+        let node = idle_test_node();
+
+        Python::attach(|py| {
+            let not_an_actor = PyDict::new(py);
+            let err = node
+                .py_add_actor(not_an_actor.as_any())
+                .expect_err("a non-actor should be refused");
+            assert!(err.to_string().contains("PyDataActor"));
+        });
     }
 
     #[rstest]
