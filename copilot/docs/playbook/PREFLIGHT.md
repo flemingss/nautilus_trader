@@ -88,6 +88,17 @@ Confirmed by a failed run on 2026-09-01, not from documentation.
   failure text names read-only mode, but the checks that fail are two steps downstream of
   it. Read-only is the right setting while orders are disabled and the wrong one from the
   moment an account needs confirming.
+- **The account is not on the instrument's venue.** Instruments resolve on `SMART`; the
+  execution client registers its account under its own client name, giving `IB-DUT067974`.
+  A venue-keyed account lookup must search both or it reports a missing account that is in
+  the cache.
+- **The paper login name and account id are the same string** on this account
+  (`DUT067974`). Settled by observation, not assumed - IB does not require them to match.
+- **The paper account is `MARGIN` while the live account is cash.** Paper will accept a
+  short sale and size against buying power; the live cash account will do neither. A paper
+  pass is not evidence about the cash constraints.
+- **The paper balance is USD 1,000,000**, three orders of magnitude above the target
+  account. Size from the configured risk budget, never from reported equity.
 - **Instrument identifiers differ between research and the broker.** The catalog names an
   instrument by MIC venue, `AAPL.XNAS`; the IB adapter resolves `AAPL=STK.SMART` under
   `SymbologyMethod.RAW` and reports the venue as `SMART`. An instrument id that a

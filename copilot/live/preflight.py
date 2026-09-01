@@ -41,6 +41,7 @@ from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import TradingState
+from nautilus_trader.model import Venue
 
 
 OUT_DIR = Path(__file__).parent / "out"
@@ -57,6 +58,15 @@ papered over by quietly using one form everywhere.
 
 """
 DEFAULT_SETTLE_SECS = 30
+
+EXEC_CLIENT_VENUE = "IB"
+"""
+The venue the execution client registers its account under.
+
+Not the instrument venue. Instruments resolve on ``SMART``; the account reads
+``IB-DUT067974``, so a venue-keyed lookup has to search both.
+
+"""
 
 NO_ACCOUNT_HINT = (
     " - no account reached the cache. Observed cause on 2026-09-01: TWS had "
@@ -186,35 +196,43 @@ def observe_environment(cache: object, session: PaperSession) -> list[Check]:
         ),
     ]
 
-    # The venue is discovered from what resolved rather than assumed, because the venue an
-    # IB instrument lands on is a property of the adapter's symbology, not of our config.
-    venues = sorted({i.id.venue for i in instruments}, key=str)
-    account_ids = [str(a) for v in venues if (a := cache.account_id(v)) is not None]
+    # The account does not live on the instrument's venue. Instruments resolve on
+    # `SMART`, while the execution client registers the account under its own client
+    # name, so the account id reads `IB-DUT067974`. Searching only the instrument venues
+    # finds nothing, which is how the first run reported a missing account that was
+    # sitting in the cache the whole time.
+    venues = sorted({i.id.venue for i in instruments} | {Venue(EXEC_CLIENT_VENUE)}, key=str)
+    found = [(v, a) for v in venues if (a := cache.account_id(v)) is not None]
 
     # An account id we supplied and printed back proves nothing. This is the only check
     # that can tell us whether the IB paper *login* is the same string as the account id.
-    reported = account_ids[0].split("-")[-1] if account_ids else ""
+    account_id = str(found[0][1]) if found else ""
+    reported = account_id.split("-", 1)[-1] if account_id else ""
+    account = cache.account_for_venue(found[0][0]) if found else None
+    balances = account.balances() if account is not None else {}
+
     checks.append(
         check(
             "account_reported_by_broker",
             observed=reported,
             expected=session.account_id,
             note=(
-                f"venues: {[str(v) for v in venues]}; accounts: {account_ids}"
-                + ("" if account_ids else NO_ACCOUNT_HINT)
+                f"venues searched: {[str(v) for v in venues]}; found: {account_id or None}"
+                + ("" if found else NO_ACCOUNT_HINT)
             ),
         ),
     )
-
-    account = cache.account_for_venue(venues[0]) if venues else None
-    balances = account.balances() if account is not None else {}
     checks.append(
         Check(
             name="account_has_balances",
             passed=bool(balances),
             observed=str(len(balances)),
             expected=">0",
-            note="a connected account with no balances means reconciliation is incomplete",
+            note=(
+                f"account_type={getattr(account, 'account_type', None)}. "
+                "A paper account may not carry the live account's type - see "
+                "docs/PAPER_CAMPAIGN.md on what paper cannot reproduce."
+            ),
         ),
     )
     return checks
