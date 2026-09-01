@@ -142,7 +142,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twelve items. Grouped by blocking condition rather than by component, because that is
+Fourteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -179,11 +179,12 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Ready to build, nothing blocking (1)
+### Ready to build, nothing blocking (2)
 
-| Item                               | Stage | Notes                                                                                                                                        |
-| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Make the cost model per-instrument | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
+| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                                          |
+| ------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Make the cost model per-instrument   | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                                                                   |
+| Retire the queued inherited surfaces | -     | The governance files that describe working *with upstream* - `CLA.md`, `SECURITY.md`, `AI_POLICY.md`, CODEOWNERS, the templates, the README rewrite. Root `ROADMAP.md` and `CONTRIBUTING.md` are done; the survey with per-file calls is in [`MAINTENANCE.md`](MAINTENANCE.md). One PR, chasing inbound links. |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 
@@ -207,7 +208,14 @@ No code closes these.
 | US equity history through IB | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                |
 | Intraday history             | 00    | Marketstack EOD cannot support anything acting within a session. Databento was preferred and deferred until the system earns its cost. |
 
-### Deferred by decision (1)
+### Deferred by decision (2)
+
+**Groom CI for ownership.** Actions is disabled as of 2026-09-02 pending a deliberate
+pass over the inherited workflows. The reason CI has never run is diagnosed and recorded
+in [`MAINTENANCE.md`](MAINTENANCE.md) under "CI, and why it has never run", so the pass
+starts warm: the harden-runner egress allowlist lives in repository variables that did
+not travel with the copy, and the workflows still carry upstream's wheel-publication and
+release machinery, none of which applies here.
 
 **Tabletop: subscriptions, operations, strategy.** Under way. Operations and strategy
 governance are settled and recorded in [`CHARTER.md`](CHARTER.md), the
@@ -444,6 +452,26 @@ Two caveats remain:
   policy decision - the median is the honest central estimate, p75 or p95 the
   defensible conservative ones - and should be made explicitly rather than by
   defaulting to whichever number is at hand.
+
+### The first reproducible snapshot, 2026-09-02
+
+With `add_actor` exposed, the calibrator ran from committed code for the first time: 25
+minutes, delayed quotes, all three names in one session
+(`calibration/out/spread_snapshot_20260901T154744Z.json`).
+
+| Full spread, bps of mid | samples | median     | p75    | p95    |
+| ----------------------- | ------- | ---------- | ------ | ------ |
+| AAPL                    | 251     | 1.2241     | 1.5312 | 3.9805 |
+| MSFT                    | 301     | 1.9964     | 2.3970 | 3.5932 |
+| SPY                     | 248     | **0.2618** | 0.3928 | 1.0476 |
+
+Two things this adds to the 2026-08-31 numbers above. **The cross-name spread is the
+stable fact**: MSFT quotes ~8x wider than SPY in every run, which is the case for a
+per-instrument coefficient regardless of which percentile is chosen. **The day-to-day
+movement is not noise to average away**: AAPL's median doubled against 08-31 (1.22 vs
+0.64) while SPY's did not move (0.26 both days), so a coefficient set from any single
+session inherits that session. The 5 bps per-side incumbent remains 4x-38x conservative
+depending on the name.
 
 ### Entitlement change, 2026-09-01
 

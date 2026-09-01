@@ -56,11 +56,27 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   `AAPL=STK.IEX` and `AAPL=STK.ISLAND` both return 2188 under both market data types, the
   same as SMART. There is no free route to some history; consolidated data is a purchase.
 
-- **Delayed spreads, 90s per symbol** (full spread, basis points of mid): AAPL median 1.24 /
-  p95 4.33, MSFT 2.20 / 5.59, SPY 0.26 / 0.79. Consistent with the longer runs of 2026-08-31
-  and still far below the incumbent 5 bps per-side placeholder - 4.5x to 38x conservative
-  depending on the name, which is the same evidence that the coefficient has to become
-  per-instrument.
+- **The first reproducible-from-a-commit spread snapshot: 27 minutes, 250-300 samples per
+  name** (full spread, bps of mid): AAPL median 1.22 / p95 3.98, MSFT 2.00 / 3.59, SPY 0.26
+  / 1.05. The cross-name ratio is the stable fact - MSFT ~8x wider than SPY in every run -
+  while AAPL's median doubled against 2026-08-31 with SPY unmoved, so a coefficient set from
+  one session inherits that session. The incumbent 5 bps per side stays 4x-38x conservative
+  depending on the name; both numbers argue the coefficient must be per-instrument.
+
+### Ownership housekeeping
+
+- **The repository's front matter now answers for this project, not upstream.** Root
+  `ROADMAP.md` is a pointer to `copilot/docs/ROADMAP.md` (upstream's original stays linked
+  for harvest decisions), and `CONTRIBUTING.md` states that this repository takes no
+  contributions and points at the charter and `AGENTS.md`. The full survey of inherited
+  governance surfaces - what is aligned, kept deliberately, or queued for removal - is in
+  `MAINTENANCE.md`, alongside a new record of the codebase's actual shape (one Rust project,
+  ~1.82M lines across 43 crates, under a ~5.8k-line Python facade) so a session can start
+  from the doc instead of re-deriving it.
+- **Why CI has never run is diagnosed and recorded** in `MAINTENANCE.md`: the harden-runner
+  egress allowlist lives in repository variables that did not travel with the copy, so every
+  job blocks all traffic and dies at checkout. Actions is disabled again as of 2026-09-02;
+  the grooming pass is a roadmap item and starts warm.
 
 ### Added
 
