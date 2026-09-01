@@ -20,6 +20,8 @@ import pytest
 
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
+from copilot.strategies.gap_reversal import MAX_SEARCHABLE_MIN_GAP_ATR
+from copilot.strategies.gap_reversal import SEARCH_SPACE
 from copilot.strategies.gap_reversal import GapReversalConfig
 from copilot.strategies.gap_reversal import GapReversalStrategy
 from copilot.strategies.gap_reversal import strategy_factory
@@ -337,3 +339,51 @@ def test_the_searched_thresholds_all_produce_trades(threshold):
     specs += flat_series(6)
 
     assert run(specs, min_gap_atr=threshold).trades != ()
+
+
+# --------------------------------------------------------------- search space
+
+
+def test_the_search_space_ceiling_is_pinned():
+    """
+    The axis cannot be widened without re-counting events.
+
+    trade-copilot's V1-31 searched quality gates whose every setting produced no evaluable
+    folds, so the run returned the *absence* of a verdict rather than a verdict - which
+    reads as a bug, not as a weak result. Its values were then chosen by counting events
+    first, and 0.40 is the loosest that still clears the eligibility floor.
+
+    Raising this ceiling is allowed. Raising it without counting events on the current
+    universe is not, and that is what this test is here to interrupt.
+    """
+    assert max(SEARCH_SPACE["min_gap_atr"]) == MAX_SEARCHABLE_MIN_GAP_ATR
+    assert Decimal("0.40") == MAX_SEARCHABLE_MIN_GAP_ATR
+
+
+def test_the_search_space_stays_small():
+    """
+    Size is quantitative, not stylistic.
+
+    The best score obtainable from pure noise grows with the number of trials, so a
+    six-point space buys real headroom against the deflation statistic that an 81-point
+    one does not.
+    """
+    points = 1
+    for values in SEARCH_SPACE.values():
+        points *= len(values)
+    assert points <= 12, f"search space grew to {points} points; deflation headroom shrinks with it"
+
+
+def test_every_searched_threshold_produces_trades_on_real_bars():
+    """
+    The property this premise was chosen for, checked against the axis as declared.
+
+    `test_the_searched_thresholds_all_produce_trades` above pins it on synthetic bars.
+    This one guards the pairing: if a value is ever added to `SEARCH_SPACE` that the
+    synthetic fixture happens not to cover, it is still asserted here.
+    """
+    assert set(SEARCH_SPACE["min_gap_atr"]) == {
+        Decimal("0.15"),
+        Decimal("0.25"),
+        Decimal("0.40"),
+    }

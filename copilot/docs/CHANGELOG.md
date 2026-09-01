@@ -2,6 +2,38 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (strategy registry)
+
+### Added
+
+- **`copilot/strategies/activations.py`** and **`registry/*.toml`** - the knob store from
+  ADR-0005. One file per activation: strategy, instrument, lifecycle
+  (`RESEARCH`/`PAPER`/`LIVE`), fixed parameters, fold geometry.
+- **`SEARCH_SPACE` on `gap_reversal`**, beside the code, because the reasoning that sized
+  it belongs with the premise. `MAX_SEARCHABLE_MIN_GAP_ATR` pins the ceiling so the axis
+  cannot be widened without re-counting events - trade-copilot's V1-31 searched values
+  that produced no evaluable folds, so the run returned the absence of a verdict rather
+  than a verdict.
+- **`copilot/strategies/validate.py`** - runs the gate for an activation and files a JSON
+  record. Read-only: it constructs no execution client whatever a lifecycle says.
+- **25 tests**, including both halves of the seeding rule and the search-space ceiling.
+
+### Fixed
+
+- **A verdict is now reproducible from a commit.** No `ParameterGrid` existed anywhere in
+  committed code, so the walk-forward result reported on 2026-09-01 could not be
+  reproduced by anyone, including whoever produced it. `validate --all` now reproduces it
+  exactly: AAPL 20/39 at +0.049150 R, MSFT 24/39 at +0.090638 R, SPY 22/38 at +0.063737 R.
+
+### Recorded
+
+- **Verdict records are committed**, under `strategies/verdicts/`, on the same reasoning
+  that keeps `calibration/out/`: a result that exists only in a terminal cannot be
+  checked, compared or found again. Each carries `costs_modelled: false` and
+  `holdout_spent: false` so a file cannot later be read as more than it was.
+- **A test asserts nothing in the registry has left `RESEARCH`.** Promotion should be a
+  deliberate diff that fails an assertion and makes someone justify it, not a quiet edit.
+
 ## 2026-09-01 (decisions + maintenance)
 
 ### Added

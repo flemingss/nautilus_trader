@@ -29,11 +29,11 @@ was heading (its ADR-0021).
 
 Adopt the shapes in order, and do not skip ahead.
 
-| Stage | Shape | Gate to leave it |
-| --- | --- | --- |
-| **1. Now** | WSL, TWS on the host, run by hand | Baseline established and a strategy validated |
-| **2. Next** | Dockerized IB Gateway, compose, unattended paper | Stable and viable over a real paper run |
-| **3. Later** | Kubernetes | Proven, and worth the operational surface |
+| Stage        | Shape                                            | Gate to leave it                              |
+| ------------ | ------------------------------------------------ | --------------------------------------------- |
+| **1. Now**   | WSL, TWS on the host, run by hand                | Baseline established and a strategy validated |
+| **2. Next**  | Dockerized IB Gateway, compose, unattended paper | Stable and viable over a real paper run       |
+| **3. Later** | Kubernetes                                       | Proven, and worth the operational surface     |
 
 Stage 1 is for development and the initial baseline. Its limits are accepted, not
 engineered around: it is attended, it needs a human to log in, and the box may sleep.

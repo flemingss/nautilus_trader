@@ -1,0 +1,22 @@
+strategy = "gap_reversal"
+lifecycle = "RESEARCH"
+note = "Long leg only: gap-downs revert materially more often than gap-ups, so the legs stay separate strategies rather than one rule taking the absolute gap."
+
+[instrument]
+symbol = "MSFT"
+venue = "XNAS"
+
+[parameters]
+long = true
+require_unfilled = false
+atr_period = 14
+stop_atr = "1.5"
+entry_buffer_atr = "0.25"
+risk_budget = "1000"
+
+[validation]
+train_bars = 252
+test_bars = 126
+purge_bars = 5
+min_trades = 20
+fold_min_trades = 5

@@ -67,29 +67,39 @@ at all. A gap's trigger *is* its quality measure, so there is nothing to AND on 
 nothing to dilute, and the original's search values were picked so every one clears the
 floor.
 
-**First verdict, on 20 years of real history, three symbols, 39 folds each:**
+**First verdict, reproducible from a commit:**
+
+```bash
+python -m copilot.strategies.validate --all --write
+```
 
 | Symbol | Folds passed | Mean OOS expectancy | Trades | Majority |
 | ------ | ------------ | ------------------- | ------ | -------- |
-| AAPL   | 20 / 39      | **+0.0492 R**       | 612    | pass     |
-| MSFT   | 24 / 39      | **+0.0906 R**       | 571    | pass     |
-| SPY    | 22 / 38      | **+0.0637 R**       | 609    | pass     |
+| AAPL   | 20 / 39      | **+0.049150 R**     | 612    | pass     |
+| MSFT   | 24 / 39      | **+0.090638 R**     | 571    | pass     |
+| SPY    | 22 / 38      | **+0.063737 R**     | 609    | pass     |
 
-**Read this as a first result, not a green light.** Three things qualify it:
+Every run files a record under `copilot/strategies/verdicts/` carrying the activation, the
+search space as declared at the time, the seeded parameters and the fold geometry, so a
+number can be tied to an experiment rather than to a memory of one.
 
-1. **Gross of costs.** No fee or fill model was supplied, so the engine used its
-   defaults: no commission, no spread. Wiring the measured spreads in is the next item,
-   and trade-copilot's own analysis names the cost model as the number that decides
+**Read this as a first result, not a green light.** Three things qualify it, and two of
+them are flags in the record itself:
+
+1. **`costs_modelled: false`.** No fee or fill model is supplied, so the engine charges
+   neither commission nor spread. Wiring the measured spreads in is the last open work
+   item, and trade-copilot's own analysis names the cost model as the number that decides
    every verdict.
-2. **The holdout has not been spent.** This is walk-forward, not the single-use OOS.
+2. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The single-use
+   out-of-sample has never been spent, and spending it is a deliberate separate act.
 3. **Entry fills at the signal bar's close**, not the next open as in the original - a
-   different and slightly more favourable execution assumption, documented in the
-   module. The two systems' verdicts on this premise are not comparable.
+   different and slightly more favourable execution assumption, documented in the module.
+   The two systems' verdicts on this premise are not comparable.
 
 Trade counts land at 21-29 per 252 bars against the original's 30-37, because this port
 holds one position at a time and a run of gap days therefore blocks its own re-entries.
 
-177 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+214 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
 ## Open work, grouped by what unblocks it
 
