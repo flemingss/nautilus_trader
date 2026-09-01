@@ -2,6 +2,32 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (recovering an unknown working order)
+
+### Fixed
+
+- **Reconciliation now adopts an external order reported as `SUBMITTED`**
+  (`crates/execution/src/reconciliation/orders.rs`). The status match dropped everything
+  outside seven statuses with a warning and no events, so an order working at the venue that
+  we did not place produced no cache entry - it existed at the broker and nowhere else, and
+  nothing could query, cancel or reconcile it. Projecting it as accepted is mildly optimistic
+  and that is the right direction to err: an order we can see and try to cancel is
+  recoverable, an invisible working one is not. Test verified by stashing the fix.
+- **`fetch_all_open_orders=True`** on the execution client. The default is `false`, which
+  makes the adapter call `reqOpenOrders` and see **only orders bound to the calling client
+  id**. Every run used a fresh client id, so the sweep tool was structurally blind to every
+  previous run's orders and reported "nothing working" while orders were live.
+
+### Found, and not fixable in code
+
+- **A 100,000-share order trips a TWS precautionary size setting**, which holds it in the GUI
+  awaiting a manual transmit. Our system records an acceptance, the broker never receives the
+  order, and no API call can see or cancel it. Four orders from earlier stage-six runs ended
+  up there and had to be cancelled by hand.
+
+  The reject probe is now 5,000 shares - USD 1.2M against USD 1M of buying power, so it still
+  asks the question. **An injected fault should be the smallest one that asks the question.**
+
 ## 2026-09-01 (ownership, and the risk engine fix)
 
 ### Decided

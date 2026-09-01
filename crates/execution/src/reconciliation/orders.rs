@@ -498,7 +498,19 @@ pub fn generate_external_order_status_events_with_commission(
     ));
 
     match report.order_status {
-        OrderStatus::Accepted | OrderStatus::Triggered => vec![accepted],
+        // `Submitted` is included deliberately. A venue reporting an external order as
+        // submitted is holding a working order, and without this arm it fell through to the
+        // catch-all below: a warning, no events, and therefore no entry in the cache. The
+        // order then existed at the venue and nowhere else, so nothing could query, cancel
+        // or reconcile it - measured against Interactive Brokers, where an order left by a
+        // previous run was reported on every reconnect and could only be cancelled by hand
+        // in the broker's own GUI.
+        //
+        // Projecting it as accepted is mildly optimistic: the venue has received it but may
+        // not have acknowledged it. That is the right direction to err. An order we can see
+        // and try to cancel, whose cancel may be rejected, is recoverable; an order that is
+        // working at the venue and invisible locally is not.
+        OrderStatus::Accepted | OrderStatus::Triggered | OrderStatus::Submitted => vec![accepted],
         OrderStatus::PartiallyFilled | OrderStatus::Filled => {
             let mut events = vec![accepted];
 

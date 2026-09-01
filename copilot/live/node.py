@@ -145,6 +145,13 @@ def build_paper_node(
                 client_id=session.exec_client_id,
                 account_id=session.account_id,
                 connection_timeout=CONNECTION_TIMEOUT_SECS,
+                # `reqAllOpenOrders` rather than `reqOpenOrders`, which returns only orders
+                # bound to the calling client id. Every run here uses a fresh client id, so
+                # the default left each one blind to every order any previous run had placed
+                # - and the sweep tool reported "nothing working" while orders were live at
+                # the broker. An operations tool that cannot see the account's orders is
+                # worse than none.
+                fetch_all_open_orders=True,
                 instrument_provider=provider,
             ),
             # Orders route by the instrument's venue, and the execution client does not

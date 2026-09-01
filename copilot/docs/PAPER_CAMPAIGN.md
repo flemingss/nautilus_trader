@@ -364,6 +364,36 @@ The runner also waits for cancellations to be acknowledged before stopping, whic
 is in flight reported a live order that was already on its way out. **A false alarm from a
 safety check is as corrosive as a missed one.**
 
+## The residue problem, and what actually caused it
+
+Four MSFT orders from stage-six runs were sitting in the TWS GUI hours after the runs that
+placed them. The sweep tool reported "nothing working" every time it was asked. Three
+separate causes, found in the order of least to most interesting.
+
+**`fetch_all_open_orders` defaults to `false`.** The adapter then calls `reqOpenOrders`, which
+returns **only orders bound to the calling client id**. Every run used a fresh client id, so
+each sweep was structurally blind to every previous run's orders and reported "nothing
+working" truthfully and uselessly. Now set to `True` in `live/node.py`.
+
+**Reconciliation dropped external orders reported as `SUBMITTED`.** Even once fetched they
+never entered the cache, so `cancel_all_orders` had nothing to act on. Fixed in
+`crates/execution/src/reconciliation/orders.rs`.
+
+**And the orders were still not reachable afterwards**, because they had never left TWS. A
+100,000-share order trips a TWS **precautionary size setting**, which holds it in the GUI
+awaiting a manual transmit. That state is the worst of both: our system recorded an
+acceptance, the broker never received the order, and no API call can see or cancel it. It is
+the only failure so far that no amount of code on our side can recover from.
+
+The fix for that one is not code. **An injected fault should be the smallest one that asks
+the question.** The reject probe went from 100,000 shares to 5,000 - still USD 1.2M against
+USD 1M of buying power, so it still asks - and stage six now finishes with nothing left
+working. A larger fault tests the same thing and leaves more behind.
+
+Orders already stranded in the GUI have to be cancelled there. Check **TWS, Global
+Configuration, Presets, precautionary settings** before assuming an accepted order is one the
+broker actually holds.
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
