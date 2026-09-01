@@ -217,3 +217,53 @@ class TestReplay:
         )
         result = replay(make_bars(["0.7000", "0.7100", "0.7050", "0.7150"]), {})
         assert hasattr(result, "trades")
+
+
+class TestGateOnNautilusReplay:
+    """The fusion itself: trade-copilot's gate driven by a Nautilus BacktestEngine.
+
+    This is what the whole overlay exists to make possible, so it is worth an
+    end-to-end check rather than trusting that two tested halves compose.
+    """
+
+    def test_walk_forward_runs_on_the_nautilus_replay(self):
+        from copilot.validation.insample import ParameterGrid
+        from copilot.validation.walkforward import walk_forward
+
+        replay = make_replay(
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+        # A small grid over a real engine: each point is a full backtest, so keep it
+        # tight. The stop distance changes the risk denominator, which is what makes
+        # the candidates score differently at all.
+        grid = ParameterGrid.of(stop_distance=["0.0040", "0.0050", "0.0060"])
+
+        series = make_bars([f"0.70{i % 90:02d}" for i in range(120)])
+        report = walk_forward(
+            series,
+            grid,
+            train_bars=40,
+            test_bars=20,
+            purge_bars=3,
+            warmup_bars=3,
+            replay=replay,
+            min_trades=1,
+            fold_min_trades=1,
+        )
+
+        assert report.folds, "the series should support at least one fold"
+        assert report.evaluated, "the search should select something to test"
+        # The verdict itself is not asserted — this rule has no edge and the point is
+        # that the machinery produces a verdict at all, not which one.
+        assert isinstance(report.majority_passed, bool)
+        assert report.tearsheet.trades >= 0
+        for fold in report.evaluated:
+            assert fold.selected is not None
+            assert fold.selected.parameters["stop_distance"] in {
+                "0.0040",
+                "0.0050",
+                "0.0060",
+            }
