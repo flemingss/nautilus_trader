@@ -27,9 +27,9 @@ A review is not a commitment to merge. Concluding "nothing upstream is worth the
 disruption this quarter" is a valid outcome, and recording it is the point - an unrecorded
 skip is indistinguishable from forgetting.
 
-| Review | Due | Outcome |
-| --- | --- | --- |
-| Q1 | 2026-12-01 | - |
+| Review | Due        | Outcome |
+| ------ | ---------- | ------- |
+| Q1     | 2026-12-01 | -       |
 
 Between reviews, the delta report's conflict line is a **forecast**. It appearing is not a
 reason to act.
@@ -108,13 +108,13 @@ next order.
 So we source our own images ([ADR-0007](decisions/0007-self-sourced-images.md)), and with
 that comes ownership of:
 
-| Concern | Owner | Note |
-| --- | --- | --- |
-| Runtime image | Us | Built from our source, versioned by commit |
-| Base image currency | Us | Not upstream's cadence any more |
-| CVE response | Us | Including transitive Rust and Python dependencies |
-| `ib-gateway` image | Third party | Pinned **by digest**, never by tag |
-| Rust toolchain in build | Us | Pinned; a silent bump changes the artifact |
+| Concern                 | Owner       | Note                                              |
+| ----------------------- | ----------- | ------------------------------------------------- |
+| Runtime image           | Us          | Built from our source, versioned by commit        |
+| Base image currency     | Us          | Not upstream's cadence any more                   |
+| CVE response            | Us          | Including transitive Rust and Python dependencies |
+| `ib-gateway` image      | Third party | Pinned **by digest**, never by tag                |
+| Rust toolchain in build | Us          | Pinned; a silent bump changes the artifact        |
 
 This is the strongest argument for keeping the delta small, and the reason "retire a delta"
 sits alongside "sync" as a first-class review outcome. Retiring the Rust deltas restores

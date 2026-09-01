@@ -90,6 +90,42 @@ recorded per position rather than assumed.
 """
 
 
+# The searched axes, and the ceiling on the one that matters.
+#
+# `min_gap_atr` is searched because the honest answer to "how big is a gap" is that
+# nobody knows. `target_1_atr` is searched because how *far* a gap reverts is the second
+# genuinely unknown quantity. The stop is not searched: a fade that has not worked within
+# 1.5 ATR is a wrong thesis, not a developing one.
+#
+# The values were chosen by **counting events first**, not by picking a plausible range.
+# trade-copilot's V1-31 searched quality gates whose every setting produced no evaluable
+# folds, so the run returned the absence of a verdict rather than a verdict. Each value
+# here clears the in-sample eligibility floor on its own; 0.40 is the loosest that still
+# does, and 0.50 falls under it. `test_gap_reversal.py` pins that ceiling so the axis
+# cannot be widened without re-counting.
+#
+# The size is also deliberate. The best score obtainable from pure noise grows with the
+# number of trials, so a six-point space buys real headroom against the deflation
+# statistic that an 81-point one does not.
+SEARCH_SPACE: dict[str, tuple[Decimal, ...]] = {
+    "min_gap_atr": (Decimal("0.15"), Decimal("0.25"), Decimal("0.40")),
+    "target_1_atr": (Decimal("1.0"), Decimal("1.5")),
+}
+
+MAX_SEARCHABLE_MIN_GAP_ATR = Decimal("0.40")
+"""Loosest threshold that still clears the eligibility floor.
+
+Widening past this produces folds with too few trades to score, which the gate reports
+as no verdict rather than a weak one - the failure that looks like a bug."""
+
+WARMUP_BARS = DEFAULT_ATR_PERIOD + 2
+"""History the rule needs before it can fire.
+
+The trigger compares this bar's open against the previous close, so two bars is the true
+requirement; sized to the ATR window anyway so a warm-up taken from this figure is never
+shorter than the indicator needs."""
+
+
 class GapReversalConfig(StrategyConfig):
     """
     Knobs for the gap fade.
@@ -353,6 +389,9 @@ __all__ = [
     "DEFAULT_RISK_BUDGET",
     "DEFAULT_STOP_ATR",
     "DEFAULT_TARGET_ATR",
+    "MAX_SEARCHABLE_MIN_GAP_ATR",
+    "SEARCH_SPACE",
+    "WARMUP_BARS",
     "GapReversalConfig",
     "GapReversalStrategy",
     "strategy_factory",

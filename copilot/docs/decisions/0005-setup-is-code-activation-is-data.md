@@ -30,11 +30,11 @@ store as version-controlled files rather than database rows.
 
 Every configurable value is classified into exactly one of three buckets:
 
-| Bucket | Meaning | Lives in |
-| --- | --- | --- |
-| **Searchable** | The gate may move it. Its range is a property of the premise. | `SEARCH_SPACE` beside the strategy code |
-| **Identity** | Fixed for an activation. Seeds that activation's own validation. | A registry file |
-| **Environment** | Connection, paths, credentials. Never affects a result. | Environment variables |
+| Bucket          | Meaning                                                          | Lives in                                |
+| --------------- | ---------------------------------------------------------------- | --------------------------------------- |
+| **Searchable**  | The gate may move it. Its range is a property of the premise.    | `SEARCH_SPACE` beside the strategy code |
+| **Identity**    | Fixed for an activation. Seeds that activation's own validation. | A registry file                         |
+| **Environment** | Connection, paths, credentials. Never affects a result.          | Environment variables                   |
 
 - `copilot/strategies/<name>.py` carries `SEARCH_SPACE`, because the reasoning that sized
   it belongs with the code that implements it. The gap fade's thresholds were chosen by
