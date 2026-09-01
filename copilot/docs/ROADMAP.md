@@ -33,19 +33,19 @@ The organising frame for everything below: the eleven stages between finding a t
 banking it, ordered as the trade travels, so a break shows where everything downstream
 stalls.
 
-| #   | Stage                | Covered by                    | State                                            |
-| --- | -------------------- | ----------------------------- | ------------------------------------------------ |
-| 00  | Historical data      | `copilot/data`                | **Ready (daily).** 15,849 bars, 2005-2025, gated |
-| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision              |
-| 02  | Research / strategy  | `copilot/strategies`          | **Ready.** Gap fade ported; first verdict below  |
-| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models              |
-| 04  | Validation gate      | `copilot/validation`          | Ready. Proven end to end on real history         |
-| 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                       |
-| 06  | Risk limits          | `copilot/risk/protections`    | **Reactive only** - cannot stop the next order   |
-| 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing         |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Never run.** Paper run pending                 |
-| 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                            |
-| 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                          |
+| #   | Stage                | Covered by                    | State                                                     |
+| --- | -------------------- | ----------------------------- | --------------------------------------------------------- |
+| 00  | Historical data      | `copilot/data`                | **Ready (daily).** 105,398 bars, 20 symbols, 2005-2025    |
+| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                       |
+| 02  | Research / strategy  | `copilot/strategies`          | **Ready.** Gap fade ported; first verdict below           |
+| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                       |
+| 04  | Validation gate      | `copilot/validation`          | Ready. Proven end to end on real history                  |
+| 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
+| 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
+| 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Never run.** Paper run pending                          |
+| 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
+| 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 
 ### Stage 02 - the gap fade, and the first real verdict
 
@@ -84,7 +84,7 @@ holds one position at a time and a run of gap days therefore blocks its own re-e
 
 ## Open work, grouped by what unblocks it
 
-Twelve items. Grouped by blocking condition rather than by component, because that is
+Nine items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -104,62 +104,39 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Ready to build, nothing blocking (4)
+### Ready to build, nothing blocking (1)
 
-| Item | Stage | Notes |
-| ---- | ----- | ----- |
+| Item                               | Stage | Notes                                                                                                                                        |
+| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Make the cost model per-instrument | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
 
-| **Expose `set_trading_state` to Python** | 06    | Now cleared. An additive `MessagingSwitchboard` endpoint plus a way for a Python component to send to it: three upstream files including `crates/common`. Largest delta the fork would carry, so build it as one minimal commit and register every file. Detail below. |
-| Make the cost model per-instrument       | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice.                                                                                                                           |
-| Widen the catalog universe               | 00    | Three symbols proves the pipeline and is far too few to select from. Marketstack quota is the only real limit.                                                                                                                                                         |
+### Carrying cost, tracked (9 files)
 
-| Snapshot calibrator state on interrupt   | 10    | No samples are lost today, it just looks that way while the node unwinds. Operator comfort.                                                                                                                                                                            |
+Not work items - the standing bill. Reported by `python -m copilot.tools.upstream_delta`,
+with the reasoning for each in `docs/UPSTREAM_DELTA.md`.
 
-### Carrying cost, tracked (2 files)
+| Path                                                           | Ours      | Upstream since base | Risk                    |
+| -------------------------------------------------------------- | --------- | ------------------- | ----------------------- |
+| `crates/risk/src/python/engine.rs`                             | new file  | n/a                 | **cannot conflict**     |
+| `crates/risk/src/python/mod.rs`                                | +2        | untouched           | quiet                   |
+| `crates/adapters/interactive_brokers/src/historical/client.rs` | +36 -2    | untouched           | quiet                   |
+| `crates/live/Cargo.toml`                                       | +1        | +3                  | touched                 |
+| `python/pyproject.toml`                                        | +54       | untouched           | quiet                   |
+| `.typos.toml`                                                  | +1        | untouched           | quiet                   |
+| `crates/live/src/python/node.rs`                               | +14       | +166 -88            | **churning**            |
+| `crates/adapters/interactive_brokers/src/data/core.rs`         | +16 -12   | +160 -64            | **churning, conflicts** |
+| `python/nautilus_trader/{live,risk}/__init__.pyi`              | generated | -                   | regenerate, never edit  |
 
-Not work items - the standing bill. Reported by `python -m copilot.tools.upstream_delta`.
-
-| Path                                                           | Ours    | Upstream since base | Risk                          |
-| -------------------------------------------------------------- | ------- | ------------------- | ----------------------------- |
-| `crates/adapters/interactive_brokers/src/historical/client.rs` | +36 -2  | untouched           | quiet                         |
-| `crates/adapters/interactive_brokers/src/data/core.rs`         | +16 -12 | +160 -64            | **churning, conflicts today** |
-
-**A merge of `upstream/develop` already conflicts**, one sync in, in a single hunk: the
-`subscriptions` field declaration, where upstream dropped doc comments and we changed the
-key type. Mechanical to resolve, but it has to be done by hand and re-verified because
-the surrounding locking model changed underneath it (`05eae9fa43` moved the adapter to
-`parking_lot`, `4c18691277` standardised task lifecycles).
+It grew from 2 files to 9 in one session, all to reach `set_trading_state`. Six of the
+nine are additive-only or new files, which is the cheapest shape a delta can take; two
+sit in files upstream is actively rewriting.
 
 **Nothing is due.** Syncing is on demand only - the fork is deliberately held still while
-development is active, so this is a forecast for a sync that has not been scheduled, not
-a work item. Upstreaming both fixes would retire the entry rather than carry it and stays
-the cheapest option, but it opens a review front on someone else's schedule, so it is
-deferred on the same reasoning.
-
-### Waiting on a market session (2)
-
-US cash session opens 13:30 UTC. Both need live ticks, so neither can be settled outside
-that window. **Do not open the IB web portal during either run** - it triggers error 162.
-
-| Item                                   | Stage | Notes                                                                                                                                                                                                  |
-| -------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Recheck realtime quote entitlement     | 10    | Release forms unlocked delayed quotes across the US equity universe, not realtime. With the session closed a null result proves nothing. `entitlements.py` runs the check.                             |
-| Explain the sibling-subscription stall | 00    | Reproducible across three runs, and neither the withdrawn teardown claim nor the eviction bug that was fixed accounts for it. Likeliest explanation is IB-side. Open observation, not a diagnosed bug. |
-
-### Waiting on spend (2)
-
-No code closes these.
-
-| Item                         | Stage | Notes                                                                                                                                  |
-| ---------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| US equity history through IB | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                |
-| Intraday history             | 00    | Marketstack EOD cannot support anything acting within a session. Databento was preferred and deferred until the system earns its cost. |
-
-### Deferred by decision (1)
-
-**Tabletop: subscriptions, operations, strategy.** Parked deliberately until the code and
-back end were up to par. They now are. Three of the four open decisions resolve inside
-this session, which makes it the highest-leverage hour available.
+development is active, so the conflict in `data/core.rs` is a forecast for a sync that has
+not been scheduled. Upstreaming the two IB fixes and the `RiskEngine` binding would retire
+three entries rather than carry them, and all three are additive capability or straight bug
+fixes upstream would plausibly accept - but that opens a review front on someone else's
+schedule, so it is deferred on the same reasoning.
 
 ## Shortest route to a paper run
 
@@ -195,15 +172,22 @@ numbered backlog, so the references stay true as the backlog moves.
 
 Marketstack returns two OHLC sets. Measured over 15,851 rows:
 
-| Property                  | `open/high/low/close` | `adj_*` |
-| ------------------------- | --------------------- | ------- |
-| Rows with incoherent OHLC | 0                     | 3,553   |
-| Rows with null fields     | 0                     | 1,751   |
-| Back-adjusted for splits  | yes                   | yes     |
-| Adjusted for dividends    | no                    | yes     |
+| Property                  | `open/high/low/close` | `adj_*`     |
+| ------------------------- | --------------------- | ----------- |
+| Rows with incoherent OHLC | 12 (0.011%)           | 3,553 (22%) |
+| Rows with null fields     | 0                     | 1,751       |
+| Back-adjusted for splits  | yes                   | yes         |
+| Adjusted for dividends    | no                    | yes         |
 
 AAPL 2022-11-03 reports `adj_close` 138.65 under an `adj_low` of 138.75 - a close
 outside its own bar. A backtest fed that fills at a price the bar says never traded.
+
+**Correction.** An earlier version of this section said the raw set had *zero*
+incoherent rows. That held over the 15,851 rows first measured; over 105,414 it has
+twelve, every one an open a few cents outside the day's range (GOOGL 2025-12-29 opens
+at 314.52 against a high of 314.02). 0.011% against 22% leaves the choice unchanged,
+and the gate rejects them either way - but the claim was stronger than the evidence
+supported once the universe widened.
 
 So the overlay stores the **raw** set, which is the reverse of the obvious choice. It is
 safe because the vendor has *already back-adjusted it for splits*: AAPL's close on

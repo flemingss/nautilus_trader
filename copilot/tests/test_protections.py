@@ -15,10 +15,12 @@ from decimal import Decimal
 
 import pytest
 
+from copilot.risk.guard import ProtectionGuard
 from copilot.risk.protections import ProtectionPolicy
 from copilot.risk.protections import ProtectionTrigger
 from copilot.risk.protections import TradeOutcome
 from copilot.risk.protections import evaluate_protections
+from nautilus_trader.model import TradingState
 
 
 NOW = datetime(2026, 9, 1, 12, 0, tzinfo=UTC)
@@ -169,3 +171,104 @@ class TestPolicyValidation:
         assert policy.max_drawdown_pct == Decimal("0.06")
         assert policy.window_days == 14
         assert policy.cooldown_days == 3
+
+
+# --------------------------------------------------------------- engine-level halt
+
+
+class _FakeRiskEngine:
+    """
+    Stands in for the pyo3 `RiskEngine` handle.
+
+    The real one needs a built `LiveNode`; what these tests are about is the guard's
+    decision to halt and release, not pyo3 marshalling, which
+    `test_risk_engine_binding.py` covers against the real engine.
+
+    """
+
+    def __init__(self, state=TradingState.ACTIVE) -> None:
+        self.trading_state = state
+        self.calls: list[object] = []
+
+    def set_trading_state(self, state) -> None:
+        self.calls.append(state)
+        self.trading_state = state
+
+
+class _SilentLog:
+    def error(self, *_args: object, **_kwargs: object) -> None: ...
+
+    def warning(self, *_args: object, **_kwargs: object) -> None: ...
+
+    def info(self, *_args: object, **_kwargs: object) -> None: ...
+
+
+class _GuardStandIn:
+    """
+    Carries the only two attributes the halt methods touch.
+
+    `ProtectionGuard` cannot be instantiated for a unit test: `Strategy` is a pyo3 class
+    whose `log` is read-only, so it cannot be stubbed on a real instance. The methods
+    under test read `self._risk_engine` and `self.log` and nothing else, so calling them
+    unbound against this stand-in exercises exactly the code that ships.
+
+    """
+
+    def __init__(self, risk_engine: object) -> None:
+        self._risk_engine = risk_engine
+        self.log = _SilentLog()
+
+
+def _set_state(risk_engine, state) -> bool:
+    return ProtectionGuard._set_trading_state(_GuardStandIn(risk_engine), state)
+
+
+def _close_breach(risk_engine) -> None:
+    ProtectionGuard._on_breach_closed(_GuardStandIn(risk_engine))
+
+
+def test_a_breach_halts_the_engine():
+    """
+    The whole point of the binding: deny the *next* order, not tidy up after it.
+
+    Cancelling and flattening take time and emit orders of their own, so the halt has
+    to land first or a strategy submitting in between is still accepted.
+    """
+    engine = _FakeRiskEngine()
+
+    assert _set_state(engine, TradingState.HALTED) is True
+    assert engine.trading_state == TradingState.HALTED
+
+
+def test_without_a_handle_the_guard_reports_it_could_not_halt():
+    """
+    Degrading silently to reactive-only is the failure this return value prevents.
+
+    The guard still cancels and flattens, but the caller must be able to tell the
+    difference between an engine-level gate and a tidy-up.
+
+    """
+    assert _set_state(None, TradingState.HALTED) is False
+
+
+def test_the_cooldown_expiring_restores_active():
+    engine = _FakeRiskEngine(TradingState.HALTED)
+    _close_breach(engine)
+
+    assert engine.trading_state == TradingState.ACTIVE
+    assert engine.calls == [TradingState.ACTIVE]
+
+
+def test_a_state_the_guard_did_not_set_is_left_alone():
+    """
+    Someone else may have halted for a reason this guard knows nothing about.
+
+    Blindly writing ACTIVE on cooldown expiry would clear that, which is exactly the
+    kind of quiet override a risk control must not perform.
+
+    """
+    engine = _FakeRiskEngine(TradingState.REDUCING)
+    _close_breach(engine)
+
+    assert engine.trading_state == TradingState.REDUCING
+    assert engine.calls == []

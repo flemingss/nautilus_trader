@@ -122,7 +122,20 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     client = MarketstackClient(access_key)
-    rows = client.fetch_eod(symbols, start, end)
+
+    # One symbol per fetch, not all of them in one window. The provider caps a page at
+    # 1000 rows and the client refuses to page past `MAX_PAGES` rather than silently
+    # truncating, so a 20-symbol request over 20 years blows that budget and fails -
+    # which is the guard working, but it makes a real universe unusable. Per symbol,
+    # each series is ~6 pages, a failure is isolated to one name, and progress is
+    # visible on a fetch that otherwise looks hung for minutes.
+    print(f"Fetching {len(symbols)} symbol(s), {start} .. {end}", flush=True)
+    rows: list[dict[str, object]] = []
+    for i, symbol in enumerate(symbols, start=1):
+        fetched = client.fetch_eod([symbol], start, end)
+        rows.extend(dict(row) for row in fetched)
+        print(f"  [{i}/{len(symbols)}] {symbol:<6} {len(fetched):>6} rows", flush=True)
+
     result = normalize(
         rows,
         received_at=datetime.now(tz=UTC),
@@ -151,7 +164,7 @@ def main(argv: list[str] | None = None) -> int:
     reports = write_ingestion(
         catalog,
         result,
-        venues=venues_from_rows([dict(row) for row in rows]),
+        venues=venues_from_rows(rows),
         currency=args.currency,
     )
     print(f"\nWrote to {args.catalog}:")
@@ -162,7 +175,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _report(result, symbols: list[str], start: date, end: date) -> None:  # noqa: ANN001
-    print(f"Marketstack EOD  {','.join(symbols)}  {start} .. {end}")
+    print(f"Marketstack EOD  {len(symbols)} symbol(s)  {start} .. {end}")
     print(f"  fetched:  {result.fetched}")
     print(f"  accepted: {len(result.bars)}")
     print(f"  rejected: {len(result.rejected)}  ({result.rejection_ratio:.4%})")

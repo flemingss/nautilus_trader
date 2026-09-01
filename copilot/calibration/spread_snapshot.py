@@ -31,6 +31,7 @@ import os
 import signal
 import statistics
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
@@ -144,11 +145,30 @@ class SpreadRecorder(DataActor):
 
     """
 
+    SNAPSHOT_EVERY_QUOTES = 25
+    """
+    Quotes between rolling snapshots.
+
+    At the measured rate of roughly one usable
+    quote per six seconds per symbol, this writes every couple of minutes - often
+    enough that an interrupted run has something current on disk, rare enough that the
+    write is not in the hot path.
+
+    """
+
     def configure(self, instrument_ids: list[InstrumentId]) -> None:
         """
         Attach the instruments to record, after pyo3 construction.
         """
         self._instrument_ids = instrument_ids
+        self._quotes_seen = 0
+        self.on_snapshot: Callable[[], object] | None = None
+        """
+        Set by the caller to persist accumulated state mid-run.
+
+        Left unset in tests, where the recorder is exercised without a filesystem.
+
+        """
         self.samples: dict[str, SymbolSamples] = {
             str(i): SymbolSamples(instrument_id=str(i)) for i in instrument_ids
         }
@@ -166,11 +186,21 @@ class SpreadRecorder(DataActor):
         Accumulate the spread of one quote.
         """
         bucket = self.samples.get(str(quote.instrument_id))
-        if bucket is not None:
-            bucket.add(float(quote.bid_price), float(quote.ask_price))
+        if bucket is None:
+            return
+        bucket.add(float(quote.bid_price), float(quote.ask_price))
+
+        self._quotes_seen += 1
+        if self.on_snapshot is not None and self._quotes_seen % self.SNAPSHOT_EVERY_QUOTES == 0:
+            try:
+                self.on_snapshot()
+            except OSError as e:
+                # A snapshot is a convenience. Losing the run because the disk is full
+                # or the directory vanished would be a worse outcome than losing it.
+                self.log.warning(f"Could not write rolling snapshot: {e}")
 
 
-def build_node(  # noqa: PLR0913 - each argument is an independent connection knob
+def build_node(
     instrument_ids: list[InstrumentId],
     *,
     host: str,
@@ -210,6 +240,36 @@ def build_node(  # noqa: PLR0913 - each argument is an independent connection kn
     recorder.configure(instrument_ids)
     node.add_actor(recorder)
     return node, recorder
+
+
+def build_report(
+    recorder: SpreadRecorder,
+    *,
+    started: datetime,
+    finished: datetime,
+    host: str,
+    port: int,
+    market_data_type: str,
+    partial: bool,
+) -> dict[str, object]:
+    """
+    Assemble the report from whatever has been recorded so far.
+
+    Shared by the rolling snapshot and the final write so a partial file has exactly
+    the shape of a complete one, and is marked rather than merely shorter - a truncated
+    run that looked like a finished one is how a coefficient gets set from 24 quotes.
+
+    """
+    return {
+        "measured_at": started.isoformat(),
+        "finished_at": finished.isoformat(),
+        "duration_seconds": round((finished - started).total_seconds(), 1),
+        "source": f"interactive_brokers {host}:{port}",
+        "market_data_type": market_data_type,
+        "delayed_caveat": market_data_type.startswith("DELAYED"),
+        "partial": partial,
+        "symbols": [s.summary() for s in recorder.samples.values()],
+    }
 
 
 def main() -> None:
@@ -252,27 +312,41 @@ def main() -> None:
             stderr=subprocess.DEVNULL,
         )
 
+    stamp = started.strftime("%Y%m%dT%H%M%SZ")
+    partial_path = OUT_DIR / f"spread_snapshot_{stamp}.partial.json"
+    final_path = OUT_DIR / f"spread_snapshot_{stamp}.json"
+
+    def snapshot(path: Path, *, partial: bool) -> dict[str, object]:
+        report = build_report(
+            recorder,
+            started=started,
+            finished=datetime.now(UTC),
+            host=host,
+            port=port,
+            market_data_type=mdt_name,
+            partial=partial,
+        )
+        OUT_DIR.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(report, indent=2) + "\n")
+        return report
+
+    # Snapshot as samples accumulate, not only at the end. An interrupted run does
+    # reach the `finally` below, but only after the node finishes unwinding, which
+    # took minutes on an 846s run - long enough that an operator checking straight
+    # after signalling sees nothing and reasonably concludes the samples were lost.
+    # A rolling file removes the wait without touching signal handling, which the
+    # node installs its own handlers for.
+    recorder.on_snapshot = lambda: snapshot(partial_path, partial=True)
+
     try:
         node.run()
     except KeyboardInterrupt:
         pass
     finally:
-        finished = datetime.now(UTC)
-        report = {
-            "measured_at": started.isoformat(),
-            "finished_at": finished.isoformat(),
-            "duration_seconds": round((finished - started).total_seconds(), 1),
-            "source": f"interactive_brokers {host}:{port}",
-            "market_data_type": mdt_name,
-            "delayed_caveat": mdt_name.startswith("DELAYED"),
-            "symbols": [s.summary() for s in recorder.samples.values()],
-        }
-        OUT_DIR.mkdir(parents=True, exist_ok=True)
-        stamp = started.strftime("%Y%m%dT%H%M%SZ")
-        out_path = OUT_DIR / f"spread_snapshot_{stamp}.json"
-        out_path.write_text(json.dumps(report, indent=2) + "\n")
+        report = snapshot(final_path, partial=False)
+        partial_path.unlink(missing_ok=True)
         print(json.dumps(report, indent=2), flush=True)
-        print(f"\nWrote {out_path}", flush=True)
+        print(f"\nWrote {final_path}", flush=True)
 
 
 if __name__ == "__main__":

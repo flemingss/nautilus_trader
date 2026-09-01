@@ -59,6 +59,7 @@ same currency amount whatever the instrument's price level, and R stays scale-fr
 strategy records what each position actually risked into
 :class:`~copilot.validation.nautilus_replay.RiskAmountRegistry` - without that the gate
 scores every trade at ``r_multiple == 0`` and reports no edge anywhere.
+
 """
 
 from __future__ import annotations
@@ -80,8 +81,13 @@ DEFAULT_MIN_GAP_ATR = "0.25"
 DEFAULT_STOP_ATR = "1.5"
 DEFAULT_TARGET_ATR = "1.0"
 DEFAULT_RISK_BUDGET = "1000"
-"""Currency risked per trade. Sizing floors to whole shares, so realised risk sits at
-or just under this and is recorded per position rather than assumed."""
+"""
+Currency risked per trade.
+
+Sizing floors to whole shares, so realised risk sits at or just under this and is
+recorded per position rather than assumed.
+
+"""
 
 
 class GapReversalConfig(StrategyConfig):
@@ -94,6 +100,7 @@ class GapReversalConfig(StrategyConfig):
 
     Values are carried as strings and converted to ``Decimal`` at use. These are price
     multiples that end up deciding order prices, and a float round trip would move them.
+
     """
 
     _CUSTOM_FIELDS = (
@@ -109,7 +116,9 @@ class GapReversalConfig(StrategyConfig):
     )
 
     def __new__(cls, *args: object, **kwargs: object):  # noqa: ANN204 - pyo3 base
-        """Strip the custom fields before the pyo3 base sees them."""
+        """
+        Strip the custom fields before the pyo3 base sees them.
+        """
         for field_name in cls._CUSTOM_FIELDS:
             kwargs.pop(field_name, None)
         return super().__new__(cls, *args, **kwargs)
@@ -128,7 +137,9 @@ class GapReversalConfig(StrategyConfig):
         long: bool = True,
         **_kwargs: object,
     ) -> None:
-        """Configure one leg of the fade."""
+        """
+        Configure one leg of the fade.
+        """
         super().__init__()
         self.instrument_id = instrument_id
         self.bar_type = bar_type
@@ -142,23 +153,29 @@ class GapReversalConfig(StrategyConfig):
 
 
 class GapReversalStrategy(Strategy):
-    """Fade an overnight gap, with an ATR stop and a nearer ATR target."""
+    """
+    Fade an overnight gap, with an ATR stop and a nearer ATR target.
+    """
 
     def __init__(self, config: GapReversalConfig) -> None:
-        """Build the indicator and the state the rule needs."""
+        """
+        Build the indicator and the state the rule needs.
+        """
         super().__init__(config)
         self._atr = AverageTrueRange(config.atr_period)
         self._previous_close: Decimal | None = None
         self._registry: Any = None
         self._pending_risk = Decimal(0)
         self.skips: dict[str, int] = {}
-        """Why the rule declined, counted by reason.
+        """
+        Why the rule declined, counted by reason.
 
         Carried across from the original, which returns a reason rather than ``None``
         precisely so that "why was there no signal" stays a log line instead of a
         debugging session. It is also the first thing to read when a fold produces no
         trades: `insufficient_history` means the warm-up was set too short, while
         `setup_not_triggered` on every bar means the threshold is wrong.
+
         """
 
     def configure(self, registry: Any) -> None:
@@ -167,16 +184,21 @@ class GapReversalStrategy(Strategy):
 
         Separate from ``__init__`` because ``StrategyConfig`` is a pyo3 class and cannot
         carry a live Python object as a config field.
+
         """
         self._registry = registry
 
     def on_start(self) -> None:
-        """Subscribe and let the engine feed the indicator."""
+        """
+        Subscribe and let the engine feed the indicator.
+        """
         self.register_indicator_for_bars(self.config.bar_type, self._atr)
         self.subscribe_bars(self.config.bar_type)
 
     def on_bar(self, bar: Bar) -> None:
-        """Evaluate the rule on one closed bar."""
+        """
+        Evaluate the rule on one closed bar.
+        """
         previous_close, self._previous_close = self._previous_close, Decimal(str(bar.close))
 
         if not self._atr.initialized:
@@ -204,7 +226,9 @@ class GapReversalStrategy(Strategy):
         self._enter(bar, atr)
 
     def _triggered(self, bar: Bar, previous_close: Decimal, atr: Decimal) -> bool:
-        """Whether this bar's gap fires the configured leg."""
+        """
+        Whether this bar's gap fires the configured leg.
+        """
         gap_ratio = (Decimal(str(bar.open)) - previous_close) / atr
         threshold = Decimal(self.config.min_gap_atr)
 
@@ -230,7 +254,9 @@ class GapReversalStrategy(Strategy):
         return True
 
     def _enter(self, bar: Bar, atr: Decimal) -> None:
-        """Size from the stop and submit the bracket."""
+        """
+        Size from the stop and submit the bracket.
+        """
         instrument = self.cache.instrument(self.config.instrument_id)
         entry = Decimal(str(bar.close))
         stop_distance = atr * Decimal(self.config.stop_atr)
@@ -279,6 +305,7 @@ class GapReversalStrategy(Strategy):
         stop distance, not the budget: quantity is floored to whole shares, so realised
         risk sits at or just under the budget and using the budget as the R denominator
         would overstate every trade by that rounding.
+
         """
         if self._registry is not None:
             self._registry.record(str(event.position_id), self._pending_risk)
@@ -301,6 +328,7 @@ def strategy_factory(
     passed straight to ``make_replay`` and searched over by ``walk_forward``.
     ``parameters`` is a plain mapping of the searched axes, which is what
     ``ParameterGrid`` produces by default.
+
     """
     strategy = GapReversalStrategy(
         GapReversalConfig(

@@ -2,6 +2,57 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (risk enforcement + universe)
+
+### Added
+
+- **`crates/risk/src/python/engine.rs`** (upstream, registered) - `PyRiskEngine`, a
+  Python handle to the shared `Rc<RefCell<RiskEngine>>` exposing `set_trading_state`
+  and `trading_state`. Mirrors the existing `PyCache` pattern, `unsendable` included.
+  Reached from `LiveNode.risk_engine`.
+- **8 tests against the real engine** (`test_risk_engine_binding.py`), plus 4 covering
+  the guard's halt and release decisions.
+
+### Changed
+
+- **The risk guard is preventive, not reactive.** On breach it now halts the engine
+  first, so a strategy that keeps submitting is denied inside the risk engine rather
+  than tidied up after. Cancel and flatten follow. `configure(settings, risk_engine=...)`
+  takes the handle; **without it the guard degrades to the old reactive behaviour and
+  logs a warning** rather than pretending to be an engine-level gate. The state is
+  restored to ACTIVE when the cooldown expires, and only if the guard set it.
+- **The backfill fetches one symbol at a time.** A 20-symbol, 20-year window blew the
+  client's page budget and failed - the guard working, but it made a real universe
+  unusable. Per symbol each series is ~6 pages, a failure is isolated to one name, and
+  progress is visible on a fetch that otherwise looks hung for minutes.
+- **The calibrator writes a rolling snapshot** every 25 quotes to a `.partial.json`,
+  removed on clean exit. An interrupted run still reaches its `finally`, but only after
+  the node unwinds - minutes on a long run, long enough that an operator reasonably
+  concludes the samples were lost.
+
+### Measured
+
+- **Universe widened to 20 symbols**: 105,414 rows fetched, **105,398 bars written**,
+  16 rejected (0.015%). Liquid US large caps plus SPY/QQQ/IWM, all with 2005 history,
+  since the gate needs 252-bar folds.
+
+### Corrected
+
+- **The raw OHLC set is not perfectly coherent, and this changelog previously said it
+  was.** Zero failures held over the 15,851 rows first measured; over 105,414 there are
+  twelve, every one an open a few cents outside the day's range (GOOGL 2025-12-29 opens
+  at 314.52 against a high of 314.02). 0.011% against 22% for the adjusted set leaves
+  the choice unchanged and the gate rejects them either way - but the claim was stronger
+  than the evidence supported once the universe widened.
+- `price_currency` is worse than first reported: at 20 symbols the vendor tags US large
+  caps ARS, MXN, CLP, THB, GBP and CHF. Advisory only, as already documented.
+
+### Upstream delta
+
+Grew from 3 files to 9, all to reach `set_trading_state`. Six are new files or
+additive-only. `crates/live/src/python/node.rs` joins `data/core.rs` in the churning
+category.
+
 ## 2026-09-01 (strategy + toolchain)
 
 ### Added

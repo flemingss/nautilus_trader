@@ -9,6 +9,7 @@ from nautilus_trader import common
 from nautilus_trader import core
 from nautilus_trader import model
 from nautilus_trader import portfolio
+from nautilus_trader import risk
 from nautilus_trader import trading
 from nautilus_trader.portfolio import PortfolioConfig
 
@@ -368,6 +369,8 @@ class LiveNode:
     def cache(self) -> common.Cache: ...
     @property
     def portfolio(self) -> portfolio.Portfolio: ...
+    @property
+    def risk_engine(self) -> risk.RiskEngine: ...
     @staticmethod
     def build(name: str, config: LiveNodeConfig | None = None) -> LiveNode: ...
     @staticmethod

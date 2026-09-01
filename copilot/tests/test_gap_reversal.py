@@ -6,6 +6,7 @@ splits the legs precisely because gap-downs and gap-ups revert at materially dif
 rates, so a sign error that let the long leg trade gap-ups would pool them and let the
 stronger leg carry the weaker one through the gate - while every test about entries,
 stops and sizing still passed. Several tests below exist only to pin that.
+
 """
 
 from __future__ import annotations
@@ -33,7 +34,9 @@ START = datetime(2024, 1, 2, tzinfo=UTC)
 
 
 def bars_from(specs: list[tuple[str, str, str, str]]) -> list[DailyBar]:
-    """Build a bar series from (open, high, low, close) strings, one per day."""
+    """
+    Build a bar series from (open, high, low, close) strings, one per day.
+    """
     return [
         DailyBar(
             symbol="AAPL",
@@ -54,6 +57,7 @@ def flat_series(n: int, price: str = "100", spread: str = "1") -> list[tuple[str
 
     Each bar opens exactly where the last one closed, so no bar can trigger the rule and
     anything that fires during the warm-up is a bug rather than a signal.
+
     """
     p, s = Decimal(price), Decimal(spread)
     return [(str(p), str(p + s), str(p - s), str(p)) for _ in range(n)]
@@ -62,18 +66,25 @@ def flat_series(n: int, price: str = "100", spread: str = "1") -> list[tuple[str
 # Quiet bars charge the ATR to roughly 2 on a 1-wide range, which is what the resolving
 # tails below are sized against.
 RESOLVE_LONG = [("98", "102", "97.5", "101"), *flat_series(3, price="101")]
-"""Reaches a long's 1 ATR target without coming near its 1.5 ATR stop.
+"""
+Reaches a long's 1 ATR target without coming near its 1.5 ATR stop.
 
 Every entering test needs one. A position that never touches either level stays open,
 and an open position is not in `positions_closed()` - so the run reports zero trades and
-looks exactly like a rule that never fired."""
+looks exactly like a rule that never fired.
+
+"""
 
 RESOLVE_SHORT = [("102", "102.5", "98", "99"), *flat_series(3, price="99")]
-"""The mirror, for the short leg."""
+"""
+The mirror, for the short leg.
+"""
 
 
 def run(specs, **parameters: object):
-    """Replay one parameter set over a hand-built series."""
+    """
+    Replay one parameter set over a hand-built series.
+    """
     return run_nautilus_replay(
         bars_from(specs),
         parameters,
@@ -111,6 +122,7 @@ def test_the_long_leg_ignores_a_gap_up():
     Taking the magnitude of the gap here would have each leg fire on both kinds, which
     is exactly the pooling the split exists to prevent: gap-downs revert materially more
     often than gap-ups, so a pooled rule lets the stronger leg carry the weaker one.
+
     """
     specs = [*flat_series(20), ("104", "105", "101", "102"), *flat_series(6, price="102")]
     result = run(specs, min_gap_atr="0.25")
@@ -135,7 +147,9 @@ def test_the_short_leg_ignores_a_gap_down():
 
 
 def test_a_gap_under_the_threshold_does_not_fire():
-    """The trigger is also the quality measure; below threshold there is no signal."""
+    """
+    The trigger is also the quality measure; below threshold there is no signal.
+    """
     # ATR ~= 2, so a 1-point gap is 0.5 ATR - under a 1.0 threshold.
     specs = [*flat_series(20), ("99", "100", "98", "99"), *flat_series(6, price="99")]
     assert run(specs, min_gap_atr="1.0").trades == ()
@@ -159,6 +173,7 @@ def test_require_unfilled_rejects_a_gap_the_session_closed():
 
     Entering afterwards is buying the reversion after it happened, which is the whole
     thing the knob guards against.
+
     """
     # Opens 4 below (a real gap down) but closes back above the previous close.
     specs = [
@@ -186,6 +201,7 @@ def test_every_trade_reports_the_risk_it_took():
 
     `run_nautilus_replay` raises rather than returning that silently, so a regression
     here fails loudly - but the assertion states the contract explicitly anyway.
+
     """
     specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
     result = run(specs, min_gap_atr="0.25")
@@ -198,9 +214,11 @@ def test_every_trade_reports_the_risk_it_took():
 
 def test_risk_is_the_floored_quantity_times_the_stop_distance():
     """
-    Not the budget. Quantity floors to whole shares, so realised risk sits at or just
-    under the budget; using the budget as the R denominator would overstate every trade
-    by that rounding.
+    Not the budget.
+
+    Quantity floors to whole shares, so realised risk sits at or just under the budget;
+    using the budget as the R denominator would overstate every trade by that rounding.
+
     """
     specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
     result = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000")
@@ -222,6 +240,7 @@ def test_only_one_position_is_held_at_a_time():
 
     The original's engine enforces this upstream of the setup; here the rule has to, or
     the risk budget is exceeded by a multiple nobody chose.
+
     """
     specs = [*flat_series(20)]
     for _ in range(4):
@@ -247,6 +266,7 @@ def test_nothing_trades_before_the_atr_is_ready():
 
     `insufficient_history` in the skip counts is also how a fold that produced no trades
     is diagnosed as a warm-up that was set too short, rather than a dead premise.
+
     """
     # A huge gap on bar 2, long before a 14-period ATR can be initialised.
     specs = [("100", "101", "99", "100"), ("80", "101", "79", "100"), *flat_series(4)]
@@ -268,7 +288,9 @@ def test_skips_are_counted_by_reason():
 
 
 def test_the_factory_matches_the_gate_contract():
-    """`make_replay` calls exactly this shape, so a mismatch breaks the gate silently."""
+    """
+    `make_replay` calls exactly this shape, so a mismatch breaks the gate silently.
+    """
     strategy = strategy_factory(
         {"min_gap_atr": Decimal("0.40"), "target_1_atr": Decimal("1.5")},
         instrument_id=INSTRUMENT.id,
@@ -287,6 +309,7 @@ def test_parameters_survive_as_decimals_not_floats():
 
     0.15 is the case that shows it: `str(float("0.15"))` is stable, but arithmetic on it
     is not, and the strategy multiplies it by an ATR to place a stop.
+
     """
     strategy = strategy_factory(
         {"min_gap_atr": Decimal("0.15")},
@@ -306,6 +329,7 @@ def test_the_searched_thresholds_all_produce_trades(threshold):
     floor at every setting, producing no evaluable folds and so no verdict at all. The
     gap thresholds were picked so every one of them still fires. A change that breaks
     that does not weaken the verdict - it removes it.
+
     """
     specs = [*flat_series(20)]
     for _ in range(5):
