@@ -162,6 +162,69 @@ This is the strongest argument for keeping the delta small, and the reason "reti
 sits alongside "sync" as a first-class review outcome. Retiring the Rust deltas restores
 the published-wheel path and hands the supply chain back.
 
+## Standing up a new machine
+
+Written 2026-09-02 against the question "can this operate from a laptop tomorrow". The
+repository is self-contained; what does not travel is machine state, and all of it is
+listed here. `trade-copilot` is **not** required: the validation types were vendored
+precisely so the overlay never imports it, and the only thing ever drawn from its
+directory was an API key.
+
+1. **Clone and re-arm the git guards.** A fresh clone loses everything in `.git/config`:
+
+   ```bash
+   git clone https://github.com/flemingss/nautilus_trader.git
+   git remote add upstream https://github.com/nautechsystems/nautilus_trader.git
+   git remote set-url --push upstream DISABLED-never-push-upstream
+   gh repo set-default flemingss/nautilus_trader
+   ```
+
+   Not every `gh` subcommand honours the default - pass `-R flemingss/nautilus_trader`
+   explicitly anyway.
+
+2. **Toolchain.** Follow "Rust toolchain prerequisites" in `ROADMAP.md`: the apt packages
+   (the one sudo step), rustup (`rust-toolchain.toml` pins 1.98.0 automatically), uv,
+   Cap'n Proto via `scripts/install-capnp.sh`, then `make install-tools` and
+   `make build-debug`. Budget real time for the first build - 43 crates, ~26 GB of
+   `target/` - and remember the published wheel is forbidden by decision
+   ([ADR-0007](decisions/0007-self-sourced-images.md)): it lacks this fork's engine
+   fixes, and startup asserts on one of them.
+
+3. **Data.** The catalog lives *outside* the repository at `~/.nautilus_copilot/catalog`
+   (override: `COPILOT_CATALOG_PATH`). It is ~6 MB - copy it, or rebuild it with
+   `python -m copilot.data.backfill`, which needs `MARKETSTACK_API_KEY` in the
+   environment. That key is the only secret the overlay uses, and it lives in a password
+   manager, never in either repository.
+
+4. **Broker environment, per shell.** Three variables:
+
+   ```bash
+   export IBAPI_TIMEZONE_ALIASES=JST=Asia/Tokyo   # required while TWS reports JST
+   export IB_V2_HOST=...   # where TWS listens; scripts default to this WSL's host IP
+   export IB_V2_PORT=7497  # TWS paper
+   ```
+
+   The scripts' built-in host default (`172.17.112.1`) is **this machine's** WSL gateway
+   and means nothing elsewhere - code and TWS on the same OS is plain `127.0.0.1`. The
+   timezone alias is not optional: without it every connect fails as a generic
+   "Failed to connect to IB Gateway/TWS", and this session lost ten minutes to exactly
+   that in a fresh shell.
+
+5. **TWS settings, which live in TWS and not here.** Enable ActiveX/socket API; add the
+   connecting machine's IP as a Trusted IP (under WSL that is the WSL address, not
+   localhost); Read-Only API **off** for anything past paper stage one; and know the
+   precautionary size settings exist - a large API order can sit untransmitted in the
+   GUI, invisible to the API. One login session per set of credentials: a portal login
+   kills the API session with error 162.
+
+6. **Verify before trusting.** `PYTHONPATH=. pytest copilot/tests/ -q` (fast, no broker),
+   then `python -m copilot.live.preflight --account DUT067974` inside a session. Stage
+   one passing proves the whole path: build, guards, environment, broker.
+
+The agent-side note that belongs with this: Claude's auto-memory is machine-local and
+does not travel. The repository documents are the durable copy - which is why this file
+and `ROADMAP.md` carry the warm-start records rather than leaving them in memory.
+
 ## Inherited governance surfaces
 
 Surveyed 2026-09-02, after ownership. These files came with the copy and describe how to
