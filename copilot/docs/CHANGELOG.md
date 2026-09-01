@@ -2,6 +2,39 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the gate goes net of costs)
+
+### Decided
+
+- **[ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md): spread
+  is charged at p95 from a pinned snapshot.** The choice moves net edge by only 3-14% of
+  gross at daily-bar frequency, and three measurement biases all point the conservative
+  way: snapshots sample mid-session while the strategy trades after overnight gaps, the
+  median moved 2x between measurement sessions, and 2026 spreads are applied to trades
+  from 2006 onward. Revisit triggers are named in the ADR - an intraday strategy
+  re-measures at its entry time-of-day rather than inflating the percentile.
+
+### Added
+
+- **`calibration/cost_model.py`** - the cost model the gate charges. Per-instrument
+  per-side spread from the snapshot pinned **by name** (re-running the calibrator cannot
+  silently change what verdicts are charged), plus IB Pro fixed-tier commission with the
+  measured USD 1.00 minimum, on split-corrected share counts. An uncalibrated symbol
+  refuses to score rather than borrowing another symbol's number. Costs run through the
+  walk-forward **objective**, so the in-sample search selects parameters that survive
+  costs - exact for a one-entry-one-exit trade shape, with the engine untouched. Twelve
+  tests; `cost_impact` now imports the shared arithmetic instead of duplicating it.
+
+### Measured
+
+- **The first net verdicts moved a result.** AAPL flipped from majority-pass to
+  majority-fail (19/39 folds, net +0.0345 R against +0.0492 gross); MSFT (24/39, +0.0682)
+  and SPY (21/38, +0.0541) held. Cost-aware selection chose different parameters on two
+  symbols, visible as changed trade counts. Verdict records now carry their exact cost
+  basis - snapshot, percentile, coefficient, schedule - and score keys are renamed
+  (`mean_oos_net_expectancy_r`, `net_score_r`) so a net number can never be compared to a
+  gross one under the same name.
+
 ## 2026-09-02 (making the calibrator runnable, and two market-session answers)
 
 ### Fixed

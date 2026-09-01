@@ -45,6 +45,8 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.calibration.cost_model import commission
+from copilot.calibration.cost_model import split_factor
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
@@ -56,39 +58,6 @@ from copilot.validation.walkforward import walk_forward
 
 OUT_DIR = Path(__file__).parent / "out"
 DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
-
-# IB Pro, fixed tier, US equities.
-COMMISSION_PER_SHARE = Decimal("0.005")
-COMMISSION_MIN = Decimal("1.00")
-COMMISSION_MAX_PCT = Decimal("0.01")
-
-SPLITS: dict[str, list[tuple[datetime, Decimal]]] = {
-    "AAPL": [
-        (datetime(2005, 2, 28, tzinfo=UTC), Decimal(2)),
-        (datetime(2014, 6, 9, tzinfo=UTC), Decimal(7)),
-        (datetime(2020, 8, 31, tzinfo=UTC), Decimal(4)),
-    ],
-}
-"""Splits inside the catalog window, from the backfill's corporate-action report.
-
-Only symbols that split need an entry. A symbol absent here is assumed unsplit, which is
-the safe direction: it charges commission on the recorded share count, which is the actual
-one when no split intervened."""
-
-
-def split_factor(symbol: str, when: datetime) -> Decimal:
-    """Return the cumulative split factor after ``when``: adjusted shares over real shares."""
-    factor = Decimal(1)
-    for date, multiple in SPLITS.get(symbol, []):
-        if when < date:
-            factor *= multiple
-    return factor
-
-
-def commission(real_shares: Decimal, notional: Decimal) -> Decimal:
-    """One side of an IB Pro fixed-tier US equity order."""
-    fee = max(COMMISSION_MIN, COMMISSION_PER_SHARE * real_shares)
-    return min(fee, COMMISSION_MAX_PCT * notional)
 
 
 def measured_spreads(path: Path) -> dict[str, dict[str, Decimal]]:

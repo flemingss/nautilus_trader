@@ -55,7 +55,7 @@ stalls.
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
 | 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-6 pass** 2026-09-01                            |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
-| 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
+| 10  | Cost calibration     | `copilot/calibration`         | **Wired.** p95 per instrument ([ADR-0011])                |
 
 ### Stage 02 - the gap fade, and the first real verdict
 
@@ -68,34 +68,40 @@ at all. A gap's trigger *is* its quality measure, so there is nothing to AND on 
 nothing to dilute, and the original's search values were picked so every one clears the
 floor.
 
-**First verdict, reproducible from a commit:**
+**The verdict, net of costs as of 2026-09-02
+([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)):**
 
 ```bash
 python -m copilot.strategies.validate --all --write
 ```
 
-| Symbol | Folds passed | Mean OOS expectancy | Trades | Majority |
-| ------ | ------------ | ------------------- | ------ | -------- |
-| AAPL   | 20 / 39      | **+0.049150 R**     | 612    | pass     |
-| MSFT   | 24 / 39      | **+0.090638 R**     | 571    | pass     |
-| SPY    | 22 / 38      | **+0.063737 R**     | 609    | pass     |
+| Symbol | Folds passed | Mean OOS, net   | (was gross)      | Trades | Majority     |
+| ------ | ------------ | --------------- | ---------------- | ------ | ------------ |
+| AAPL   | 19 / 39      | **+0.034544 R** | +0.049150, 20/39 | 612    | **now fail** |
+| MSFT   | 24 / 39      | **+0.068233 R** | +0.090638        | 576    | pass         |
+| SPY    | 21 / 38      | **+0.054098 R** | +0.063737, 22/38 | 609    | pass         |
+
+Charging the measured spread at p95 and IB's commission schedule **flipped AAPL from
+majority-pass to majority-fail** - one fold crossed under - and moved parameter selection
+on two symbols, visible as changed trade counts: the in-sample search now picks what
+survives costs rather than what wins gross. Records before 2026-09-02 carry
+`costs_modelled: false` and are not comparable to records after it.
 
 Every run files a record under `copilot/strategies/verdicts/` carrying the activation, the
-search space as declared at the time, the seeded parameters and the fold geometry, so a
-number can be tied to an experiment rather than to a memory of one.
+search space as declared at the time, the seeded parameters, the fold geometry and the
+exact cost basis (snapshot, percentile, coefficient), so a number can be tied to an
+experiment rather than to a memory of one.
 
-**Read this as a first result, not a green light.** Three things qualify it, and two of
-them are flags in the record itself:
+**Still not a green light.** Two qualifiers remain:
 
-1. **`costs_modelled: false`.** No fee or fill model is supplied, so the engine charges
-   neither commission nor spread. Wiring the measured spreads in is the last open work
-   item, and trade-copilot's own analysis names the cost model as the number that decides
-   every verdict.
-2. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The single-use
-   out-of-sample has never been spent, and spending it is a deliberate separate act.
-3. **Entry fills at the signal bar's close**, not the next open as in the original - a
+1. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The single-use
+   out-of-sample has never been spent, and spending it is a deliberate separate act -
+   and no holdout has been carved yet, which is the open charter conflict below.
+2. **Entry fills at the signal bar's close**, not the next open as in the original - a
    different and slightly more favourable execution assumption, documented in the module.
-   The two systems' verdicts on this premise are not comparable.
+   The two systems' verdicts on this premise are not comparable - and the cost model's
+   spread is sampled mid-session, not at the entry moment, which is one of the reasons
+   [ADR-0011] chose p95.
 
 Trade counts land at 21-29 per 252 bars against the original's 30-37, because this port
 holds one position at a time and a run of gap days therefore blocks its own re-entries.
@@ -142,7 +148,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Thirteen items. Grouped by blocking condition rather than by component, because that is
+Eleven items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -158,13 +164,12 @@ groups below inherit their block, which is why they sit first.
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
-### Waiting on a decision (2)
+### Waiting on a decision (1)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
 | Item                                    | Stage  | The decision                                                                                                                                    |
 | --------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pick the spread coefficient             | 10     | Median, p75 or p95. The distribution has a real tail, so a median model understates bad days. Should be chosen, not defaulted to.               |
 | Buy consolidated US equity data, or not | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, so this is only worth it if intraday comes with it. |
 
 **Resolved 2026-09-02:** the two items that needed a live session are settled - realtime
@@ -178,12 +183,6 @@ that upstream files may be changed. `set_trading_state` moves to
 ready-to-build below. The condition attached to the clearance is that every upstream file
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
-
-### Ready to build, nothing blocking (1)
-
-| Item                               | Stage | Notes                                                                                                                                        |
-| ---------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Make the cost model per-instrument | 10    | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
 
 ### Charter conflicts, opened 2026-09-01 (3)
 
@@ -218,8 +217,10 @@ release machinery, none of which applies here.
 
 **Tabletop: subscriptions, operations, strategy.** Under way. Operations and strategy
 governance are settled and recorded in [`CHARTER.md`](CHARTER.md), the
-[playbook](playbook/README.md) and ADRs 0004 through 0009. **Subscriptions remain open**,
-and both of the decisions above resolve inside that half.
+[playbook](playbook/README.md) and the ADRs. **Subscriptions remain open**, and the one
+decision still waiting above - the consolidated-data purchase - resolves inside that
+half. The spread coefficient was called on 2026-09-02
+([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)).
 
 ### Carrying cost, tracked (9 files)
 
@@ -256,13 +257,15 @@ multi-symbol spread calibration and a ported validation gate. Both have landed, 
 paper the paper run is unblocked. That list was incomplete: it never named a strategy,
 and without one there is nothing to validate or deploy.
 
-1. **Pick a setup** and port it, reporting risk through `RiskAmountRegistry`.
-2. **Set the cost coefficient** and wire it per instrument, so the gate scores against a
-   measured model rather than a placeholder.
-3. **Run the gate for real** - in-sample, walk-forward, then the single-use holdout,
-   which has never been spent.
-4. **Two to four weeks on IB paper** with the guard enabled. This is the first time the
-   breakers can fire; they cannot fire in a backtest by design.
+1. ~~**Pick a setup** and port it~~ - done, the gap fade.
+2. ~~**Set the cost coefficient** and wire it per instrument~~ - done 2026-09-02,
+   [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md): the gate
+   scores net, and AAPL's majority flipped to fail the day the placeholder died.
+3. **Carve the locked holdout, then run the gate for real** - walk-forward is done and
+   net; the single-use out-of-sample has never been carved, let alone spent.
+4. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
+   survives step 3. This is the first time the breakers can fire; they cannot fire in a
+   backtest by design.
 5. **Compare realised fills** against the modelled cost and close the loop.
 
 Nothing here goes near live capital.
