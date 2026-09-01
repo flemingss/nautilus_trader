@@ -6,16 +6,19 @@ this fork stays easy to keep current with upstream.
 ## Why a separate directory
 
 This fork tracks `nautechsystems/nautilus_trader`. Every file we change upstream is a
-file that can conflict on the next merge, so the overlay lives entirely under
-`copilot/`, a path upstream will never create.
+file that can conflict on the next merge, so overlay code lives entirely under
+`copilot/`, a path upstream will never create. **Nothing in this directory changes an
+upstream file**, so a `git merge upstream/develop` cannot conflict with the overlay
+itself.
 
-**As of the current state, this overlay changes zero upstream files.** A
-`git merge upstream/develop` should never conflict with anything here.
+The fork *as a whole* does carry upstream changes — currently two files in the IB
+adapter. Every one is listed in [`docs/UPSTREAM_DELTA.md`](docs/UPSTREAM_DELTA.md) with
+the reason and what it would cost to drop, and a test fails if a change appears without
+a row:
 
-The one change that *would* touch upstream is deferred and recorded in
-[`docs/ROADMAP.md`](docs/ROADMAP.md): exposing `RiskEngine.set_trading_state` through
-pyo3. It needs a Rust toolchain and a full workspace build, which this environment
-does not have.
+```bash
+python -m copilot.tools.upstream_delta --fetch    # report + conflict risk at next sync
+```
 
 `trade-copilot/` is excluded from git via `.git/info/exclude` — local only, so it adds
 no diff against upstream. Verify with `git status` before any commit.
@@ -35,6 +38,7 @@ supplements those rules rather than replacing them.
 | `risk/` | Account-wide rolling-window circuit breakers (consecutive stops, drawdown) |
 | `validation/` | Types and a Nautilus-backed `Replay` for the walk-forward gate |
 | `tests/` | Tests for all of the above |
+| `tools/` | Fork maintenance — the upstream delta reporter |
 | `docs/` | **`ROADMAP.md` is the central record** — kill chain, open work, and the detail behind both. Plus the changelog and fusion plan |
 | `AGENTS.md` | Fork-local process departures and their reasoning |
 | `ruff.toml` | Lint config, scoped here so upstream files stay untouched |

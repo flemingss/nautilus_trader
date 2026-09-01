@@ -16,21 +16,58 @@ longer earns its keep, remove it here rather than quietly working around it.
 
 ---
 
-## Prime directive: change zero upstream files
+## Prime directive: every upstream change is registered
 
 This fork tracks `nautechsystems/nautilus_trader`. Every upstream file changed is a file
-that can conflict on the next merge, so **all fork-local work lives under `copilot/`** —
-a path upstream will never create.
+that can conflict on the next merge, so **fork-local work lives under `copilot/`** by
+default — a path upstream will never create.
 
-Verify before every commit:
+Upstream changes **are permitted** where they are worth it. This is a deliberate
+relaxation of the earlier rule, which forbade them outright. What replaces the rule is a
+register: `docs/UPSTREAM_DELTA.md` lists every file outside `copilot/` this fork changes,
+why, and what it would cost to drop.
+
+**Registering is part of making the change, not paperwork afterwards.**
+`tests/test_upstream_delta.py` compares the register against the real diff — including
+uncommitted work — and fails on a file with no row.
 
 ```bash
-git diff --name-only develop..HEAD | grep -v '^copilot/'   # must print nothing
+python -m copilot.tools.upstream_delta --fetch    # report + conflict risk
+python -m copilot.tools.upstream_delta --check    # exit 1 on an unregistered file
 ```
 
-When something genuinely needs an upstream change, that is a separate, minimal,
-individually justified commit — never bundled into overlay work. Prefer changes that
-would be accepted upstream anyway.
+The aim is not a minimal delta at any price. It is that every entry stays deliberate,
+small, and individually justified, so a sync is a review of a short list. In practice:
+
+- Keep an upstream change a **separate, minimal commit**, never bundled into overlay work.
+- **Prefer a change upstream would accept anyway** — a fix that can be contributed back is
+  a delta with an expiry date; a fork-only behaviour change is a permanent bill.
+- Avoid renames and drive-by tidying in upstream files. They cost the same at sync as a
+  real fix and buy nothing.
+- **Off limits regardless:** `RELEASES.md`, `.github/workflows/`, `.github/actions/`, and
+  the root `ROADMAP.md`. A test enforces this too.
+
+### The `upstream` remote re-points `gh` at upstream
+
+Adding the remote for delta tracking has a side effect that is easy to miss and hard to
+undo: **`gh` resolves its target repository from the remotes**, so with `upstream`
+present, `gh pr list` starts listing upstream's pull requests and `gh pr create` tries to
+open one **against `nautechsystems/nautilus_trader`**. This was caught the first time it
+happened only because GitHub rejected the request for an unrelated reason.
+
+Both guards must stay in place:
+
+```bash
+git remote set-url --push upstream DISABLED-never-push-upstream   # push is impossible
+gh repo set-default flemingss/nautilus_trader                     # gh targets the fork
+```
+
+`gh repo set-default` writes to `.git/config`, so like `.git/info/exclude` it is
+**local-only and does not survive a fresh clone** — re-run it after cloning. Confirm with
+`gh repo set-default --view` before opening anything, and prefer an explicit
+`--repo flemingss/nautilus_trader` on any `gh` command that creates or comments.
+
+**Never push to, or open anything on, `nautechsystems/*`.**
 
 ---
 

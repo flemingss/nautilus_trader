@@ -63,6 +63,11 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # knobs below, and every one of them is keyword-only at the call site.
 "data/marketstack.py" = ["PLR0913"]
 
+# `upstream_delta.py` is an operator command and a report is its whole output. It also
+# shells out to git with fixed argument lists and no shell, which is what S603/S607 are
+# about; the per-call `noqa`s carry the reasoning.
+"tools/*.py" = ["T201"]
+
 # The gate's public functions take an intentionally opaque parameter set and a Nautilus
 # instrument whose concrete type this overlay deliberately does not depend on, so `Any`
 # is the accurate annotation rather than a missing one. `walk_forward` also carries the

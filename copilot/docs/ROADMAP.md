@@ -67,33 +67,59 @@ Most of the indicator layer does **not** need porting. Nautilus ships 45 indicat
 including ATR, EMA, SMA, RSI, rate of change and Donchian. What is missing is relative
 volume, realised volatility and the regime classifier.
 
-154 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+159 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
 ## Open work, grouped by what unblocks it
 
 Fourteen items. Grouped by blocking condition rather than by component, because that is
-the axis that decides what can move today.
+the axis that decides what can move today. A final group records the standing carrying
+cost of the upstream changes this fork already holds — not work, but the bill that
+arrives at every sync.
 
-### Waiting on a decision (4)
+### Waiting on a decision (3)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
 | Item | Stage | The decision |
 | --- | --- | --- |
-| Expose `set_trading_state` to Python | 06 | Yes or no on touching `crates/common`. It is three upstream files and breaks the zero-upstream-diff posture. If no, the guard stays reactive and says so. |
 | Pick the spread coefficient | 10 | Median, p75 or p95. The distribution has a real tail, so a median model understates bad days. Should be chosen, not defaulted to. |
 | Buy consolidated US equity data, or not | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, so this is only worth it if intraday comes with it. |
 | Choose which setup ports first | 02 | One name. Porting all three before validating any is how the gate gets gamed. |
 
-### Ready to build, nothing blocking (5)
+**Resolved 2026-09-01: upstream files may be changed.** `set_trading_state` moves to
+ready-to-build below. The condition attached to the clearance is that every upstream file
+this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
+`tools/upstream_delta.py` now do.
+
+### Ready to build, nothing blocking (6)
 
 | Item | Stage | Notes |
 | --- | --- | --- |
 | **Port a strategy** | 02 | The critical path. Needs only the choice above. Every strategy must report per-position risk through `RiskAmountRegistry` or the gate scores nothing. |
+| **Expose `set_trading_state` to Python** | 06 | Now cleared. An additive `MessagingSwitchboard` endpoint plus a way for a Python component to send to it: three upstream files including `crates/common`. Largest delta the fork would carry, so build it as one minimal commit and register every file. Detail below. |
 | Make the cost model per-instrument | 10 | SPY and MSFT differ by 4x; a single global `spread_bps` is structurally wrong. Wants the coefficient decision first, or it gets built twice. |
 | Widen the catalog universe | 00 | Three symbols proves the pipeline and is far too few to select from. Marketstack quota is the only real limit. |
 | `make install-tools` | — | `make pre-commit` has been declared unrunnable in every PR so far. Long install; worth starting alongside other work. |
 | Snapshot calibrator state on interrupt | 10 | No samples are lost today, it just looks that way while the node unwinds. Operator comfort. |
+
+### Carrying cost, tracked (2 files)
+
+Not work items — the standing bill. Reported by `python -m copilot.tools.upstream_delta`.
+
+| Path | Ours | Upstream since base | Risk |
+| --- | --- | --- | --- |
+| `crates/adapters/interactive_brokers/src/historical/client.rs` | +36 -2 | untouched | quiet |
+| `crates/adapters/interactive_brokers/src/data/core.rs` | +16 -12 | +160 -64 | **churning, conflicts today** |
+
+**A merge of `upstream/develop` already conflicts**, one sync in, in a single hunk: the
+`subscriptions` field declaration, where upstream dropped doc comments and we changed the
+key type. Mechanical to resolve, but it has to be done by hand and re-verified because
+the surrounding locking model changed underneath it (`05eae9fa43` moved the adapter to
+`parking_lot`, `4c18691277` standardised task lifecycles).
+
+Both changes are straight bug fixes that upstream would plausibly accept. **Contributing
+them back would retire the entry rather than carry it** — the cheapest available way to
+reduce the delta, and worth doing before it grows.
 
 ### Waiting on a market session (2)
 
@@ -444,8 +470,15 @@ The least invasive option that would actually work is an additive message bus en
 way for a Python component to send to an endpoint.
 
 That is three upstream files including `crates/common`, which is a larger commitment than
-the two adapter fixes and deserves a deliberate decision rather than being assumed. Until
-it lands, the guard stays reactive and says so.
+the two adapter fixes.
+
+**Cleared 2026-09-01.** Upstream changes are permitted, subject to registration in
+`docs/UPSTREAM_DELTA.md`. This would become the fork's largest single delta and the only
+one in `crates/common` — a crate far more central than the IB adapter, so more exposed to
+upstream churn. Build it as one minimal commit, register every file it touches, and keep
+the surface additive: a new switchboard endpoint and handler alongside the existing ones,
+never a change to an existing signature. Until it lands, the guard stays reactive and
+says so.
 
 ## Bugs found upstream — fixed
 
