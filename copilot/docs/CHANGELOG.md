@@ -2,6 +2,35 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 2)
+
+### Passed
+
+- **Paper stages one and two both pass** against `DUT067974`. Account reported by the broker
+  as `IB-DUT067974`, USD 1,000,000, reconciliation clean: 0 orders, 0 positions, 0 fills.
+
+### Found
+
+- **The account is not on the instrument's venue.** Instruments resolve on `SMART`; the
+  execution client registers its account under its own client name, so the id reads
+  `IB-DUT067974`. A venue-keyed lookup searching only instrument venues reports a missing
+  account that is in the cache the whole time - which is what the second attempt did.
+  `preflight.py` now searches both.
+- **The paper login name and account id are the same string** here. Settled by observation;
+  IB does not require it.
+- **The paper account is `MARGIN`; the live account is cash.** Paper will accept a short sale
+  and size against buying power, and the live cash account will do neither, so a paper pass
+  is not evidence about the cash constraints. Recorded in `PAPER_CAMPAIGN.md` under "What
+  paper cannot reproduce", together with the USD 1,000,000 paper balance - three orders of
+  magnitude above the target account, and cost-at-size is what decides viability.
+
+### Observed, not diagnosed
+
+- The IB adapter logs `Failed to parse account summary: Account summary currency was empty`
+  and skips a margin summary for the same reason, on every connect. Balances still arrive
+  and reconciliation still completes, so nothing downstream is known to be affected. Noted
+  rather than chased.
+
 ## 2026-09-01 (paper stage 1)
 
 ### Added

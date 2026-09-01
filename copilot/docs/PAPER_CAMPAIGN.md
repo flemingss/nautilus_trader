@@ -48,16 +48,16 @@ Each stage opens only when the one before it has a dated row in the log. Stages 
 broker-integration testing and need no subscription, no settled cash, no margin and no
 strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are blocked.
 
-| #   | Stage                                                | Gate: what has to be true to pass                                                                                                                                                                     |
-| --- | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Connect, orders disabled (**passed 2026-09-01**)     | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
-| 2   | Confirm the environment (**blocked**: Read-Only API) | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
-| 3   | One controlled order                                 | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
-| 4   | Order types and TIF                                  | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
-| 5   | A full supervised session                            | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
-| 6   | Failure injection                                    | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
-| 7   | Repeat sessions, frozen strategy                     | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
-| 8   | Unattended                                           | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
+| #   | Stage                                            | Gate: what has to be true to pass                                                                                                                                                                     |
+| --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Connect, orders disabled (**passed 2026-09-01**) | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
+| 2   | Confirm the environment (**passed 2026-09-01**)  | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
+| 3   | One controlled order                             | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
+| 4   | Order types and TIF                              | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
+| 5   | A full supervised session                        | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
+| 6   | Failure injection                                | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
+| 7   | Repeat sessions, frozen strategy                 | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
+| 8   | Unattended                                       | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
 
 ### Two gates that are easy to wave through
 
@@ -74,7 +74,7 @@ stage 6.
 
 ## What the first run found
 
-Three things, none of which were visible from reading code.
+Five things, none of which were visible from reading code.
 
 **The halt survives startup.** Stage one's whole claim, now evidence rather than
 assumption: `HALTED` before the start and `HALTED` after it, against a real broker.
@@ -90,12 +90,43 @@ own record so the next run does not rediscover it.
 Read-only is the correct setting for stage one and the wrong one from stage two onward.
 **Turn it off in TWS: Global Configuration, API, Settings, uncheck Read-Only API.**
 
+**The account is not on the instrument's venue.** Instruments resolve on `SMART`; the
+execution client registers its account under its own client name, so the id reads
+`IB-DUT067974`. A venue-keyed lookup that searches only the instrument venues finds nothing
+and reports a missing account that was in the cache the whole time - which is exactly what
+my second attempt did. Searching both is now pinned in `preflight.py`.
+
+**The login name and the account id are the same string here.** `DUT067974` is both. That
+was an open question worth settling rather than assuming, since IB paper logins and account
+ids are not required to match.
+
 **Research instrument ids are not broker instrument ids.** The catalog names the instrument
 `AAPL.XNAS` (MIC venue, via `data/catalog.equity_for`); the broker resolves
 `AAPL=STK.SMART` and reports the venue as `SMART`. The first attempt failed on exactly this,
 and it is not cosmetic - an activation names `symbol="AAPL", venue="XNAS"`, and that
 instrument cannot be traded. **Nothing in the overlay maps between the two**, and stage
 three cannot place an order until something does.
+
+## What paper cannot reproduce
+
+Recorded from the stage-two evidence, because these are the ways a green paper run will
+still mislead.
+
+**The paper account is `MARGIN`; the live account is cash.** The broker reports
+`account_type=MARGIN` on `DUT067974`. So paper will happily accept a short sale and will
+size against buying power, and **neither is true of the live cash account**, where Reg T
+puts short sales in a margin account and settled cash caps concurrent positions. A strategy
+that passes every paper stage can still be untradeable live for reasons paper never tested.
+Do not read a paper pass as evidence about the cash constraints.
+
+**The paper balance is USD 1,000,000.** Three orders of magnitude above the target account,
+and cost-at-size is the constraint that decides whether anything here is worth trading
+([ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md)). Sizing must
+come from the configured risk budget, never from reported equity, or every paper trade will
+be sized in a regime the real account will never see.
+
+**Paper fills are not evidence about fill quality**, as IBKR states and OPERATIONS repeats.
+Nothing measured here is admissible against the cost model.
 
 ## Standing rules for every session
 
@@ -112,10 +143,10 @@ three cannot place an order until something does.
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date       | Stage | Result                                                                                                                                                                             | Evidence                                   |
-| ---------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                   | `live/out/preflight_20260901T121340Z.json` |
-| 2026-09-01 | 2     | **Fail.** No account reached the cache and no balances reconciled. Cause found: **TWS had Read-Only API enabled**, so the execution client failed with IB 321 and never connected. | same record                                |
+| Date       | Stage | Result                                                                                                                                                                                                                  | Evidence                                   |
+| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                        | `live/out/preflight_20260901T121340Z.json` |
+| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine. | `live/out/preflight_20260901T122835Z.json` |
 
 ## Where the code is
 

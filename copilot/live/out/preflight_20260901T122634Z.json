@@ -1,0 +1,57 @@
+{
+  "started_at": "2026-09-01T12:26:34.086622+00:00",
+  "finished_at": "2026-09-01T12:27:15.480588+00:00",
+  "stage": "1-2",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "market_data_type": "DELAYED",
+  "orders_enabled": false,
+  "passed": false,
+  "failed_checks": [
+    "account_reported_by_broker",
+    "account_has_balances"
+  ],
+  "checks": [
+    {
+      "name": "halt_applied_before_start",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "orders disabled at build time"
+    },
+    {
+      "name": "halt_survives_startup",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "the claim stage one exists to settle"
+    },
+    {
+      "name": "instruments_resolved",
+      "passed": true,
+      "observed": "3",
+      "expected": "3",
+      "note": "resolved: ['AAPL=STK.SMART', 'MSFT=STK.SMART', 'SPY=STK.SMART']"
+    },
+    {
+      "name": "account_reported_by_broker",
+      "passed": false,
+      "observed": "",
+      "expected": "DUT067974",
+      "note": "venues: ['SMART']; accounts: [] - no account reached the cache. Observed cause on 2026-09-01: TWS had **Read-Only API** enabled, so the execution client failed to connect with IB 321 and no account was ever reconciled. Check the TWS API settings before anything else."
+    },
+    {
+      "name": "account_has_balances",
+      "passed": false,
+      "observed": "0",
+      "expected": ">0",
+      "note": "a connected account with no balances means reconciliation is incomplete"
+    },
+    {
+      "name": "clean_shutdown",
+      "passed": true,
+      "observed": "stopped",
+      "expected": "stopped",
+      "note": ""
+    }
+  ]
+}
