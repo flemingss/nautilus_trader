@@ -16,6 +16,7 @@
 //! Python bindings from [PyO3](https://pyo3.rs).
 
 pub mod config;
+pub mod engine;
 pub mod sizing;
 
 use pyo3::prelude::*;
@@ -28,6 +29,7 @@ use pyo3::prelude::*;
 #[pymodule]
 pub fn risk(_: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<crate::engine::config::RiskEngineConfig>()?;
+    m.add_class::<crate::python::engine::PyRiskEngine>()?;
     m.add_class::<crate::python::sizing::PositionSizer>()?;
     m.add_class::<crate::python::sizing::FixedRiskSizer>()?;
     Ok(())

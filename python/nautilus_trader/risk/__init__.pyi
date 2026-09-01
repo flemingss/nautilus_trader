@@ -9,6 +9,7 @@ from nautilus_trader import model
 __all__ = [
     "FixedRiskSizer",
     "PositionSizer",
+    "RiskEngine",
     "RiskEngineConfig",
 ]
 
@@ -45,6 +46,12 @@ class PositionSizer:
         unit_batch_size: decimal.Decimal = decimal.Decimal(1),
         units: int = 1,
     ) -> model.Quantity: ...
+
+@typing.final
+class RiskEngine:
+    @property
+    def trading_state(self) -> model.TradingState: ...
+    def set_trading_state(self, state: model.TradingState) -> None: ...
 
 @typing.final
 class RiskEngineConfig:

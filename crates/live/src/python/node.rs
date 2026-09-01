@@ -57,6 +57,7 @@ use nautilus_model::{
     identifiers::{ActorId, ExecAlgorithmId, InstrumentId, TraderId},
 };
 use nautilus_portfolio::{config::PortfolioConfig, python::PyPortfolio};
+use nautilus_risk::python::engine::PyRiskEngine;
 use nautilus_system::get_global_pyo3_registry;
 #[cfg(feature = "examples")]
 use nautilus_testkit::{DataTester, DataTesterConfig, ExecTester, ExecTesterConfig};
@@ -889,6 +890,21 @@ impl PyLiveNode {
     fn py_portfolio(&self) -> PyResult<PyPortfolio> {
         Ok(PyPortfolio::from_rc(
             self.node()?.kernel().portfolio.clone(),
+        ))
+    }
+
+    /// Returns the risk engine shared with the kernel and registered components.
+    ///
+    /// Take this **before** starting a hosted run: the run takes ownership of the node, so this
+    /// accessor stops resolving once one is under way, while the returned handle keeps working -
+    /// the same lifetime `cache` and `portfolio` have. It is the supported way to reach
+    /// `set_trading_state` from Python, which gates order flow inside the engine rather than
+    /// leaving a caller to police its own submissions.
+    #[getter]
+    #[pyo3(name = "risk_engine")]
+    fn py_risk_engine(&self) -> PyResult<PyRiskEngine> {
+        Ok(PyRiskEngine::from_rc(
+            self.node()?.kernel().risk_engine().clone(),
         ))
     }
 

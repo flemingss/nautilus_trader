@@ -1083,7 +1083,8 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Quotes)) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Quotes))
+        {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from quotes for {}", cmd.instrument_id);
         } else {
@@ -1109,7 +1110,9 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::IndexPrices)) {
+        if let Some(sub_info) =
+            subscriptions.remove(&(cmd.instrument_id, SubscriptionType::IndexPrices))
+        {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from index prices for {}", cmd.instrument_id);
         } else {
@@ -1234,7 +1237,8 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Trades)) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Trades))
+        {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from trades for {}", cmd.instrument_id);
         } else {
@@ -1494,7 +1498,9 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::BookDeltas)) {
+        if let Some(sub_info) =
+            subscriptions.remove(&(cmd.instrument_id, SubscriptionType::BookDeltas))
+        {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from book deltas for {}", cmd.instrument_id);
         } else {

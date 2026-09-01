@@ -16,8 +16,8 @@ the obvious choice. Measured over 15,851 rows of AAPL, MSFT and SPY spanning
 ===============================  ==========  ==========
 Property                         raw set     adj set
 ===============================  ==========  ==========
-Rows with incoherent OHLC        0           3,553
-Rows with null fields            0           1,751
+Rows with incoherent OHLC        0.011%      22%
+Rows with null fields            0           11%
 Already back-adjusted for splits yes         yes
 Adjusted for dividends           no          yes
 ===============================  ==========  ==========
@@ -26,8 +26,17 @@ The adjusted set is not internally consistent: AAPL 2022-11-03 reports
 ``adj_close`` 138.65 against an ``adj_low`` of 138.75, a close outside its own bar.
 Feeding that to a backtest yields fills at prices the bar says never traded.
 
-The raw set survives the same check with zero failures, and - this is the part that
-makes the choice safe - it is *already split-adjusted* by the vendor: AAPL's close on
+**The raw set is not perfectly clean either, and an earlier version of this note said
+it was.** Over 15,851 rows it had zero failures; over 105,414 it has twelve. Every one
+is the *open* sitting a few cents outside the day's high or low - GOOGL 2025-12-29
+opens at 314.52 against a high of 314.02 - which reads like an official opening print
+carried from a different source than the intraday range. The rate is 0.011% against
+22% for the adjusted set, so the choice is unchanged and the gate rejects them either
+way; the point is that the coherence check earns its keep on both sets rather than
+being a formality on one.
+
+What makes the choice safe is that the raw set is *already split-adjusted* by the
+vendor: AAPL's close on
 2020-08-28 is reported as 124.8075, which is the pre-split 499.23 divided by the 4:1
 split that settled on the 31st. So the catastrophic discontinuity, a split reading as
 a -75% day, does not exist in the raw series either.
