@@ -65,6 +65,16 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 ### Ownership housekeeping
 
+- **The queued inherited surfaces are retired.** `CLA.md`, `CODE_OF_CONDUCT.md`,
+  `AI_POLICY.md`, `.github/CODEOWNERS`, the issue templates and the PR template are removed;
+  `SECURITY.md` is replaced (no external reports; upstream's original stays linked because
+  `docs/developer_guide/security.md` references it relatively); `.github/OVERVIEW.md`'s
+  change-controls bullet now records the CODEOWNERS removal instead of pointing at it. The
+  delta register learned deletions to make this enforceable: a removed file never leaves the
+  diff against the merge base, so its row stays, marked "Removed", and the path test checks
+  both directions - a registered file must exist and a removed one must not. The README
+  rewrite remains queued as its own PR and inherits the two stale references.
+
 - **The repository's front matter now answers for this project, not upstream.** Root
   `ROADMAP.md` is a pointer to `copilot/docs/ROADMAP.md` (upstream's original stays linked
   for harvest decisions), and `CONTRIBUTING.md` states that this repository takes no

@@ -59,9 +59,9 @@ artifact integrity records, and verification flow. This section records CI-speci
 
 ### Change and dependency controls
 
-- [`CODEOWNERS`](CODEOWNERS) requires Core team review for workflows, composite actions,
-  dependencies, build configuration, and scripts. Repository rulesets require signed commits,
-  reviews, and required checks on protected branches, and prevent release tag mutation.
+- `CODEOWNERS` was removed 2026-09-02: it assigned review of critical files to upstream's
+  Core team, which does not review this repository. The review and ruleset controls it
+  described were upstream's; this repository's controls are its own.
 - External actions include their canonical source URL, use a full commit SHA, and record the
   corresponding release tag. Adopt an action release only after it has been available for at least
   two weeks.
