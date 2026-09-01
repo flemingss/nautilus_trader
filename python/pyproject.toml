@@ -391,7 +391,8 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "ANN401",
   "T201",
 ] # Operator CLI; ANN401 for the pyo3 event objects it receives
-"copilot/live/cancel_working.py" = [
+"copilot/live/cancel_working.py" = ["ANN401", "T201", "TRY400"]
+"copilot/live/order_types.py" = [
   "ANN401",
   "T201",
   "TRY400",

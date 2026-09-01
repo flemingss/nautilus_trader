@@ -296,3 +296,50 @@ def test_an_order_that_was_never_cancelled_fails():
     from copilot.live.controlled_order import Outcome
 
     assert not Outcome(submitted=True, accepted=True).passed
+
+
+# ------------------------------------------------------------ the order type matrix
+
+
+def test_a_shape_that_round_trips_passes():
+    from copilot.live.order_types import Attempt
+
+    assert Attempt(name="LIMIT/GTC", submitted=True, accepted=True, canceled=True).passed
+
+
+@pytest.mark.parametrize("problem", ["filled", "rejected", "denied"])
+def test_a_shape_that_filled_or_was_refused_fails(problem):
+    """
+    Every price in the matrix is unreachable, so a fill means an assumption broke.
+
+    Grouped with the refusals because all three mean the same thing here: the cell cannot
+    be reported as working.
+
+    """
+    from copilot.live.order_types import Attempt
+
+    attempt = Attempt(
+        name="LIMIT/GTC",
+        submitted=True,
+        accepted=True,
+        canceled=True,
+        **{problem: True},
+    )
+
+    assert not attempt.passed
+
+
+def test_the_untestable_shapes_are_named_rather_than_omitted():
+    """
+    A matrix with an invisible hole reads as complete.
+
+    MARKET is the gap fade's real entry and cannot be submitted without filling, so it
+    has to appear in the output as untested rather than simply be absent from it.
+
+    """
+    from copilot.live.order_types import UNTESTED_HERE
+
+    assert "MARKET" in UNTESTED_HERE
+    assert "BRACKET_MARKET_ENTRY" in UNTESTED_HERE
+    for why in UNTESTED_HERE.values():
+        assert "stage five" in why

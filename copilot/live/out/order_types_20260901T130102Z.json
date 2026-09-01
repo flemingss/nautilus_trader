@@ -1,0 +1,83 @@
+{
+  "started_at": "2026-09-01T13:01:02.418233+00:00",
+  "finished_at": "2026-09-01T13:02:00.425412+00:00",
+  "stage": "4",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "instrument_id": "AAPL=STK.SMART",
+  "reference_price": "271.86",
+  "passed": true,
+  "failed_shapes": [],
+  "untested_here": {
+    "MARKET": "No far-from-market price exists for a market order, so it cannot be submitted without filling. Deferred to stage five under supervision.",
+    "BRACKET_MARKET_ENTRY": "The gap fade's real entry shape. Same reason as MARKET, and child activation needs the parent to fill."
+  },
+  "attempts": {
+    "BRACKET_LIMIT_ENTRY/GTC": {
+      "name": "BRACKET_LIMIT_ENTRY/GTC",
+      "submitted": true,
+      "accepted": true,
+      "canceled": true,
+      "filled": false,
+      "rejected": false,
+      "denied": false,
+      "detail": "",
+      "client_order_ids": [
+        "O-20260901-130114-001-000-5",
+        "O-20260901-130114-001-000-6",
+        "O-20260901-130114-001-000-7"
+      ]
+    },
+    "LIMIT/DAY": {
+      "name": "LIMIT/DAY",
+      "submitted": true,
+      "accepted": true,
+      "canceled": true,
+      "filled": false,
+      "rejected": false,
+      "denied": false,
+      "detail": "",
+      "client_order_ids": [
+        "O-20260901-130114-001-000-2"
+      ]
+    },
+    "LIMIT/GTC": {
+      "name": "LIMIT/GTC",
+      "submitted": true,
+      "accepted": true,
+      "canceled": true,
+      "filled": false,
+      "rejected": false,
+      "denied": false,
+      "detail": "",
+      "client_order_ids": [
+        "O-20260901-130114-001-000-1"
+      ]
+    },
+    "STOP_LIMIT/GTC": {
+      "name": "STOP_LIMIT/GTC",
+      "submitted": true,
+      "accepted": true,
+      "canceled": true,
+      "filled": false,
+      "rejected": false,
+      "denied": false,
+      "detail": "",
+      "client_order_ids": [
+        "O-20260901-130114-001-000-4"
+      ]
+    },
+    "STOP_MARKET/GTC": {
+      "name": "STOP_MARKET/GTC",
+      "submitted": true,
+      "accepted": true,
+      "canceled": true,
+      "filled": false,
+      "rejected": false,
+      "denied": false,
+      "detail": "",
+      "client_order_ids": [
+        "O-20260901-130114-001-000-3"
+      ]
+    }
+  }
+}

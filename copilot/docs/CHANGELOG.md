@@ -2,6 +2,39 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 4)
+
+### Added
+
+- **`live/order_types.py`** - paper stage four. Submits every planned order type and time in
+  force at prices the market cannot reach, cancels each on acknowledgement, and prints a
+  matrix with the untestable shapes named rather than omitted.
+
+### Passed
+
+- **Five shapes round tripped**: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC, and
+  the gap fade's bracket as a three-order list submitted and cancelled as one.
+
+### Not tested, deliberately
+
+- **MARKET, and the bracket's real market entry.** There is no far-from-market price for a
+  market order, so it cannot be submitted without filling, and stage three established that
+  this project cannot yet reliably clean up after itself. Deferred to stage five under
+  supervision, and printed as `N/A` with the reason so the hole in the matrix is visible.
+- **Child activation** in the bracket, which needs the parent to fill. Same deferral.
+- The run was **pre-open** (13:01 UTC against a 13:30 UTC cash open). IB's acceptance rules
+  for `DAY` and for stops are not necessarily the same inside a session as outside one, so
+  this is evidence about submission rather than about a live session.
+
+### Found
+
+- **`order_factory.bracket()` returns a plain `list`**, not an object with `.orders`. The
+  first attempt raised on `.orders` *after* the four single orders were already submitted,
+  aborting node startup with four orders on their way and no strategy left to cancel them.
+  The fix that matters is not the attribute: **everything is now constructed before anything
+  is sent**, so a construction error cannot leave a half-submitted batch behind. Any batch
+  built and submitted in one loop has that failure mode.
+
 ## 2026-09-01 (paper stage 3)
 
 ### Added
