@@ -92,7 +92,7 @@ search space as declared at the time, the seeded parameters, the fold geometry a
 exact cost basis (snapshot, percentile, coefficient), so a number can be tied to an
 experiment rather than to a memory of one.
 
-**Still not a green light.** Two qualifiers remain:
+**Still not a green light.** Three qualifiers remain:
 
 1. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The single-use
    out-of-sample has never been spent, and spending it is a deliberate separate act -
@@ -102,11 +102,19 @@ experiment rather than to a memory of one.
    The two systems' verdicts on this premise are not comparable - and the cost model's
    spread is sampled mid-session, not at the entry moment, which is one of the reasons
    [ADR-0011] chose p95.
+3. **SPY is the lead candidate; the single-name verdicts are provisional.** The charter's
+   instrument default is *"liquid US-listed ETFs first; large caps only once the pipeline
+   handles point-in-time universes and corporate actions"* - and the pipeline handles
+   neither yet: the universe is survivor-chosen (the open conflict below) and corporate
+   actions are a hand-maintained AAPL splits table in the cost model. SPY leans on none
+   of that machinery - no splits in the window, no membership question - so its net pass
+   is the one whose evidence is whole. MSFT's pass and AAPL's fail both sit ahead of the
+   pipeline maturity the charter requires for single names.
 
 Trade counts land at 21-29 per 252 bars against the original's 30-37, because this port
 holds one position at a time and a run of gap days therefore blocks its own re-entries.
 
-214 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+278 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
 ### Stage 08 - what a paper run actually needs
 
@@ -262,7 +270,10 @@ and without one there is nothing to validate or deploy.
    [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md): the gate
    scores net, and AAPL's majority flipped to fail the day the placeholder died.
 3. **Carve the locked holdout, then run the gate for real** - walk-forward is done and
-   net; the single-use out-of-sample has never been carved, let alone spent.
+   net; the single-use out-of-sample has never been carved, let alone spent. **SPY
+   first**: the charter trades ETFs before single names, and SPY's is the only verdict
+   that leans on neither the survivor-chosen universe nor the hand-maintained splits
+   table.
 4. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
    survives step 3. This is the first time the breakers can fire; they cannot fire in a
    backtest by design.
