@@ -35,7 +35,7 @@ supplements those rules rather than replacing them.
 | `risk/` | Account-wide rolling-window circuit breakers (consecutive stops, drawdown) |
 | `validation/` | Types and a Nautilus-backed `Replay` for the walk-forward gate |
 | `tests/` | Tests for all of the above |
-| `docs/` | Roadmap, changelog, and the fusion plan |
+| `docs/` | **`ROADMAP.md` is the central record** — kill chain, open work, and the detail behind both. Plus the changelog and fusion plan |
 | `AGENTS.md` | Fork-local process departures and their reasoning |
 | `ruff.toml` | Lint config, scoped here so upstream files stay untouched |
 

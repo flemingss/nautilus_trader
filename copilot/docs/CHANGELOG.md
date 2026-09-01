@@ -2,6 +2,26 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (docs)
+
+### Changed
+
+- **`docs/ROADMAP.md` restructured around the kill chain.** It is now the central record:
+  eleven stages ordered as the trade travels, then every open item anchored to a stage and
+  grouped by what unblocks it (decision / ready to build / market session / spend /
+  deferred). The detail sections are retitled by stage and reordered to match, replacing a
+  numbered backlog whose numbers had gone stale and were referenced from three places.
+
+### Corrected
+
+- **Stage 02 is empty and nothing recorded it.** The only `Strategy` subclasses in the tree
+  are a test fixture and the risk guard, so the gate, engine, sizing and breakers all
+  currently have nothing to evaluate. The status tables read as near-complete because every
+  stage that *has* a component was marked ready.
+- **The paper-run prerequisites were incomplete.** Both listed items — a multi-symbol spread
+  calibration and a ported walk-forward gate — have landed, which read as "unblocked". The
+  list never named a strategy, without which there is nothing to validate or deploy.
+
 ## 2026-09-01 (later)
 
 ### Added
@@ -68,7 +88,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   dataclasses so the overlay adds no dependency.
 - **`copilot/risk/guard.py`** — wires the breakers into a running node. Cancels
   working orders account-wide, flattens configured instruments, publishes a signal.
-  Reactive rather than engine-enforced; see ROADMAP item 5.
+  Reactive rather than engine-enforced; see the `set_trading_state` decision in ROADMAP.
 - **`copilot/validation/types.py`** — `DailyBar`, `ClosedTrade`, `BacktestRunResult`
   and `expectancy_r`, vendored so the overlay does not depend on trade-copilot being
   on the path.
