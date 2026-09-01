@@ -1,0 +1,28 @@
+{
+  "measured_at": "2026-08-31T17:28:47.474894+00:00",
+  "finished_at": "2026-08-31T17:30:14.517156+00:00",
+  "duration_seconds": 87.0,
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "market_data_type": "REALTIME",
+  "delayed_caveat": false,
+  "symbols": [
+    {
+      "instrument_id": "AAPL=STK.SMART",
+      "samples": 0,
+      "rejected": 0,
+      "note": "no usable quotes received"
+    },
+    {
+      "instrument_id": "MSFT=STK.SMART",
+      "samples": 0,
+      "rejected": 0,
+      "note": "no usable quotes received"
+    },
+    {
+      "instrument_id": "SPY=STK.SMART",
+      "samples": 0,
+      "rejected": 0,
+      "note": "no usable quotes received"
+    }
+  ]
+}

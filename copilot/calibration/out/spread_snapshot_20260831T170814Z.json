@@ -1,0 +1,30 @@
+{
+  "measured_at": "2026-08-31T17:08:14.851893+00:00",
+  "finished_at": "2026-08-31T17:19:08.945515+00:00",
+  "duration_seconds": 654.1,
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "market_data_type": "DELAYED",
+  "delayed_caveat": true,
+  "symbols": [
+    {
+      "instrument_id": "AAPL=STK.SMART",
+      "samples": 111,
+      "rejected": 18,
+      "full_spread_bps": {
+        "median": 0.6381,
+        "mean": 1.0281,
+        "p25": 0.6373,
+        "p75": 1.2748,
+        "p95": 2.8685,
+        "min": 0.3186,
+        "max": 5.7374
+      },
+      "per_side_bps": {
+        "median": 0.319,
+        "p95": 1.4343
+      },
+      "incumbent_per_side_bps": 5.0,
+      "incumbent_overstatement_x": 15.67
+    }
+  ]
+}
