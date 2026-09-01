@@ -86,6 +86,14 @@ Practical effect: multi-symbol spread calibration is now possible, which was a s
 prerequisite for the paper run. The backtest evidence base is unchanged — there is
 still no route to US equity history through IB.
 
+**Rechecked 2026-09-01 after the session close: unchanged.** AAPL, MSFT, SPY and ^SPX
+all still return IB 2188 for historical bars under both REALTIME and DELAYED; forex
+still returns bars normally. Release forms do not grant historical data, and a paid
+subscription is required. `copilot/calibration/entitlements.py` runs this check.
+
+Realtime *quote* entitlement could not be retested — the US session was closed, so no
+ticks flow regardless of entitlement. That check needs a session window.
+
 Three-symbol measurement (delayed, 846s, 139-150 usable quotes each):
 
 | symbol | n | median full (bps) | per side | p95 full | vs 5 bps/side |
