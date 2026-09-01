@@ -11,11 +11,11 @@ python -m copilot.strategies.validate <name>
 
 ## What goes here, and what does not
 
-| Bucket | Meaning | Lives in |
-| --- | --- | --- |
-| **Searchable** | The gate may move it. Its range is a property of the premise. | `SEARCH_SPACE` in the strategy module |
-| **Identity** | Fixed for this activation. Seeds its own validation. | `[parameters]` here |
-| **Environment** | Connection, paths, credentials. Never affects a result. | Environment variables |
+| Bucket          | Meaning                                                       | Lives in                              |
+| --------------- | ------------------------------------------------------------- | ------------------------------------- |
+| **Searchable**  | The gate may move it. Its range is a property of the premise. | `SEARCH_SPACE` in the strategy module |
+| **Identity**    | Fixed for this activation. Seeds its own validation.          | `[parameters]` here                   |
+| **Environment** | Connection, paths, credentials. Never affects a result.       | Environment variables                 |
 
 Numbers are written **as strings**. TOML floats are binary floats, and these values get
 multiplied by an ATR to place a stop.
