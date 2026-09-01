@@ -2,6 +2,43 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper node)
+
+### Added
+
+- **`live/session.py`** - what separates a paper session from a live one, and the checks
+  that enforce it. On the stage-one deployment shape paper and live differ by a **port
+  number** (7497 against 7496), so two independent facts must agree before a session is
+  called paper: the port is a known paper port and not a known live one, and the account
+  identifier both carries the paper prefix and matches the configured account. Either check
+  alone is insufficient in a way the other covers. Also refuses a client id divisible by
+  1,000, and refuses to let the data and execution clients share one. 17 tests.
+- **`live/node.py`** - the first execution client in the overlay, and the orders-disabled
+  switch. Stage one is implemented by running the strategies normally and **halting the risk
+  engine**, so the real path is exercised and every order is denied inside the engine, rather
+  than by leaving the strategies out and testing nothing.
+- **`docs/PAPER_CAMPAIGN.md`** - the campaign: why the system clock starts before a
+  candidate exists, the per-stage gates, the two gates that are easy to wave through, and a
+  dated evidence log.
+
+### Verified
+
+- The `RiskEngine` handle resolves on a built node, `set_trading_state` takes effect, and
+  the state reads back `HALTED` through a **fresh** `node.risk_engine` - so the binding
+  shares one engine rather than handing out copies.
+- **Not** verified, and stage one exists to settle it: that the halt survives node
+  **startup**. Until it does, orders-disabled mode is an assumption.
+
+### Found
+
+- **`calibration/spread_snapshot.py` cannot run as committed.** It calls
+  `node.add_actor(recorder)`, and `LiveNode.add_actor` is not exposed to Python on the pinned
+  build - it exists only on the Rust node, whose pyo3 wrapper offers `add_actor_from_config`
+  instead. The call raises `AttributeError` before a single quote is recorded, so the spread
+  snapshots underneath the cost analysis were produced by code that is not in the repository.
+  The measurements are not thereby wrong, but they are not reproducible from a commit. Filed
+  as ready-to-build; not fixed here, to keep this change to the paper node.
+
 ## 2026-09-01 (account constraints)
 
 ### Recorded
