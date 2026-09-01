@@ -108,7 +108,8 @@ pub struct InteractiveBrokersDataClient {
     /// Data event sender.
     data_sender: tokio::sync::mpsc::UnboundedSender<DataEvent>,
     /// Active subscriptions mapped by instrument ID.
-    subscriptions: Arc<tokio::sync::Mutex<AHashMap<InstrumentId, SubscriptionInfo>>>,
+    subscriptions:
+        Arc<tokio::sync::Mutex<AHashMap<(InstrumentId, SubscriptionType), SubscriptionInfo>>>,
     /// Active option greeks subscriptions mapped by instrument ID.
     option_greeks_subscriptions: Arc<tokio::sync::Mutex<AHashMap<InstrumentId, CancellationToken>>>,
     /// Quote cache for accumulating tick updates.
@@ -140,7 +141,10 @@ struct SubscriptionInfo {
 }
 
 /// Type of subscription.
-#[derive(Debug, Clone)]
+///
+/// Part of the subscriptions map key: several subscription types can be live on one
+/// instrument at once, so the instrument alone does not identify a subscription.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum SubscriptionType {
     /// Quote subscription.
     Quotes,
@@ -881,7 +885,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
         subscriptions.insert(
-            cmd.instrument_id,
+            (cmd.instrument_id, SubscriptionType::Quotes),
             SubscriptionInfo {
                 instrument_id: cmd.instrument_id,
                 subscription_type: SubscriptionType::Quotes,
@@ -974,7 +978,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
         subscriptions.insert(
-            cmd.instrument_id,
+            (cmd.instrument_id, SubscriptionType::IndexPrices),
             SubscriptionInfo {
                 instrument_id: cmd.instrument_id,
                 subscription_type: SubscriptionType::IndexPrices,
@@ -1079,7 +1083,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&cmd.instrument_id) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Quotes)) {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from quotes for {}", cmd.instrument_id);
         } else {
@@ -1105,7 +1109,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&cmd.instrument_id) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::IndexPrices)) {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from index prices for {}", cmd.instrument_id);
         } else {
@@ -1211,7 +1215,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
         subscriptions.insert(
-            cmd.instrument_id,
+            (cmd.instrument_id, SubscriptionType::Trades),
             SubscriptionInfo {
                 instrument_id: cmd.instrument_id,
                 subscription_type: SubscriptionType::Trades,
@@ -1230,7 +1234,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&cmd.instrument_id) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::Trades)) {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from trades for {}", cmd.instrument_id);
         } else {
@@ -1350,7 +1354,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
         subscriptions.insert(
-            instrument_id,
+            (instrument_id, SubscriptionType::Bars),
             SubscriptionInfo {
                 instrument_id,
                 subscription_type: SubscriptionType::Bars,
@@ -1370,7 +1374,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&instrument_id) {
+        if let Some(sub_info) = subscriptions.remove(&(instrument_id, SubscriptionType::Bars)) {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from bars for {}", cmd.bar_type);
         } else {
@@ -1468,7 +1472,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
         subscriptions.insert(
-            cmd.instrument_id,
+            (cmd.instrument_id, SubscriptionType::BookDeltas),
             SubscriptionInfo {
                 instrument_id: cmd.instrument_id,
                 subscription_type: SubscriptionType::BookDeltas,
@@ -1490,7 +1494,7 @@ impl DataClient for InteractiveBrokersDataClient {
             .subscriptions
             .try_lock()
             .context("Failed to lock IB subscriptions")?;
-        if let Some(sub_info) = subscriptions.remove(&cmd.instrument_id) {
+        if let Some(sub_info) = subscriptions.remove(&(cmd.instrument_id, SubscriptionType::BookDeltas)) {
             sub_info.cancellation_token.cancel();
             tracing::debug!("Unsubscribed from book deltas for {}", cmd.instrument_id);
         } else {

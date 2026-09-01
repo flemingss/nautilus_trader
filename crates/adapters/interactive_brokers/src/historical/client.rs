@@ -596,7 +596,24 @@ impl HistoricalInteractiveBrokersClient {
                         let mut subscription = subscription.filter_data();
                         let mut batch_ticks = Vec::new();
 
-                        while let Some(tick_result) = subscription.next().await {
+                        // Bound the drain, not only the request. IB accepts a request for a
+                        // tick type an instrument does not have (trades on a forex pair, say)
+                        // and then simply never sends anything, so an unbounded `next()` here
+                        // hangs forever and makes the caller's `timeout` argument a lie.
+                        while let Some(tick_result) = match tokio::time::timeout(
+                            std::time::Duration::from_secs(timeout),
+                            subscription.next(),
+                        )
+                        .await
+                        {
+                            Ok(next) => next,
+                            Err(_) => {
+                                tracing::warn!(
+                                    "Historical tick stream produced nothing for {timeout}s; ending batch"
+                                );
+                                None
+                            }
+                        } {
                             let tick = match tick_result {
                                 Ok(tick) => tick,
                                 Err(e) => {
@@ -705,7 +722,24 @@ impl HistoricalInteractiveBrokersClient {
                         let mut subscription = subscription.filter_data();
                         let mut batch_ticks = Vec::new();
 
-                        while let Some(tick_result) = subscription.next().await {
+                        // Bound the drain, not only the request. IB accepts a request for a
+                        // tick type an instrument does not have (trades on a forex pair, say)
+                        // and then simply never sends anything, so an unbounded `next()` here
+                        // hangs forever and makes the caller's `timeout` argument a lie.
+                        while let Some(tick_result) = match tokio::time::timeout(
+                            std::time::Duration::from_secs(timeout),
+                            subscription.next(),
+                        )
+                        .await
+                        {
+                            Ok(next) => next,
+                            Err(_) => {
+                                tracing::warn!(
+                                    "Historical tick stream produced nothing for {timeout}s; ending batch"
+                                );
+                                None
+                            }
+                        } {
                             let tick = match tick_result {
                                 Ok(tick) => tick,
                                 Err(e) => {
