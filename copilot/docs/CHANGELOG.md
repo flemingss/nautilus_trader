@@ -2,6 +2,32 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (account constraints)
+
+### Recorded
+
+- **The account is cash**, pending a margin decision. A cash account cannot sell short, so
+  the gap fade's short leg is unavailable at any price and only long activations can ever be
+  promoted. All three registered activations are already long-only, so nothing registered is
+  blocked. Noted in `playbook/PREFLIGHT.md` and `strategies/registry/README.md`.
+- **Market-data subscriptions are gated on account equity**, and the account is below the
+  bar. Funds added; settlement expected on or after 2026-09-08. Until then the only US equity
+  quotes available are the complimentary delayed, non-consolidated feed.
+- **Top of book, not depth.** Both candidate entries are auctions (market-on-close today,
+  next-session-open under the charter), which clear at a single price rather than against the
+  continuous book; and positions are low single-digit to low tens of shares against inside
+  quotes of hundreds to thousands. The live subscription question is **consolidated versus
+  non-consolidated at L1**, which re-scopes the open data decision away from depth products.
+
+### Changed
+
+- `docs/ROADMAP.md` gains **"Stage 08 - what a paper run actually needs"**, recording that no
+  paper node exists (the only IB code in the overlay is a data-only node in
+  `calibration/spread_snapshot.py`) and separating the paper stages that are blocked from the
+  six that are not.
+- New open-work group **"Waiting on the account (3)"**, carrying the operator's follow-ups.
+  Open items 13 to 16.
+
 ## 2026-09-01 (charter)
 
 ### Added
