@@ -21,12 +21,39 @@ covers, and it is pinned.
 
 | # | Item | State |
 | --- | --- | --- |
-| 1 | Spread calibration from IB | **Built and run.** First measurement recorded below. |
-| 2 | Rolling-window risk breakers | **Ported and tested** (22 tests). Reactive, not engine-enforced — see below. |
-| 3 | Nautilus-backed `Replay` | **Built and tested** (8 tests). The gate itself is not yet ported. |
-| 4 | Walk-forward gate port | **Not started.** ~1,400 LOC. Next major piece. |
-| 5 | `set_trading_state` pyo3 binding | **Blocked** — needs a Rust toolchain. |
-| 6 | Screener / universe selection | **Pinned**, out of repo by decision. |
+| 1 | Spread calibration from IB | **Built and run.** Measurements below. |
+| 2 | Rolling-window risk breakers | **Ported and tested.** Reactive, not engine-enforced — see below. |
+| 3 | Nautilus-backed `Replay` | **Built and tested.** |
+| 4 | Validation gate port | **Done.** Tearsheet, deflation, plateau search, purged walk-forward. |
+| 5 | Risk-based position sizing | **Done.** |
+| 6 | Entitlement probe | **Done.** |
+| 7 | `set_trading_state` pyo3 binding | **Blocked** — needs a Rust toolchain. |
+| 8 | Marketstack -> `ParquetDataCatalog` | **Not started.** The only route to US equity history. |
+| 9 | Screener / universe selection | **Pinned**, out of repo by decision. |
+
+82 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+
+## The kill chain, filled out
+
+Where each stage of "find a trade, then exit it with profit" now stands.
+
+| Stage | Covered by | State |
+| --- | --- | --- |
+| 1. Screening / universe | — | **Pinned.** Deliberately out of scope for now. |
+| 2. Research / features | Nautilus indicators (45) | Available |
+| 3. Backtest engine | Nautilus `BacktestEngine` | Strong — fill, fee and latency models |
+| 4. Validation | `copilot/validation` | **Ported.** Plateau search, purged WFA, deflation |
+| 5. Sizing | `copilot/risk/sizing` | **Ported.** Risk-based, floored |
+| 6. Risk limits | `copilot/risk/protections` | **Ported.** Reactive enforcement only |
+| 7. Orders / exits | Nautilus | Strong — 9 order types, brackets, trailing stops |
+| 8. Live deployment | Nautilus `LiveNode` | Strong — reconciliation, event sourcing |
+| 9. Monitoring | Nautilus analysis + tearsheet | Strong |
+| 10. Cost calibration | `copilot/calibration` | **Measured.** Needs realtime data to finalise |
+
+Every stage except screening now has an implementation. **What none of them have is
+data**: stages 3, 4 and 5 are all exercised against synthetic or forex bars, because no
+US equity history is reachable. That is the binding constraint, and it is a purchase or
+a vendor bridge, not code.
 
 ## 1. Spread calibration — first result
 
