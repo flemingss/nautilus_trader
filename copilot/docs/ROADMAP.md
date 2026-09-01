@@ -53,7 +53,7 @@ stalls.
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-4 passed** 2026-09-01                          |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-5 passed** 2026-09-01                          |
 | 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
 | 10  | Cost calibration     | `copilot/calibration`         | **Measured, not wired**                                   |
 

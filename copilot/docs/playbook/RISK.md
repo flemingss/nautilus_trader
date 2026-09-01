@@ -63,14 +63,14 @@ why it is stressed rather than typical.
 
 Conservative starting policy, not law. Declare any change before testing it.
 
-| Limit | Default |
-| --- | --- |
-| Planned risk per position | 0.10% to 0.25% of equity |
-| Maximum total open planned risk | 0.50% to 1.00% |
+| Limit                            | Default                             |
+| -------------------------------- | ----------------------------------- |
+| Planned risk per position        | 0.10% to 0.25% of equity            |
+| Maximum total open planned risk  | 0.50% to 1.00%                      |
 | Maximum single-position notional | 10% until diversification is proven |
-| Maximum daily new entries | Small and predefined |
-| Maximum daily loss | Independent of the strategy |
-| Leverage, shorts, averaging down | None |
+| Maximum daily new entries        | Small and predefined                |
+| Maximum daily loss               | Independent of the strategy         |
+| Leverage, shorts, averaging down | None                                |
 
 If prudent quantity rounds to zero, **skip the trade**. If estimated net edge is not
 comfortably larger than estimated all-in cost, skip it too.
@@ -92,6 +92,14 @@ Take it **before** starting a run - see
 `copilot/risk/guard.py`.
 
 ## The cost-at-size gate
+
+**Measured, 2026-09-01.** This gate was built from a fee schedule. Paper stage five then put
+a real round trip through the broker and charged it: 3 shares of AAPL, **USD 2.02 commission**
+on USD 947 deployed, against a price move of 27 cents. Commission was **88% of the loss**.
+
+At USD 20 of risk that is **0.1010 R**, against the 0.11 R this gate predicted - within ten
+percent. Against AAPL's walk-forward gross expectancy of +0.0492 R it leaves **-0.0519 R
+before spread**. The gate's conclusion is now an observation rather than an inference.
 
 **A cost model is only meaningful at a stated account size, and a premise is only a
 candidate if it survives at the size it would actually trade**
@@ -120,13 +128,13 @@ R terms it grows without limit as the budget shrinks.
 
 The gap fade, repriced across account sizes at the p95 spread:
 
-| Risk per trade | AAPL | MSFT | SPY |
-| --- | --- | --- | --- |
-| USD 1,000 (research default) | +0.040 | +0.071 | +0.053 |
-| **USD 20** (8k at 0.25%) | **-0.065** | **-0.037** | **-0.059** |
-| USD 8 (8k at 0.10%) | -0.246 | -0.202 | -0.263 |
-| USD 125 (50k at 0.25%) | +0.026 | +0.062 | +0.040 |
-| USD 500 (200k at 0.25%) | +0.038 | +0.070 | +0.052 |
+| Risk per trade               | AAPL       | MSFT       | SPY        |
+| ---------------------------- | ---------- | ---------- | ---------- |
+| USD 1,000 (research default) | +0.040     | +0.071     | +0.053     |
+| **USD 20** (8k at 0.25%)     | **-0.065** | **-0.037** | **-0.059** |
+| USD 8 (8k at 0.10%)          | -0.246     | -0.202     | -0.263     |
+| USD 125 (50k at 0.25%)       | +0.026     | +0.062     | +0.040     |
+| USD 500 (200k at 0.25%)      | +0.038     | +0.070     | +0.052     |
 
 At USD 20 of risk the position is 5 to 23 shares and a round trip costs USD 2.00 whatever
 its size: **0.11 R against a gross edge of 0.05 to 0.09 R**. At 0.10% risk, 31 to 131 trades

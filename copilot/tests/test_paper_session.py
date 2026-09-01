@@ -343,3 +343,49 @@ def test_the_untestable_shapes_are_named_rather_than_omitted():
     assert "BRACKET_MARKET_ENTRY" in UNTESTED_HERE
     for why in UNTESTED_HERE.values():
         assert "stage five" in why
+
+
+# --------------------------------------------------------- the supervised round trip
+
+
+def a_complete_round_trip(**overrides: object):
+    from copilot.live.supervised_session import SessionResult
+
+    return SessionResult(
+        **{
+            "entry_filled": True,
+            "position_opened": True,
+            "position_closed": True,
+            "children_working": 2,
+            **overrides,
+        },
+    )
+
+
+def test_a_complete_round_trip_passes():
+    assert a_complete_round_trip().passed
+
+
+def test_a_round_trip_with_no_working_children_fails():
+    """
+    The reason stage four could not test the bracket was that children need a fill.
+
+    So a stage-five run that opened and closed a position without ever seeing a child
+    reach the broker has skipped the only thing stage five adds.
+
+    """
+    assert not a_complete_round_trip(children_working=0).passed
+
+
+def test_leaving_an_order_working_fails_the_stage():
+    """
+    Stage three left a GTC order at the broker and reported nothing wrong.
+
+    Whatever else a session does, it does not get to pass while something is still live.
+
+    """
+    assert not a_complete_round_trip(orders_left_working=["O-1"]).passed
+
+
+def test_a_position_that_never_closed_fails():
+    assert not a_complete_round_trip(position_closed=False).passed

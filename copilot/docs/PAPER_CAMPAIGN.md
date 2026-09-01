@@ -48,16 +48,16 @@ Each stage opens only when the one before it has a dated row in the log. Stages 
 broker-integration testing and need no subscription, no settled cash, no margin and no
 strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are blocked.
 
-| #   | Stage                                            | Gate: what has to be true to pass                                                                                                                                                                     |
-| --- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | Connect, orders disabled (**passed 2026-09-01**) | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
-| 2   | Confirm the environment (**passed 2026-09-01**)  | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
-| 3   | One controlled order (**passed 2026-09-01**)     | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
-| 4   | Order types and TIF (**passed 2026-09-01**)      | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
-| 5   | A full supervised session                        | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
-| 6   | Failure injection                                | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
-| 7   | Repeat sessions, frozen strategy                 | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
-| 8   | Unattended                                       | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
+| #   | Stage                                             | Gate: what has to be true to pass                                                                                                                                                                     |
+| --- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Connect, orders disabled (**passed 2026-09-01**)  | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
+| 2   | Confirm the environment (**passed 2026-09-01**)   | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
+| 3   | One controlled order (**passed 2026-09-01**)      | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
+| 4   | Order types and TIF (**passed 2026-09-01**)       | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
+| 5   | A full supervised session (**passed 2026-09-01**) | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
+| 6   | Failure injection                                 | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
+| 7   | Repeat sessions, frozen strategy                  | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
+| 8   | Unattended                                        | **Blocked.** Needs stage 7, plus alerts and recovery drills passed.                                                                                                                                   |
 
 ### Two gates that are easy to wave through
 
@@ -196,6 +196,55 @@ The fix is not the attribute. It is that **everything is now constructed before 
 sent**, so a construction error cannot leave a half-submitted matrix behind. That failure
 mode is general: any batch of orders built and submitted in the same loop has it.
 
+## What stage five measured, and it is the important one
+
+The round trip completed: market entry filled, **both bracket children reached the broker and
+sat working** - the thing stage four could not reach - the position closed on purpose, and the
+sweep found nothing left. That is the machine working.
+
+But the number that matters is the commission.
+
+|              |                                                              |
+| ------------ | ------------------------------------------------------------ |
+| Deployed     | USD 947.13 (3 shares at 315.71, inside USD 1,000 of capital) |
+| Price change | **-0.27 USD**                                                |
+| Commission   | **2.02 USD**                                                 |
+| Realised     | -2.29 USD                                                    |
+
+**Commission was 88% of the loss.** The position moved nine cents against us across the hold
+and cost two dollars and two cents to open and close.
+
+### The cost model was predicting this, and now it is measured
+
+[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) rests on IB's USD
+1.00 per-order minimum dominating everything at small size. That was modelled from a fee
+schedule. It is now observed:
+
+| Risk per trade                   | Measured commission |
+| -------------------------------- | ------------------- |
+| USD 1,000 (the research default) | 0.0020 R            |
+| USD 125 (50k at 0.25%)           | 0.0162 R            |
+| **USD 20 (8k at 0.25%)**         | **0.1010 R**        |
+| USD 8 (8k at 0.10%)              | 0.2525 R            |
+
+The model predicted 0.11 R at USD 20 of risk. The broker charged **0.101 R**. Within ten
+percent, from a fee schedule, before any trade had ever been placed.
+
+Against AAPL's walk-forward gross expectancy of **+0.0492 R**, commission alone leaves
+**-0.0519 R** - and that is before spread. **The gap fade's negative verdict at the target
+account size is now an empirical result, not an inference.**
+
+### Two things this did not measure
+
+**Slippage.** The mid came from a **delayed** quote, so the entry filling at 315.71 against a
+316.155 "mid" is not evidence of a favourable fill - it is evidence that a 15-minute-old
+quote is not a benchmark. Nothing here is admissible about fill quality, which is also what
+IBKR says about its paper environment.
+
+**Diversification.** Three shares of one instrument was **95% of the deployable capital**. At
+this account size there is no second position. That is a real constraint on any strategy
+design that assumes a portfolio.
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
@@ -211,22 +260,24 @@ mode is general: any batch of orders built and submitted in the same loop has it
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date       | Stage | Result                                                                                                                                                                                                                                                                                    | Evidence                                          |
-| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                          | `live/out/preflight_20260901T121340Z.json`        |
-| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                   | `live/out/preflight_20260901T122835Z.json`        |
-| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json` |
-| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`      |
+| Date       | Stage | Result                                                                                                                                                                                                                                                                                    | Evidence                                            |
+| ---------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                          | `live/out/preflight_20260901T121340Z.json`          |
+| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                   | `live/out/preflight_20260901T122835Z.json`          |
+| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json`   |
+| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`        |
+| 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.             | `live/out/supervised_session_20260901T133242Z.json` |
 
 ## Where the code is
 
-| Piece                         | Location                                                     | State                                                             |
-| ----------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------- |
-| Paper/live discrimination     | [`../live/session.py`](../live/session.py)                   | Built, 17 tests                                                   |
-| Node builder and order switch | [`../live/node.py`](../live/node.py)                         | Built, unrun against a broker                                     |
-| Preflight check script        | [`../live/preflight.py`](../live/preflight.py)               | Built and run. Stages 1 and 2.                                    |
-| Instrument id bridge          | [`../live/symbology.py`](../live/symbology.py)               | Built, 10 tests. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`. |
-| Controlled order              | [`../live/controlled_order.py`](../live/controlled_order.py) | Built and run. Stage 3.                                           |
-| Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)     | Built. Cannot see external SUBMITTED orders; says so.             |
-| Order type matrix             | [`../live/order_types.py`](../live/order_types.py)           | Built and run. Stage 4.                                           |
-| Failure injection             | -                                                            | Not built. Stage 6.                                               |
+| Piece                         | Location                                                         | State                                                             |
+| ----------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Paper/live discrimination     | [`../live/session.py`](../live/session.py)                       | Built, 17 tests                                                   |
+| Node builder and order switch | [`../live/node.py`](../live/node.py)                             | Built, unrun against a broker                                     |
+| Preflight check script        | [`../live/preflight.py`](../live/preflight.py)                   | Built and run. Stages 1 and 2.                                    |
+| Instrument id bridge          | [`../live/symbology.py`](../live/symbology.py)                   | Built, 10 tests. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`. |
+| Controlled order              | [`../live/controlled_order.py`](../live/controlled_order.py)     | Built and run. Stage 3.                                           |
+| Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)         | Built. Cannot see external SUBMITTED orders; says so.             |
+| Order type matrix             | [`../live/order_types.py`](../live/order_types.py)               | Built and run. Stage 4.                                           |
+| Supervised round trip         | [`../live/supervised_session.py`](../live/supervised_session.py) | Built and run. Stage 5.                                           |
+| Failure injection             | -                                                                | Not built. Stage 6.                                               |

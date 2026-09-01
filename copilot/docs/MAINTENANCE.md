@@ -34,6 +34,38 @@ skip is indistinguishable from forgetting.
 Between reviews, the delta report's conflict line is a **forecast**. It appearing is not a
 reason to act.
 
+## When the delta stops being maintainable
+
+Raised 2026-09-01, before it became a problem, so the trigger is written down rather than
+argued about later.
+
+The delta is **10 upstream files** and the paper campaign has already named an eleventh
+worth making - the reconciliation gap that leaves an external `SUBMITTED` order
+uncancellable, which sits in `crates/execution` rather than in an adapter and so has a wider
+blast radius than anything we hold today.
+
+The reason the count grows is structural rather than accidental. NautilusTrader's integration
+list is almost entirely crypto exchanges: one symbol namespace, no entitlements, no routing
+layer, 24/7 sessions, one account model. Interactive Brokers is close to the only traditional
+multi-asset brokerage in it, so the abstractions bend hardest exactly where we work - venue
+identity, routing, entitlements, session state. **We should expect to keep finding things**,
+and expect the fixes to be ours to make.
+
+That is sustainable at ten files. It is not sustainable indefinitely. Two triggers, either of
+which means the lifecycle model itself gets reconsidered rather than the next patch simply
+being written:
+
+- **The delta exceeds roughly twenty files**, or reaches into a third crate beyond the IB
+  adapter and the risk engine.
+- **A quarterly review costs more than a working week**, or concludes "too disruptive" twice
+  running - at which point we are effectively maintaining a hard fork while paying the
+  overhead of pretending otherwise.
+
+The options at that point are the ones worth naming in advance: upstream the changes and
+carry only what is rejected; pin to a release and stop tracking `develop` at all; or accept
+the hard fork explicitly and drop the sync machinery. **Each is a defensible choice; drifting
+into one is not.**
+
 ## Quarterly review procedure
 
 Roughly an hour when nothing has moved; budget a day when something has.

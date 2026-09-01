@@ -1,0 +1,36 @@
+{
+  "started_at": "2026-09-01T13:15:38.850481+00:00",
+  "finished_at": "2026-09-01T13:16:31.897464+00:00",
+  "stage": "5",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "instrument_id": "AAPL=STK.SMART",
+  "deployable_capital": "1",
+  "passed": false,
+  "result": {
+    "quote_seen": true,
+    "mid_price": "316.575",
+    "quantity": 0,
+    "bracket_submitted": false,
+    "entry_filled": false,
+    "entry_price": "",
+    "children_working": 0,
+    "position_opened": false,
+    "position_closed": false,
+    "exit_price": "",
+    "realized_pnl": "",
+    "commissions": "",
+    "orders_left_working": [],
+    "milestones": [
+      {
+        "at": "2026-09-01T13:15:50.574517+00:00",
+        "kind": "subscribed",
+        "detail": "AAPL=STK.SMART"
+      },
+      {
+        "at": "2026-09-01T13:15:51.376688+00:00",
+        "kind": "unsizeable",
+        "detail": "capital 1 below ask 316.73"
+      }
+    ]
+  }
+}
