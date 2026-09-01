@@ -191,6 +191,38 @@ looks like data loss when it is not. Worth a signal handler that snapshots accum
 state promptly, so an operator can interrupt and see results without waiting on node
 teardown — but no samples are actually lost today.
 
+## Rust toolchain prerequisites
+
+Three items are blocked on a source build: the `set_trading_state` pyo3 binding, the two
+IB adapter bugs, and `make pre-commit` / `make format`. This environment currently has
+`curl`, `git`, `uv` and `python3` and nothing else from the build chain.
+
+**Needs root — the only step an agent cannot do:**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential clang lld curl git make pkg-config
+```
+
+**Everything after that is user-level**, following `docs/developer_guide/environment_setup.md`:
+
+```bash
+curl https://sh.rustup.rs -sSf | sh          # rust-toolchain.toml pins 1.98.0
+source "$HOME/.cargo/env"
+cargo install cargo-binstall --locked
+CAPNP_PREFIX="$HOME/.local" ./scripts/install-capnp.sh   # 1.5.0; prefix avoids sudo
+make install-tools                            # includes prek, needed by make pre-commit
+make sync
+```
+
+Host has 936 GB free and 33 GB RAM available, so neither disk nor memory is a constraint;
+expect the first full workspace build to be long regardless.
+
+`make install-tools` installs the complete dev toolset (cargo-fuzz, llvm-cov, flamegraph,
+lychee and more). Only a subset is needed to *build*, but the full set is what
+`make pre-commit` expects, so installing it once is what makes that checklist item
+satisfiable in future pull requests.
+
 ## 2. Risk breakers — what they actually enforce
 
 Ported from trade-copilot ADR-0025. Both breakers are pure functions over closed
