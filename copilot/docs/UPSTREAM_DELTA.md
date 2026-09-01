@@ -12,6 +12,16 @@ python -m copilot.tools.upstream_delta --fetch     # report, refreshing upstream
 python -m copilot.tools.upstream_delta --check     # exit 1 on an unregistered file
 ```
 
+## Syncing is on demand
+
+The fork does not track `develop`. A merge is a deliberate, scheduled act, and while
+development is active the fork is held still on purpose — chasing upstream mid-feature
+means debugging our own work and someone else's refactor on two moving bases at once.
+
+So this file is not a to-do list. It is the review list for whenever a sync *is* chosen,
+and in the meantime the count of rows is the number that matters: each one is a change
+that will have to be re-applied by hand some day.
+
 ## Why a register instead of a rule
 
 The overlay's original rule was that it changed **zero** upstream files, which made the
@@ -75,4 +85,10 @@ re-verified, because the surrounding locking model changed underneath it.
 
 **That is the whole argument for this register in one example.** The delta is two files
 and 52 lines; the file upstream is rewriting is the one that already conflicts, one merge
-in. Upstreaming both fixes would retire the entry rather than carry it.
+in.
+
+**No action is due.** Syncing is on demand only and the fork is deliberately held still
+during development, so this conflict is a forecast for whenever a sync is actually chosen
+— not work waiting to be done. Upstreaming both fixes would retire the entry instead of
+carrying it, and it stays the cheapest option available, but an upstream pull request
+opens a review front on someone else's schedule. Deferred on the same reasoning.

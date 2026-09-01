@@ -2,6 +2,21 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (sync policy)
+
+### Changed
+
+- **Upstream syncing is on demand only.** The fork does not track `develop`. While
+  development is active it is held still on purpose: chasing upstream mid-feature means
+  debugging our own work and someone else's refactor on two moving bases at once.
+- The delta report's conflict line is now stated as a **forecast** for whenever a sync is
+  chosen, not a work item. The report also prints the date of the local upstream snapshot,
+  which under this policy ages by design — a conflict verdict computed against a stale ref
+  must not read as current.
+- **Contributing the two IB fixes upstream is deferred.** It remains the cheapest way to
+  retire a register entry, but a pull request opens a review front on someone else's
+  schedule, which is what the policy exists to avoid.
+
 ## 2026-09-01 (upstream delta policy)
 
 ### Changed

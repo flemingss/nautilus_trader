@@ -117,9 +117,11 @@ key type. Mechanical to resolve, but it has to be done by hand and re-verified b
 the surrounding locking model changed underneath it (`05eae9fa43` moved the adapter to
 `parking_lot`, `4c18691277` standardised task lifecycles).
 
-Both changes are straight bug fixes that upstream would plausibly accept. **Contributing
-them back would retire the entry rather than carry it** — the cheapest available way to
-reduce the delta, and worth doing before it grows.
+**Nothing is due.** Syncing is on demand only — the fork is deliberately held still while
+development is active, so this is a forecast for a sync that has not been scheduled, not
+a work item. Upstreaming both fixes would retire the entry rather than carry it and stays
+the cheapest option, but it opens a review front on someone else's schedule, so it is
+deferred on the same reasoning.
 
 ### Waiting on a market session (2)
 

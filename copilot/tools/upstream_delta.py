@@ -19,8 +19,13 @@ sitting on a file upstream is actively rewriting is a bill that grows.
 Usage
 -----
     python -m copilot.tools.upstream_delta            # report
-    python -m copilot.tools.upstream_delta --fetch    # refresh upstream first
+    python -m copilot.tools.upstream_delta --fetch    # refresh the upstream snapshot
     python -m copilot.tools.upstream_delta --check    # exit 1 on an unregistered file
+
+Syncing with upstream is **on demand only** — the fork is deliberately held still during
+development rather than tracking `develop`. So the local upstream ref is a snapshot that
+ages, and the conflict line is a forecast for whenever a sync is actually chosen, never a
+task list. `--fetch` refreshes it; nothing else does.
 
 Requires an ``upstream`` remote pointing at ``nautechsystems/nautilus_trader``:
 
@@ -233,10 +238,15 @@ def _report(
 ) -> None:
     short = base[:12]
     when = _git("log", "-1", "--format=%ad", "--date=short", base)
+    # Under on-demand syncing the local upstream ref is a snapshot that ages by design.
+    # Print when it was taken, so a conflict verdict computed against a month-old ref is
+    # never mistaken for a current one.
+    fetched = _git("log", "-1", "--format=%ad", "--date=short", UPSTREAM_REF)
     print("Upstream delta")
     print(f"  merge base        {short}  {when}")
-    print(f"  {UPSTREAM_REF:<17} +{behind} commits since base")
+    print(f"  {UPSTREAM_REF:<17} +{behind} commits since base, snapshot dated {fetched}")
     print(f"  our HEAD          +{ahead} commits since base")
+    print("  (snapshot only refreshes on --fetch; syncing is deliberate, not routine)")
     print()
 
     if not deltas:
@@ -262,8 +272,9 @@ def _report(
         print()
 
     if conflicts:
-        print(f"  A merge of {UPSTREAM_REF} would conflict in {len(conflicts)} file(s) today.")
-        print("  Resolve at sync time; UPSTREAM_DELTA.md says what each change is for.")
+        print(f"  A merge of {UPSTREAM_REF} would conflict in {len(conflicts)} file(s).")
+        print("  This is a forecast for the next deliberate sync, not work to do now.")
+        print("  UPSTREAM_DELTA.md says what each change is for.")
 
 
 def main(argv: list[str] | None = None) -> int:

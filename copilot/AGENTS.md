@@ -47,6 +47,26 @@ small, and individually justified, so a sync is a review of a short list. In pra
 - **Off limits regardless:** `RELEASES.md`, `.github/workflows/`, `.github/actions/`, and
   the root `ROADMAP.md`. A test enforces this too.
 
+### Sync with upstream on demand only
+
+**The fork does not track `develop`.** Merging upstream is a deliberate, scheduled act,
+not something done because the report says we are behind. While development is active the
+fork is held still on purpose: chasing upstream mid-feature means debugging our own work
+and someone else's refactor at the same time, on two moving bases.
+
+- **Do not merge or rebase onto `upstream/develop`** unless the sync is the task.
+- `git fetch upstream` is safe and changes nothing; it only refreshes the snapshot the
+  delta report reads. Everything else about upstream is opt-in.
+- The report's conflict line is a **forecast** for whenever a sync is chosen. It is not a
+  backlog item and does not need acting on when it appears.
+- **Do not contribute changes upstream while this holds.** An upstream pull request opens
+  a review front on someone else's schedule, which is the thing this policy exists to
+  avoid. It stays the cheapest way to retire a delta entry — just not now.
+
+When a sync is eventually chosen, `UPSTREAM_DELTA.md` is the review list: each row says
+what the change is for, so re-applying it over upstream's version is a judgement about a
+known change rather than an excavation.
+
 ### The `upstream` remote re-points `gh` at upstream
 
 Adding the remote for delta tracking has a side effect that is easy to miss and hard to
