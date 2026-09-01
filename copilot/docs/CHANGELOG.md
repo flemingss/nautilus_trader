@@ -2,6 +2,41 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (paper stage 5)
+
+### Added
+
+- **`live/supervised_session.py`** - a full supervised round trip, **sized for the account we
+  will have rather than the one paper gives us**. `--capital` is the deployable figure;
+  quantity is whole shares inside it, and `max_notional_per_order` is a backstop above it
+  rather than the budget itself. Setting the cap at exactly `capital` would deny the
+  take-profit, since a bracket's target is a sell above the entry.
+
+### Passed
+
+- **Stage five, first attempt, during RTH.** Market entry filled, **both bracket children
+  reached the broker and sat working** - the thing stage four could not test - position closed
+  on purpose, nothing left working. 3 AAPL inside USD 1,000 of capital; entry 315.71, exit
+  315.62.
+
+### Measured
+
+- **Commission was 2.02 USD on a USD 947 round trip, and 88% of the total loss.** The price
+  moved 27 cents against us across the hold; the broker charged more than seven times that to
+  open and close.
+- **The cost model is confirmed empirically.** At USD 20 of risk that is **0.1010 R** against
+  the 0.11 R predicted from the fee schedule before any trade existed - within ten percent.
+  Against AAPL's walk-forward gross expectancy of +0.0492 R, commission alone leaves
+  **-0.0519 R before spread**. The gap fade's negative verdict at the target account size is
+  now an observation rather than an inference.
+
+### Not measured, and stated so
+
+- **Slippage.** The mid came from a delayed quote, so the entry filling below it is evidence
+  that a 15-minute-old quote is not a benchmark, not evidence of a good fill.
+- **Diversification.** Three shares of one instrument was 95% of deployable capital. At this
+  account size there is no second position.
+
 ## 2026-09-01 (paper stage 4)
 
 ### Added
