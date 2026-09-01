@@ -39,12 +39,23 @@ class Probe:
     symbology: str = "SIMPLIFIED"
 
 
+# Chosen to map onto the account's actual subscription list, so a run says which
+# *entitlements* work rather than which symbols happen to be popular. Complimentary
+# feeds on this account cover FX (IDEALPRO), US non-consolidated equities, bonds,
+# Korea equities, alternative European equities and ZEROHASH crypto.
 PROBES = (
-    Probe("US equity (AAPL)", "AAPL.NASDAQ", "1-HOUR-LAST"),
-    Probe("US equity (MSFT)", "MSFT.NASDAQ", "1-HOUR-LAST"),
-    Probe("ETF (SPY)", "SPY.ARCA", "1-HOUR-LAST"),
-    Probe("Index (SPX)", "^SPX.CBOE", "1-HOUR-LAST"),
-    Probe("Forex (EUR/USD)", "EUR/USD.IDEALPRO", "1-HOUR-MID"),
+    # Consolidated US equities — the gap. SMART-routed historical needs every
+    # exchange the name trades on, which non-consolidated (IEX-only) does not cover.
+    Probe("US equity SMART", "AAPL.NASDAQ", "1-HOUR-LAST"),
+    Probe("US ETF SMART", "SPY.ARCA", "1-HOUR-LAST"),
+    Probe("US index", "^SPX.CBOE", "1-HOUR-LAST"),
+    # Directed-exchange variants: worth knowing whether a non-consolidated
+    # entitlement satisfies a request aimed at the one venue it covers.
+    Probe("US equity IEX-directed", "AAPL=STK.IEX", "1-HOUR-LAST", "RAW"),
+    Probe("US equity ISLAND-directed", "AAPL=STK.ISLAND", "1-HOUR-LAST", "RAW"),
+    # Complimentary entitlements, to confirm what they actually deliver via API.
+    Probe("Forex IDEALPRO", "EUR/USD.IDEALPRO", "1-HOUR-MID"),
+    Probe("Forex IDEALPRO 2", "USD/JPY.IDEALPRO", "1-HOUR-MID"),
 )
 
 

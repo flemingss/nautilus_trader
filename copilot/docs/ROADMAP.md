@@ -94,6 +94,43 @@ subscription is required. `copilot/calibration/entitlements.py` runs this check.
 Realtime *quote* entitlement could not be retested — the US session was closed, so no
 ticks flow regardless of entitlement. That check needs a session window.
 
+### Why 2188 happens, and what would fix it
+
+The account's complimentary feed is **"US Real-Time Non Consolidated Streaming
+Quotes"** — IB's free IEX-sourced feed. IB's own API documentation states that
+historical data carries *the same subscription requirement as streaming top-of-book*,
+and that **a SMART-routed historical request requires subscriptions to every exchange
+the instrument trades on**. A non-consolidated (single-venue) entitlement cannot
+satisfy that for a name like AAPL, which is exactly what 2188 reports.
+
+So the fix is **consolidated** US equity data — the Network A (NYSE/CTA), Network B
+(NYSE American) and Network C (NASDAQ/UTP) tapes, which IB normally sells as a value
+bundle plus a streaming add-on. Prices were not verifiable from here (the IB pricing
+page returns HTTP 403 to automated fetches) and must be confirmed in Client Portal.
+
+Untested and worth knowing: whether a **directed-exchange** request (IEX or ISLAND
+rather than SMART) is satisfied by the non-consolidated entitlement. If it is, some
+history is available at no cost — though IEX-only bars carry the same
+unrepresentative-volume problem as any single-venue feed, so it would be a diagnostic
+convenience rather than a backtest foundation. `entitlements.py` now probes both.
+
+### Blocked 2026-09-01: IB error 162
+
+All historical requests — **including forex, which had worked 25 minutes earlier** —
+now fail with:
+
+    [162] Historical Market Data Service error message:
+    Trading TWS session is connected from a different IP address
+
+This is a session fault, not an entitlement one: the connection succeeds and contract
+resolution still works, only the historical service refuses. It appeared after the IB
+web portal was accessed while TWS was running. **Do not read any 2188 result taken
+while 162 is active** — the two are unrelated failures and conflating them will produce
+a wrong conclusion about entitlements.
+
+Clear it by logging out of the IB web session and restarting TWS, then re-run
+`entitlements.py` before trusting any data verdict.
+
 Three-symbol measurement (delayed, 846s, 139-150 usable quotes each):
 
 | symbol | n | median full (bps) | per side | p95 full | vs 5 bps/side |
