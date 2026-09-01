@@ -128,8 +128,17 @@ web portal was accessed while TWS was running. **Do not read any 2188 result tak
 while 162 is active** — the two are unrelated failures and conflating them will produce
 a wrong conclusion about entitlements.
 
-Clear it by logging out of the IB web session and restarting TWS, then re-run
-`entitlements.py` before trusting any data verdict.
+**Confirmed and cleared 2026-09-01 by logging out of the IB web session.** Forex
+historical went straight back to returning bars and AAPL returned to the honest 2188,
+with no TWS restart needed.
+
+**Operating rule: IB allows one active session per login.** Opening Client Portal,
+Account Management, or the mobile app while TWS is running can displace the API's
+historical data service and produce 162, even though the socket stays connected and
+contract resolution keeps working. Do not browse the IB website during a data run.
+When 162 appears, log out of the web session first — that alone is usually enough.
+
+Re-run `entitlements.py` after clearing it, before trusting any data verdict.
 
 Three-symbol measurement (delayed, 846s, 139-150 usable quotes each):
 
