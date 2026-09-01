@@ -53,7 +53,7 @@ strategy anyone believes in. Stages 7 and 8 need a frozen candidate and are bloc
 | 1   | Connect, orders disabled (**passed 2026-09-01**) | Node connects to the paper account. Risk engine reads `HALTED` **after startup**, not merely before it. A strategy that decides to trade is denied inside the risk engine and the denial is recorded. |
 | 2   | Confirm the environment (**passed 2026-09-01**)  | Instrument ids, account id, base currency, market-data type and session calendar all read back as expected, from the broker rather than from configuration. A mismatch on any one fails the stage.    |
 | 3   | One controlled order (**passed 2026-09-01**)     | A single minimum-size order submitted through the strategy path and cancelled. Broker acknowledges both. Client order id, broker order id and permanent id all captured.                              |
-| 4   | Order types and TIF                              | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
+| 4   | Order types and TIF (**passed 2026-09-01**)      | Every order type and time-in-force the strategies will use, each submitted and resolved. Brackets included, since the gap fade submits one.                                                           |
 | 5   | A full supervised session                        | One complete session start to finish with an operator watching. Reconciliation clean at open and close.                                                                                               |
 | 6   | Failure injection                                | Stale data, disconnect, reject and a deliberate position mismatch. Each detected, each handled as documented, each alerted.                                                                           |
 | 7   | Repeat sessions, frozen strategy                 | **Blocked.** Needs a candidate that passed the research gate. None exists.                                                                                                                            |
@@ -161,6 +161,41 @@ reports "nothing working" while an order is live at the broker is worse than no 
 `cancel_working.py` now reports `CACHE CLEAR` rather than `PASS` and says what it cannot
 see. The order itself has to be cancelled in TWS by hand.
 
+## What stage four found, and what it deliberately did not test
+
+**All five testable shapes were accepted**: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC,
+STOP_LIMIT/GTC, and the gap fade's bracket as a three-order list submitted and cancelled as
+one. Buy limits sat at half the reference and buy stops at twice it, so nothing could fill.
+
+**MARKET is untested, and that is the point of recording it.** The gap fade's bracket uses
+`entry_order_type=OrderType.MARKET`, which is the single most important type in the system
+and **cannot be tested without filling** - there is no far-from-market price for a market
+order. Submitting one opens a real paper position, and stage three established that this
+project cannot yet reliably clean up after itself. So the market path waits for stage five,
+under supervision, where a position needing to be closed is expected rather than a surprise.
+The matrix prints it as `N/A` with the reason, because a matrix with an invisible hole reads
+as complete.
+
+The bracket was tested with a limit entry, which proves the *shape* - parent plus two
+contingent children, submitted and cancelled as one list - and not child activation, since
+children activate on the parent filling. Also stage five.
+
+**The run was pre-open**, at 13:01 UTC against a 13:30 UTC cash open. IB's acceptance rules
+for `DAY` and for stop orders are not necessarily the same inside a session as outside one,
+so this matrix is evidence about submission, not about a live session. Stage five re-covers
+it during RTH.
+
+### The bug worth keeping
+
+`order_factory.bracket()` returns a plain `list`, not an object with `.orders`. The first
+attempt raised on `.orders` **after** the four single orders had already been submitted,
+which aborted node startup with four orders on their way and no strategy left running to
+cancel them.
+
+The fix is not the attribute. It is that **everything is now constructed before anything is
+sent**, so a construction error cannot leave a half-submitted matrix behind. That failure
+mode is general: any batch of orders built and submitted in the same loop has it.
+
 ## Standing rules for every session
 
 - **Do not open the IB web portal, Client Portal or the mobile app while a run is live.**
@@ -181,6 +216,7 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                          | `live/out/preflight_20260901T121340Z.json`        |
 | 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                   | `live/out/preflight_20260901T122835Z.json`        |
 | 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below. | `live/out/controlled_order_20260901T124521Z.json` |
+| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                              | `live/out/order_types_20260901T130102Z.json`      |
 
 ## Where the code is
 
@@ -192,4 +228,5 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | Instrument id bridge          | [`../live/symbology.py`](../live/symbology.py)               | Built, 10 tests. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`. |
 | Controlled order              | [`../live/controlled_order.py`](../live/controlled_order.py) | Built and run. Stage 3.                                           |
 | Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)     | Built. Cannot see external SUBMITTED orders; says so.             |
+| Order type matrix             | [`../live/order_types.py`](../live/order_types.py)           | Built and run. Stage 4.                                           |
 | Failure injection             | -                                                            | Not built. Stage 6.                                               |
