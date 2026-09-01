@@ -18,6 +18,9 @@ Each probe is designed so the *expected* outcome is a refusal or an alarm, not a
 2. **Rejected by the broker.** An order far beyond the account's buying power on MSFT, which
    carries no cap, so it passes our engine and IB has to be the one to say no. The two
    refusals travel different paths and a system that conflates them will handle one wrongly.
+   **Paper cannot decide this one** - it accepted a USD 24M order on a USD 1M account - so it
+   is submitted but not scored, and the live account has to settle it before any size
+   increase.
 3. **Stale data.** Quotes are subscribed, then unsubscribed while the node keeps running, and
    the age of the last quote is watched until it crosses a threshold. This tests the
    *detector* against a real feed going quiet. It does not test IB going quiet, which is a
@@ -73,6 +76,16 @@ REJECT_QUANTITY = 100_000
 Far beyond any buying power a paper account has, so the broker has to refuse it.
 """
 
+CANCEL_ACK_WAIT_SECS = 20
+"""
+How long to wait for cancellations to be acknowledged before stopping.
+
+OPERATIONS requires waiting for and verifying broker cancellation acknowledgements. The
+first run of this module did not, and reported an order as left working when its cancel
+was merely in flight.
+
+"""
+
 STALE_AFTER_SECS = 20
 """
 How long without a quote before the feed is called stale.
@@ -80,6 +93,25 @@ How long without a quote before the feed is called stale.
 Short because this is a check, not a policy. A real session sets this from the
 instrument's expected tick rate, and a threshold shorter than the quiet spells a thin
 name has in normal trading is a threshold that cries wolf.
+
+"""
+
+NOT_TESTABLE_ON_PAPER = {
+    "name": "rejected_by_broker",
+    "status": "NOT TESTABLE HERE",
+    "detail": (
+        "IB paper accepted a 100,000-share order worth USD 24M on a USD 1M account "
+        "(measured 2026-09-01), so paper does not enforce buying power on a "
+        "far-from-market limit. The probe is still submitted, because that is how we would "
+        "notice if it ever started. **Verify the rejection path on the live account before "
+        "any size increase** - it has not been tested."
+    ),
+}
+"""
+A case paper cannot decide, recorded rather than scored.
+
+Scoring it would make stage six permanently unpassable for a reason that has nothing to
+do with our system, which turns a real limitation into background noise.
 
 """
 
@@ -125,6 +157,11 @@ class InjectionResult:
     stale_detected: bool = False
     max_quote_age_secs: float = 0.0
     orders_left_working: list[str] = field(default_factory=list)
+    cancel_rejections: list[str] = field(default_factory=list)
+    unscored: dict[str, str] = field(default_factory=dict)
+    """
+    Observed outcomes for cases that are recorded but not scored.
+    """
 
     @property
     def passed(self) -> bool:
@@ -180,7 +217,6 @@ class FailureInjection(Strategy):
         self.result = InjectionResult(
             probes=[
                 Probe(name="denied_by_risk_engine", expected="denied"),
-                Probe(name="rejected_by_broker", expected="rejected"),
                 Probe(name="stale_feed_detected", expected="stale"),
             ],
         )
@@ -188,8 +224,18 @@ class FailureInjection(Strategy):
         self._last_quote: datetime | None = None
         self._unsubscribed = False
 
-    def _probe(self, name: str) -> Probe:
-        return next(p for p in self.result.probes if p.name == name)
+    def _probe(self, name: str) -> Probe | None:
+        """
+        Return the scored probe of that name, or None if the case is not scored.
+
+        Returning None rather than raising is load-bearing. Reclassifying
+        ``rejected_by_broker`` as not-testable removed it from the scored list while leaving
+        its order in the id map, and a bare ``next()`` then raised StopIteration inside the
+        accepted handler - which silently skipped the cancel and left a live order at the
+        broker. The report said the order was left working and gave no hint why.
+
+        """
+        return next((p for p in self.result.probes if p.name == name), None)
 
     def on_start(self) -> None:
         """
@@ -222,6 +268,9 @@ class FailureInjection(Strategy):
 
         self.submit_order(over_cap)
         self.submit_order(over_buying_power)
+
+        # Still submitted, even though it is no longer scored. It costs one order and it is
+        # the only way we would notice if IB ever started enforcing buying power on paper.
 
     def on_quote(self, quote: Any) -> None:  # noqa: ARG002 - the tick's content is irrelevant
         """
@@ -272,8 +321,20 @@ class FailureInjection(Strategy):
         Recorded, then cancelled so nothing is left working.
 
         """
-        self._settle(event, "accepted", "the broker allowed an order that should be refused")
+        # Cancel first, unconditionally. Recording is bookkeeping; leaving a live order
+        # at the broker is the failure, so nothing that might go wrong in bookkeeping is
+        # allowed to run before it.
         self.cancel_order(event.client_order_id)
+        self._settle(event, "accepted", "the broker allowed an order that should be refused")
+
+    def on_order_cancel_rejected(self, event: Any) -> None:
+        """
+        Record a refused cancellation, which is why an order can outlive its cancel.
+        """
+        self.result.cancel_rejections.append(
+            f"{event.client_order_id}: {getattr(event, 'reason', '')}",
+        )
+        self.log.error(f"Cancel rejected: {event}")
 
     def on_order_filled(self, event: Any) -> None:
         """
@@ -287,6 +348,10 @@ class FailureInjection(Strategy):
         if name is None:
             return
         probe = self._probe(name)
+        if probe is None:
+            # A recorded-but-unscored case, such as the broker rejection paper cannot decide.
+            self.result.unscored.setdefault(name, observed)
+            return
         if not probe.observed:
             probe.observed = observed
             probe.detail = detail
@@ -297,8 +362,11 @@ class FailureInjection(Strategy):
         """
         left = []
         for instrument_id in (self.config.capped_id, self.config.uncapped_id):
+            # Status included: "still open" and "cancel not yet acknowledged" are different
+            # problems, and without it the two cannot be told apart from the report.
             left += [
-                str(o.client_order_id) for o in self.cache.orders_open(instrument_id=instrument_id)
+                f"{o.client_order_id} [{o.status}]"
+                for o in self.cache.orders_open(instrument_id=instrument_id)
             ]
         self.result.orders_left_working = left
 
@@ -333,12 +401,25 @@ async def run_injection(
             max_notional_per_order={str(capped_id): str(NOTIONAL_CAP)},
         ),
     )
+    # Captured before the run, like the risk engine handle: a hosted run takes ownership of
+    # the node and `node.cache` then raises.
+    cache = node.cache
+
     handle = node.handle()
     task = asyncio.create_task(node.run_async())
     try:
         for _ in range(settle_secs):
             await asyncio.sleep(1)
             strategy.check_staleness()
+
+        # Wait for the cancellations to be acknowledged before stopping, which is what
+        # OPERATIONS.md requires and what the first run of this module skipped. Reading
+        # `orders_open` while a cancel is in flight reported a live order that was already
+        # on its way out - a false alarm from a safety check is as corrosive as a missed one.
+        for _ in range(CANCEL_ACK_WAIT_SECS):
+            if not any(cache.orders_open(instrument_id=i) for i in (capped_id, uncapped_id)):
+                break
+            await asyncio.sleep(1)
     finally:
         handle.stop()
         try:
@@ -407,13 +488,22 @@ def main(argv: list[str] | None = None) -> int:
             f"{p.name:<26}{'PASS' if p.passed else 'FAIL':<8}{p.expected:<12}"
             f"{p.observed or '-':<12}{p.detail[:50]}",
         )
-    print(
-        f"{UNRECOVERABLE_CASE['name']:<26}{'FAIL':<8}{'recovered':<12}{'invisible':<12}"
-        f"{UNRECOVERABLE_CASE['detail'][:50]}",
-    )
+    observed_unscored = result.unscored.get(NOT_TESTABLE_ON_PAPER["name"], "-")
+    for case, observed in (
+        (NOT_TESTABLE_ON_PAPER, observed_unscored),
+        (UNRECOVERABLE_CASE, "invisible"),
+    ):
+        print(
+            f"{case['name']:<26}{case['status']:<8}{'-':<12}{observed:<12}{case['detail'][:50]}",
+        )
     print(f"\nquotes seen: {result.quotes_seen}, max quote age {result.max_quote_age_secs:.1f}s")
     print(f"left working: {result.orders_left_working or 'none'}")
-    print(f"\nRESULT: {'PASS' if result.passed else 'FAIL'} (known failure above excluded)")
+    if result.cancel_rejections:
+        print(f"cancel rejections: {result.cancel_rejections}")
+    print(
+        f"\nRESULT: {'PASS' if result.passed else 'FAIL'}"
+        " (the two cases above are excluded: one paper cannot decide, one is a known gap)",
+    )
 
     report = {
         "started_at": started.isoformat(),
@@ -421,6 +511,7 @@ def main(argv: list[str] | None = None) -> int:
         "stage": "6",
         "source": f"interactive_brokers {args.host}:{args.port}",
         "passed": result.passed,
+        "not_testable_on_paper": NOT_TESTABLE_ON_PAPER,
         "known_failure": UNRECOVERABLE_CASE,
         "result": asdict(result),
     }

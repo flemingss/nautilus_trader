@@ -1209,8 +1209,14 @@ impl RiskEngine {
         };
 
         let Some(mut account) = resolved_account else {
-            log::debug!(
-                "Cannot find account for venue {} (account_id={account_id:?})",
+            // Warn rather than debug. Every balance, margin and cumulative-notional check
+            // below is skipped when this happens, so an operator who cannot see this line
+            // believes risk checks are running when they are not. It is reachable in normal
+            // operation - an adapter whose account registers under a venue other than the
+            // instrument's will hit it on every order.
+            log::warn!(
+                "Cannot find account for venue {} (account_id={account_id:?}); \
+                 account-based risk checks are being skipped for this order batch",
                 instrument.id().venue
             );
 
@@ -1219,6 +1225,20 @@ impl RiskEngine {
                     && price.is_none()
                 {
                     self.deny_no_market_price(instrument.id(), order);
+                    return false;
+                }
+
+                // A configured per-order notional cap is a statement about the order, not
+                // about the account, so it must still apply when no account resolves.
+                // Leaving it behind the account guard made it silently inert for any
+                // adapter with this venue mismatch.
+                if !self.check_max_notional_without_account(
+                    instrument,
+                    order,
+                    *price,
+                    max_notional,
+                    full_position_exit,
+                ) {
                     return false;
                 }
             }
@@ -2079,6 +2099,60 @@ impl RiskEngine {
             return false;
         }
 
+        true
+    }
+
+    /// Applies a configured `max_notional_per_order` cap when no account could be resolved.
+    ///
+    /// Returns `false` if the order was denied.
+    ///
+    /// The full risk check resolves an account by the instrument's venue and skips
+    /// everything when that fails. A per-order notional cap does not depend on an account -
+    /// it is a bound on the order - so it is applied here instead of being lost with the
+    /// account-based checks.
+    ///
+    /// Quote-denominated orders are not covered: their notional needs the conversion the
+    /// main path performs with market data, and applying the cap to a quote quantity would
+    /// compare unlike figures. Such an order passes here and is still checked whenever an
+    /// account resolves.
+    fn check_max_notional_without_account(
+        &self,
+        instrument: &InstrumentAny,
+        order: &OrderAny,
+        market_price: Option<Price>,
+        max_notional: Option<Money>,
+        full_position_exit: bool,
+    ) -> bool {
+        if full_position_exit || order.is_quote_quantity() {
+            return true;
+        }
+        let Some(max_notional_value) = max_notional else {
+            return true;
+        };
+        let Some(price) = order
+            .price()
+            .or_else(|| order.trigger_price())
+            .or(market_price)
+        else {
+            return true;
+        };
+        let Ok(notional) =
+            instrument.try_calculate_notional_value(order.quantity(), price, Some(true))
+        else {
+            return true;
+        };
+
+        if notional > max_notional_value {
+            self.deny_order(
+                order,
+                &OrderDeniedReason::NotionalExceedsMaxPerOrder {
+                    max_notional: max_notional_value,
+                    notional,
+                }
+                .to_string(),
+            );
+            return false;
+        }
         true
     }
 

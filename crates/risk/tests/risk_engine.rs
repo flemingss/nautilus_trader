@@ -242,6 +242,158 @@ fn test_deny_order_exceeding_max_notional(
     matches!(saved_events[0], OrderEventAny::Denied(_));
 }
 
+#[rstest]
+fn test_max_notional_applies_when_no_account_resolves(
+    strategy_id_ema_cross: StrategyId,
+    client_id_binance: ClientId,
+    trader_id: TraderId,
+    instrument_audusd: InstrumentAny,
+) {
+    // The cap is a bound on the order, not on the account, so it must hold even when the
+    // account lookup fails.
+    //
+    // It fails routinely in practice: the engine resolves the account by the instrument's
+    // venue, and an adapter whose account registers under a different venue - Interactive
+    // Brokers resolves instruments on `SMART` while its account sits on `IB` - never
+    // matches. Before this, every order from such an adapter skipped the whole risk check,
+    // including a cap the operator had configured explicitly, and said so only at debug
+    // level.
+    let process_handler = register_process_handler();
+
+    let mut cache = Cache::default();
+    cache.add_instrument(instrument_audusd.clone()).unwrap();
+    cache.add_quote(quote_audusd()).unwrap();
+    // Deliberately no account.
+
+    let risk_config = RiskEngineConfig {
+        debug: true,
+        bypass: false,
+        max_order_submit: RateLimit::new(10, 1000),
+        max_order_modify: RateLimit::new(5, 1000),
+        max_notional_per_order: AHashMap::new(),
+        full_position_exit_venues: AHashSet::new(),
+    };
+
+    let mut risk_engine = get_risk_engine(
+        Some(Rc::new(RefCell::new(cache))),
+        Some(risk_config),
+        None,
+        false,
+    );
+
+    risk_engine.set_max_notional_per_order(instrument_audusd.id(), Decimal::from_i64(1).unwrap());
+
+    // Notional ~100 USD against a 1 USD cap.
+    let order = OrderTestBuilder::new(OrderType::Limit)
+        .instrument_id(instrument_audusd.id())
+        .side(OrderSide::Buy)
+        .price(Price::from("1"))
+        .quantity(Quantity::from("100"))
+        .build();
+
+    risk_engine
+        .cache()
+        .borrow_mut()
+        .add_order(order.clone(), None, Some(client_id_binance), false)
+        .unwrap();
+
+    let submit_order = SubmitOrder::new(
+        trader_id,
+        Some(client_id_binance),
+        strategy_id_ema_cross,
+        instrument_audusd.id(),
+        order.client_order_id(),
+        order.init_event().clone(),
+        None,
+        None,
+        None,
+        UUID4::new(),
+        risk_engine.clock().borrow().timestamp_ns(),
+        None,
+    );
+
+    risk_engine.execute(TradingCommand::SubmitOrder(submit_order));
+
+    let saved_events = get_process_order_event_handler_messages(&process_handler);
+    assert_eq!(saved_events.len(), 1, "the order should have been denied");
+    assert!(
+        matches!(saved_events[0], OrderEventAny::Denied(_)),
+        "expected a denial, got {:?}",
+        saved_events[0]
+    );
+}
+
+#[rstest]
+fn test_an_order_within_the_cap_still_passes_without_an_account(
+    strategy_id_ema_cross: StrategyId,
+    client_id_binance: ClientId,
+    trader_id: TraderId,
+    instrument_audusd: InstrumentAny,
+) {
+    // The other half: applying the cap without an account must not turn a missing account
+    // into a blanket refusal. Only the cap is enforced here, not the account-based checks.
+    let process_handler = register_process_handler();
+
+    let mut cache = Cache::default();
+    cache.add_instrument(instrument_audusd.clone()).unwrap();
+    cache.add_quote(quote_audusd()).unwrap();
+
+    let risk_config = RiskEngineConfig {
+        debug: true,
+        bypass: false,
+        max_order_submit: RateLimit::new(10, 1000),
+        max_order_modify: RateLimit::new(5, 1000),
+        max_notional_per_order: AHashMap::new(),
+        full_position_exit_venues: AHashSet::new(),
+    };
+
+    let mut risk_engine = get_risk_engine(
+        Some(Rc::new(RefCell::new(cache))),
+        Some(risk_config),
+        None,
+        false,
+    );
+
+    risk_engine
+        .set_max_notional_per_order(instrument_audusd.id(), Decimal::from_i64(1_000).unwrap());
+
+    let order = OrderTestBuilder::new(OrderType::Limit)
+        .instrument_id(instrument_audusd.id())
+        .side(OrderSide::Buy)
+        .price(Price::from("1"))
+        .quantity(Quantity::from("100"))
+        .build();
+
+    risk_engine
+        .cache()
+        .borrow_mut()
+        .add_order(order.clone(), None, Some(client_id_binance), false)
+        .unwrap();
+
+    let submit_order = SubmitOrder::new(
+        trader_id,
+        Some(client_id_binance),
+        strategy_id_ema_cross,
+        instrument_audusd.id(),
+        order.client_order_id(),
+        order.init_event().clone(),
+        None,
+        None,
+        None,
+        UUID4::new(),
+        risk_engine.clock().borrow().timestamp_ns(),
+        None,
+    );
+
+    risk_engine.execute(TradingCommand::SubmitOrder(submit_order));
+
+    let denials = get_process_order_event_handler_messages(&process_handler);
+    assert!(
+        denials.is_empty(),
+        "an order inside the cap must not be denied: {denials:?}"
+    );
+}
+
 use nautilus_risk::engine::{RiskEngine, config::RiskEngineConfig};
 
 #[fixture]

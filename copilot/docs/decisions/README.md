@@ -14,14 +14,15 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 
 ## Index
 
-| #                                                           | Decision                                                    | Status   |
-| ----------------------------------------------------------- | ----------------------------------------------------------- | -------- |
-| [0001](0001-record-architecture-decisions.md)               | Record architecture decisions                               | Accepted |
-| [0002](0002-fork-local-overlay.md)                          | Fork-local work lives in `copilot/`                         | Accepted |
-| [0003](0003-registered-upstream-deltas.md)                  | Upstream changes are permitted but registered               | Accepted |
-| [0004](0004-quarterly-upstream-sync.md)                     | Sync with upstream on demand, reviewed quarterly            | Accepted |
-| [0005](0005-setup-is-code-activation-is-data.md)            | A setup is code; activation is data                         | Accepted |
-| [0006](0006-ops-progression.md)                             | Ops progression: WSL and TWS, then Gateway, then Kubernetes | Accepted |
-| [0007](0007-self-sourced-images.md)                         | We build and source our own images                          | Accepted |
-| [0008](0008-direct-api-execution.md)                        | Direct API execution supersedes the HITL assumption         | Accepted |
-| [0009](0009-cost-is-modelled-at-the-target-account-size.md) | Cost is modelled at the target account size                 | Accepted |
+| #                                                           | Decision                                                    | Status     |
+| ----------------------------------------------------------- | ----------------------------------------------------------- | ---------- |
+| [0001](0001-record-architecture-decisions.md)               | Record architecture decisions                               | Accepted   |
+| [0002](0002-fork-local-overlay.md)                          | Fork-local work lives in `copilot/`                         | Accepted   |
+| [0003](0003-registered-upstream-deltas.md)                  | Upstream changes are permitted but registered               | Accepted   |
+| [0004](0004-quarterly-upstream-sync.md)                     | Sync with upstream on demand, reviewed quarterly            | Superseded |
+| [0005](0005-setup-is-code-activation-is-data.md)            | A setup is code; activation is data                         | Accepted   |
+| [0006](0006-ops-progression.md)                             | Ops progression: WSL and TWS, then Gateway, then Kubernetes | Accepted   |
+| [0007](0007-self-sourced-images.md)                         | We build and source our own images                          | Accepted   |
+| [0008](0008-direct-api-execution.md)                        | Direct API execution supersedes the HITL assumption         | Accepted   |
+| [0009](0009-cost-is-modelled-at-the-target-account-size.md) | Cost is modelled at the target account size                 | Accepted   |
+| [0010](0010-the-repository-is-ours.md)                      | The repository is ours; upstream is a source we read        | Accepted   |

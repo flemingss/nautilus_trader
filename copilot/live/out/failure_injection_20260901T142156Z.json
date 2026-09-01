@@ -1,0 +1,40 @@
+{
+  "started_at": "2026-09-01T14:21:56.553509+00:00",
+  "finished_at": "2026-09-01T14:23:11.902995+00:00",
+  "stage": "6",
+  "source": "interactive_brokers 172.17.112.1:7497",
+  "passed": false,
+  "not_testable_on_paper": {
+    "name": "rejected_by_broker",
+    "status": "NOT TESTABLE HERE",
+    "detail": "IB paper accepted a 100,000-share order worth USD 24M on a USD 1M account (measured 2026-09-01), so paper does not enforce buying power on a far-from-market limit. The probe is still submitted, because that is how we would notice if it ever started. **Verify the rejection path on the live account before any size increase** - it has not been tested."
+  },
+  "known_failure": {
+    "name": "recover_unknown_working_order",
+    "status": "KNOWN FAILURE",
+    "detail": "Nautilus reconciliation drops an external order reported as SUBMITTED (crates/execution/src/reconciliation/orders.rs), so it never enters the cache and cannot be cancelled. Evidenced by stage three on 2026-09-01; not re-run here because re-running strands another live order to re-learn it."
+  },
+  "result": {
+    "probes": [
+      {
+        "name": "denied_by_risk_engine",
+        "expected": "denied",
+        "observed": "denied",
+        "detail": "NOTIONAL_EXCEEDS_MAX_PER_ORDER: max=1000.00 USD, notional=1580.00 USD"
+      },
+      {
+        "name": "stale_feed_detected",
+        "expected": "stale",
+        "observed": "stale",
+        "detail": "no quote for 20.5s"
+      }
+    ],
+    "quotes_seen": 3,
+    "stale_detected": true,
+    "max_quote_age_secs": 21.510036,
+    "orders_left_working": [
+      "O-20260901-142208-001-000-2"
+    ],
+    "cancel_rejections": []
+  }
+}

@@ -20,24 +20,24 @@ So: **draw from upstream deliberately, on our cadence, as a scheduled piece of w
 
 ## Cadence
 
-**Review quarterly**, starting 2026-09-01. Out of cycle for a security fix or an upstream
-change we actually want.
+**Superseded 2026-09-01 by [ADR-0010](decisions/0010-the-repository-is-ours.md).** There is
+no sync cadence, because there are no syncs. The repository has been detached from the fork
+network; upstream is a source we read and harvest from, never a base we merge.
 
-A review is not a commitment to merge. Concluding "nothing upstream is worth the
-disruption this quarter" is a valid outcome, and recording it is the point - an unrecorded
-skip is indistinguishable from forgetting.
+What remains is **harvesting on demand**: when there is a specific upstream fix worth having,
+take it deliberately, on its own branch, with its own tests here. `git fetch upstream` stays
+useful for diffing to decide whether something is worth taking.
 
-| Review | Due        | Outcome |
-| ------ | ---------- | ------- |
-| Q1     | 2026-12-01 | -       |
-
-Between reviews, the delta report's conflict line is a **forecast**. It appearing is not a
-reason to act.
+The quarterly review this section used to schedule is dropped. Its purpose was to keep the
+delta from ageing into an unmergeable state, and that no longer applies to a repository that
+will never merge.
 
 ## When the delta stops being maintainable
 
-Raised 2026-09-01, before it became a problem, so the trigger is written down rather than
-argued about later.
+**Reached, and acted on, the day it was written.** These triggers were set on 2026-09-01 to
+fire later; the paper campaign's findings answered them the same afternoon, and
+[ADR-0010](decisions/0010-the-repository-is-ours.md) is the outcome they pointed at. Kept as
+the reasoning behind that decision rather than as a live tripwire.
 
 The delta is **10 upstream files** and the paper campaign has already named an eleventh
 worth making - the reconciliation gap that leaves an external `SUBMITTED` order
@@ -66,63 +66,27 @@ carry only what is rejected; pin to a release and stop tracking `develop` at all
 the hard fork explicitly and drop the sync machinery. **Each is a defensible choice; drifting
 into one is not.**
 
-## Quarterly review procedure
+## Harvest procedure
 
-Roughly an hour when nothing has moved; budget a day when something has.
+Replaces the quarterly review and sync procedures this file used to carry, both of which
+described merges that will not happen ([ADR-0010](decisions/0010-the-repository-is-ours.md)).
 
-**1. Refresh the picture.** Nothing here changes any tracked file.
+Taking a specific upstream fix:
 
-```bash
-git fetch upstream develop
-python -m copilot.tools.upstream_delta        # delta, upstream activity, conflict forecast
-```
+1. `git fetch upstream` and read the change. **Read it, do not merge it** - a cherry-pick that
+   applies cleanly is still someone else's reasoning arriving unreviewed.
+2. Decide whether we want the behaviour, not whether the diff applies. Upstream's answer was
+   shaped by its own priorities, and ours differ where they differ.
+3. Take it on its own branch, by cherry-pick when the diff is clean or by reimplementation
+   when it is not.
+4. **Write a test here that fails without it.** Upstream's suite does not run for us, so an
+   untested harvest is a change nobody checked.
+5. Register the file in [`UPSTREAM_DELTA.md`](UPSTREAM_DELTA.md) if it is not already there,
+   and update the row's reasoning if the change alters it.
+6. Full suite green before merge, same as any other work.
 
-**2. Read what upstream did to files we carry.** Not the whole changelog - only the
-overlap, which is the only part that can cost us.
-
-```bash
-BASE=$(git merge-base HEAD upstream/develop)
-git log --oneline $BASE..upstream/develop -- <each registered path>
-```
-
-**3. Decide, and write the decision down.** One of three, recorded in the table above:
-
-- **Skip.** Nothing wanted, nothing forced. Note why.
-- **Sync.** Something is wanted, or the delta is drifting far enough that waiting costs
-  more than acting.
-- **Retire a delta instead.** If a registered change is a straight bug fix upstream would
-  accept, contributing it back removes the row permanently. This is the only action that
-  makes the fork *cheaper* rather than merely current, and the review is where it gets
-  reconsidered - it is deferred by default, not rejected.
-
-**4. If syncing, it gets its own branch and its own PR.** Never a step inside another
-task.
-
-## Sync procedure
-
-```bash
-git checkout -b sync-upstream-YYYY-QN
-git merge upstream/develop
-```
-
-Then, in this order:
-
-1. **Resolve conflicts against the register.** `UPSTREAM_DELTA.md` says what each of our
-   changes was for. Re-apply the *intent* over upstream's new version rather than
-   restoring our old lines - the surrounding code may have changed underneath, which is
-   exactly what happened when upstream moved the IB adapter to `parking_lot` beneath our
-   subscription re-keying.
-2. **Rebuild.** `make build-debug`. The delta means a stale build hides breakage.
-3. **Re-verify the delta.** `python -m copilot.tools.upstream_delta --check`. A change we
-   dropped during conflict resolution shows up as a stale register row.
-4. **Full suite.** `pytest copilot/tests/ -q`, `cargo clippy` and `cargo +nightly fmt` on
-   every crate we touch, `prek run --all-files`.
-5. **Re-run one gate verdict** against a known activation and compare. An engine change
-   that alters fills will not fail a unit test but will move a verdict, and that is
-   exactly what must not pass unnoticed.
-6. **Update the review table** with what was taken and what it cost.
-
-A sync is done when the suite is green **and** the register is accurate. Not before.
+The one thing worth watching upstream for is a **fix to something we already changed** - two
+answers to the same problem, and a reason to check whether theirs is better than ours.
 
 ## What we own in the runtime
 

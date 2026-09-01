@@ -2,6 +2,60 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (ownership, and the risk engine fix)
+
+### Decided
+
+- **[ADR-0010](decisions/0010-the-repository-is-ours.md): the repository is ours; upstream is
+  a source we read.** Detached from the fork network on GitHub - no parent, no pull-request
+  relationship. Supersedes [ADR-0004](decisions/0004-quarterly-upstream-sync.md); there is no
+  sync cadence because there are no syncs. `AGENTS.md` rewritten for ownership,
+  `UPSTREAM_DELTA.md` repurposed from *"what we owe at the next sync"* to **"what we own and
+  must test ourselves"**, `MAINTENANCE.md`'s review and sync procedures replaced by a harvest
+  procedure.
+
+  What we accept, stated rather than glossed: upstream's fixes no longer arrive for free, and
+  a bug fixed there in the matching engine, cache or order model will not reach us unless
+  someone notices and harvests it.
+
+### Fixed
+
+- **`max_notional_per_order` now applies when no account resolves**
+  (`crates/risk/src/engine/mod.rs`). The check resolved an account by the instrument's venue
+  and, on failure, returned `true` for every order - skipping the balance, margin **and**
+  notional checks together. On IB the lookup always fails. A per-order cap is a bound on the
+  order, not on the account, so it now applies either way. The account-resolution failure also
+  moved from `DEBUG` to `WARN`: an operator who cannot see it believes risk checks are running
+  when they are not.
+
+  Two Rust tests, verified by stashing the fix - the denial test fails without it and the
+  companion still passes, so the pair pins behaviour rather than implementation.
+
+### Passed
+
+- **Paper stage six.** Both scored probes: the cap denies with
+  `NOTIONAL_EXCEEDS_MAX_PER_ORDER`, stale-feed detection fires at 20.6s, nothing left working.
+
+### Excluded and named
+
+- **`rejected_by_broker` - paper cannot decide it.** IB paper accepted a USD 24M order on a
+  USD 1M account. Still submitted, so we would notice if that changed, but not scored: scoring
+  it would make the stage permanently unpassable for a reason unrelated to our system. **The
+  rejection path must be verified live before any size increase.**
+- **`recover_unknown_working_order`** remains a known failure, now ours to fix and the
+  highest-value item on the board.
+
+### Found in our own code
+
+- Reclassifying a probe left its order in the id map while removing it from the scored list,
+  so a bare `next()` raised `StopIteration` inside the accepted handler, **skipped the cancel**
+  and left a live order at the broker - visible only as "left working". The lookup now returns
+  `None` for an unscored case, and **the cancel runs before any bookkeeping**: recording is
+  bookkeeping, a live order is the failure.
+- The runner now waits for cancellations to be acknowledged before stopping, which
+  `OPERATIONS.md` requires. Reading `orders_open` mid-cancel reported an order that was already
+  on its way out; a false alarm from a safety check is as corrosive as a missed one.
+
 ## 2026-09-01 (paper stage 6)
 
 ### Added
