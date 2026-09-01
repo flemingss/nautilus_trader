@@ -52,6 +52,17 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 # exempts its own `examples/**` from T20 for the same reason.
 "calibration/*.py" = ["T201"]
 
+# Same reason: `backfill.py` is an operator command whose output *is* the product.
+# Its rejection report is what tells someone a run quietly dropped rows, so printing
+# it is the interface, not a leftover debug statement.
+"data/backfill.py" = ["T201"]
+
+# The Marketstack client's constructor carries its endpoint, paging and retry policy
+# as separate keyword arguments. Collapsing them into a config object would hide which
+# defaults the policy actually specifies — the same reasoning applied to the gate's
+# knobs below, and every one of them is keyword-only at the call site.
+"data/marketstack.py" = ["PLR0913"]
+
 # The gate's public functions take an intentionally opaque parameter set and a Nautilus
 # instrument whose concrete type this overlay deliberately does not depend on, so `Any`
 # is the accurate annotation rather than a missing one. `walk_forward` also carries the

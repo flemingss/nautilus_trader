@@ -2,6 +2,57 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-01 (later)
+
+### Added
+
+- **`copilot/data/marketstack.py`** — Marketstack EOD client and normalizer, ported
+  from trade-copilot `services/ingestion/marketstack.py`. Pages to exhaustion, retries
+  transient failures only, and rejects rows with the reason they failed rather than
+  dropping them.
+- **`copilot/data/calendar.py`** — rule-based US equity trading calendar. No new
+  dependency; validated against 15,851 real vendor rows rather than by assertion.
+- **`copilot/data/catalog.py`** — Nautilus `Bar` conversion and `ParquetDataCatalog`
+  read/write, with an exactness guard on every converted price.
+- **`copilot/data/backfill.py`** — operator CLI. Reports the rejection breakdown and
+  fails the run past `--max-rejection-ratio` rather than writing a partial history.
+- **74 tests** across ingestion, the calendar and the catalog bridge.
+
+### Measured
+
+- **15,849 bars written**, AAPL/MSFT/SPY, 2005-01-03 to 2025-12-31. 15,851 fetched,
+  2 rejected (0.013%).
+- **The vendor's `adj_*` OHLC set is unusable.** 3,553 rows carry an incoherent bar and
+  1,751 carry null fields; the raw set has zero of either. AAPL 2022-11-03 reports
+  `adj_close` 138.65 under an `adj_low` of 138.75.
+- **The raw set is already split-adjusted**, so it is safe to use: AAPL's 4:1 split of
+  2020-08-31 reads **+3.39%** off disk, not -75%.
+- **Marketstack emits bars on days the market was closed.** SPY has full bars for
+  Thanksgiving 2023 and Good Friday 2024.
+- **`price_currency` is unreliable** — MSFT's single continuous USD series is tagged
+  `USD`, `usd`, `EUR` and nothing, across 5,283 rows.
+- **Price precision 4 is exact**: no more than four decimal places in 63,404 values.
+
+### Fixed
+
+- **The Nautilus replay scored one trade per run.** `ReplayVenue` defaulted to
+  `OmsType.NETTING`, under which Nautilus reuses one position id per instrument and
+  strategy; `cache.positions_closed()` then keeps a single object and only the last
+  round trip is scored. On 60 bars of real AAPL: NETTING 1 trade, HEDGING 30. Every
+  walk-forward fold returned "selected nothing" with no error. Default is now
+  `HEDGING`, and `ReplayVenue.name` defaults to the instrument's own venue.
+  The old test asserted only that trades were non-empty, which one trade satisfies;
+  the replacement asserts an exact count and a second test pins the netting behaviour.
+- A first version of the trading calendar closed 31 December when 1 January fell on a
+  Saturday. The exchanges stay open; the fixture test caught it.
+
+### Verified
+
+- End to end on real market data: catalog -> Nautilus replay -> purged walk-forward.
+  1,000 AAPL bars, five folds, 62 scored trades per fold, full tearsheets. The driving
+  strategy is the suite's coin-flip, so the verdict is meaningless — the machinery is
+  what was proven.
+
 ## 2026-09-01
 
 ### Added

@@ -141,9 +141,17 @@ PYTHONPATH=. ~/venvs/nautilus-ib/bin/python -m pytest copilot/tests/ -q
 cd copilot && ruff check . && ruff format --check .
 ```
 
-**`make pre-commit` and `make format` cannot be run** while no Rust toolchain is
-installed. Until that changes, say so explicitly in any PR description rather than ticking
-the checklist item — see `docs/ROADMAP.md` for the toolchain prerequisites.
+The Rust toolchain is installed, so a source build works and `make format` runs.
+**`make pre-commit` still cannot be run** — it needs `make install-tools`, which has not
+been done. Say so explicitly in a PR description rather than ticking the checklist item.
+
+Two Python environments exist and they are not interchangeable. `~/venvs/nautilus-ib`
+is the wheel install; the repo's own `.venv` is the editable source build and is the
+only one with `ParquetDataCatalog`, so anything touching `copilot/data/` runs there.
+
+Secrets come from the environment, never from a file in the tree. `MARKETSTACK_API_KEY`
+is read from `os.environ` at the CLI boundary and passed down as an argument, so no
+module below it can acquire a way to write one to disk.
 
 Before opening a PR, confirm all four:
 

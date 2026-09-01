@@ -105,8 +105,28 @@ class StrategyFactory(Protocol):
 class ReplayVenue:
     """Venue setup for the simulated exchange."""
 
-    name: str = "SIM"
-    oms_type: Any = OmsType.NETTING
+    name: str | None = None
+    """Defaults to the instrument's own venue. A venue that does not match the
+    instrument's is rejected by the engine at ``add_instrument``, so guessing a name
+    here can only ever be wrong."""
+
+    oms_type: Any = OmsType.HEDGING
+    """HEDGING, not NETTING, and the gate's scoring depends on it.
+
+    Under NETTING, Nautilus reuses one position id per instrument and strategy, so
+    ``cache.positions_closed()`` holds a single position object that is reopened and
+    closed over and over. Only the final round trip survives to be scored. Measured on
+    60 bars of real AAPL history with a strategy that alternates in and out every bar:
+    NETTING yields **1** scoreable trade, HEDGING yields **30**.
+
+    That is not a reporting detail. ``expectancy_r`` over one trade is noise, the
+    gate's ``min_trades`` floor rejects every candidate, and a walk-forward run comes
+    back "selected nothing" on every fold while looking like it worked.
+    ``RiskAmountRegistry`` is keyed by position id and aliases the same way.
+
+    A strategy that genuinely wants netting semantics should net its own exposure;
+    the *record* of what was traded has to stay per round trip for R to mean anything.
+    """
     account_type: Any = AccountType.MARGIN
     starting_balance: str = "100_000"
     currency: str = "USD"
@@ -161,7 +181,7 @@ def run_nautilus_replay(
         return BacktestRunResult(diagnostics={"reason": "no bars supplied"})
 
     venue = venue or ReplayVenue()
-    venue_obj = Venue(venue.name)
+    venue_obj = Venue(venue.name) if venue.name else instrument.id.venue
     registry = RiskAmountRegistry()
 
     engine = BacktestEngine(

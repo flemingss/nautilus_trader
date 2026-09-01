@@ -31,6 +31,7 @@ supplements those rules rather than replacing them.
 | Path | Purpose |
 | --- | --- |
 | `calibration/` | Measure real quoted spreads from IB to calibrate the backtest cost model |
+| `data/` | Marketstack EOD ingestion, a US trading calendar, and the Nautilus catalog bridge |
 | `risk/` | Account-wide rolling-window circuit breakers (consecutive stops, drawdown) |
 | `validation/` | Types and a Nautilus-backed `Replay` for the walk-forward gate |
 | `tests/` | Tests for all of the above |
@@ -40,7 +41,7 @@ supplements those rules rather than replacing them.
 
 ## Provenance
 
-`risk/protections.py` and `validation/types.py` are ported from the author's
+`risk/protections.py`, `validation/types.py` and `data/marketstack.py` are ported from the author's
 `trade-copilot` project (a HITL trading-signal advisor). They are **ported, not
 imported**: trade-copilot is a separate repository, and the point of the port is that
 this overlay stands alone. Design rationale is preserved in the docstrings and
@@ -62,7 +63,16 @@ PYTHONPATH=. python -m pytest copilot/tests/ -q
 
 # Spread calibration (read-only; constructs no execution client)
 python -m copilot.calibration.spread_snapshot
+
+# Backfill US equity history into a Nautilus catalog (read-only; writes files)
+export MARKETSTACK_API_KEY=...
+python -m copilot.data.backfill --symbols AAPL,MSFT,SPY --from 2005-01-01 --dry-run
 ```
+
+The catalog defaults to `~/.nautilus_copilot/catalog`, outside the repository, and is
+overridable with `COPILOT_CATALOG_PATH` or `--catalog`. Run `--dry-run` first: it
+fetches and gates without writing, so the rejection report can be read before anything
+lands on disk.
 
 Environment knobs for the calibrator: `COPILOT_CAL_SYMBOLS`, `COPILOT_CAL_SECONDS`,
 `COPILOT_CAL_CLIENT_ID`, `COPILOT_CAL_MARKET_DATA_TYPE`, `COPILOT_CAL_SYMBOLOGY`.

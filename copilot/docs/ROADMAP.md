@@ -30,10 +30,10 @@ covers, and it is pinned.
 | 7 | Rust toolchain | **Installed.** Source build works; see below. |
 | 8 | IB adapter defects | **Fixed**, both verified. |
 | 9 | `set_trading_state` pyo3 binding | **Open** — needs a design decision, see below. |
-| 10 | Marketstack -> `ParquetDataCatalog` | **Not started.** The only route to US equity history. |
+| 10 | Marketstack -> `ParquetDataCatalog` | **Built, run and verified.** 15,849 bars, 2005-2025. |
 | 11 | Screener / universe selection | **Pinned**, out of repo by decision. |
 
-82 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+154 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
 ## The kill chain, filled out
 
@@ -51,11 +51,17 @@ Where each stage of "find a trade, then exit it with profit" now stands.
 | 8. Live deployment | Nautilus `LiveNode` | Strong — reconciliation, event sourcing |
 | 9. Monitoring | Nautilus analysis + tearsheet | Strong |
 | 10. Cost calibration | `copilot/calibration` | **Measured.** Needs realtime data to finalise |
+| 0. Historical data | `copilot/data` | **Built.** Marketstack EOD, 2005-2025, gated |
 
-Every stage except screening now has an implementation. **What none of them have is
-data**: stages 3, 4 and 5 are all exercised against synthetic or forex bars, because no
-US equity history is reachable. That is the binding constraint, and it is a purchase or
-a vendor bridge, not code.
+Every stage except screening now has an implementation, and the data constraint that
+made stages 3, 4 and 5 untestable is closed for daily bars. The chain has been run end
+to end on real market history: 1,000 bars of AAPL out of the catalog, through the
+Nautilus replay, through a purged walk-forward — five folds, 62 scored trades each,
+full tearsheets. The strategy driving it is the test suite's coin-flip, so the verdict
+means nothing; the **machinery** is proven on real data rather than on synthetic bars.
+
+What is still missing is intraday history. Marketstack's EOD feed cannot support any
+strategy that acts within a session.
 
 ## 1. Spread calibration — first result
 
@@ -294,6 +300,104 @@ that sized it, so R cannot be derived from a position alone. Strategies register
 per-position risk through `RiskAmountRegistry`; a missing record raises rather than
 silently scoring `r_multiple == 0`, which would make the gate report "no edge"
 everywhere.
+
+### The replay scored one trade per run — fixed
+
+Found by running the gate on real AAPL history for the first time: all five folds came
+back `in_sample_selected_nothing`, with no error anywhere.
+
+`ReplayVenue` defaulted to `OmsType.NETTING`. Under netting, Nautilus reuses **one
+position id per instrument and strategy**, so `cache.positions_closed()` holds a single
+position object that is reopened and closed over and over, and only the final round trip
+survives to be scored. `RiskAmountRegistry` is keyed by position id and aliased the same
+way.
+
+Measured on 60 bars of real AAPL with a strategy that alternates in and out every bar:
+
+| OMS | scoreable trades |
+| --- | --- |
+| `NETTING` | 1 |
+| `HEDGING` | 30 |
+
+The consequence was not a reporting detail. `expectancy_r` over a single trade is noise,
+the `min_trades` floor then rejects every candidate, and the gate returns "selected
+nothing" on every fold while looking like it ran correctly. Any verdict it produced
+would have been meaningless.
+
+The default is now `HEDGING`, and `ReplayVenue.name` defaults to the instrument's own
+venue rather than `"SIM"` — a mismatched venue is rejected by the engine, so guessing a
+name could only ever be wrong.
+
+**Why it survived the test suite:** the existing test asserted `result.trades` was
+non-empty. One trade satisfies that. The replacement asserts an exact count (four round
+trips over eight bars) and a second test pins the netting behaviour explicitly, so the
+cost is visible to anyone who sets it deliberately.
+
+## 4. Marketstack -> catalog bridge
+
+`copilot/data/` fetches Marketstack EOD, gates it, and writes Nautilus bars into a
+`ParquetDataCatalog`. Run over AAPL, MSFT and SPY for 2005-2025: 15,851 rows fetched,
+**15,849 bars written**, 2 rejected.
+
+### The vendor's adjusted prices are not usable
+
+Marketstack returns two OHLC sets. Measured over 15,851 rows:
+
+| Property | `open/high/low/close` | `adj_*` |
+| --- | --- | --- |
+| Rows with incoherent OHLC | 0 | 3,553 |
+| Rows with null fields | 0 | 1,751 |
+| Back-adjusted for splits | yes | yes |
+| Adjusted for dividends | no | yes |
+
+AAPL 2022-11-03 reports `adj_close` 138.65 under an `adj_low` of 138.75 — a close
+outside its own bar. A backtest fed that fills at a price the bar says never traded.
+
+So the overlay stores the **raw** set, which is the reverse of the obvious choice. It is
+safe because the vendor has *already back-adjusted it for splits*: AAPL's close on
+2020-08-28 is reported as 124.8075, the pre-split 499.23 divided by the 4:1 split that
+settled on the 31st. Read back off disk, the split day moves **+3.39%**, not -75%. What
+the raw set lacks is dividend adjustment, which understates total return by the yield
+without manufacturing a discontinuity a strategy could mistake for a signal. `dividend`
+and `split_factor` are carried per row so a dividend-adjusted series can be derived
+later from a coherent base.
+
+### The vendor emits bars on days the market was shut
+
+SPY comes back with a complete-looking bar for **Thanksgiving 2023-11-23** and **Good
+Friday 2024-03-29** — plausible OHLC, nine-figure volume, nothing marking them as
+phantom. A phantom bar lets a strategy enter, exit and be *scored* on a day no order
+could have been placed.
+
+`copilot/data/calendar.py` is a rule-based US equity calendar, written rather than
+imported because the overlay adds no dependency. It is validated against the data, not
+by assertion: over 2005-2025 it reproduces AAPL's and MSFT's session sets exactly — 5,283
+sessions, zero extra, zero missing — and flags only SPY's two phantom rows.
+
+That test earned its keep immediately. The first version closed 31 December when
+1 January fell on a Saturday, following the federal observance rule; the exchanges stay
+open, and all three symbols traded on 2010-12-31 and 2021-12-31.
+
+### Other findings worth keeping
+
+- **`price_currency` is unreliable.** MSFT returns 18 rows tagged `EUR`, 59 tagged
+  lowercase `usd`, and 5,023 untagged — all the same continuous USD series (513.71 tagged
+  USD, then 512.50 tagged EUR the next session). Collected for reporting, never used to
+  decide what is stored.
+- **Precision 4 is exact, and measured.** Across 63,404 price values the vendor never
+  returns more than four decimal places. The conversion compares every value against its
+  source and raises rather than storing a rounded price.
+- **Never verify a `Quantity` through `as_double()`.** AAPL's 1,020,062,400-share session
+  on 2005-02-02 round-trips as 1020062399.9999999. An exactness guard written against the
+  float rejected a volume the catalog stores perfectly well; the check goes through `str`.
+- **v2 reports `total` truthfully**, which v1 capped at `limit`. Paging to exhaustion is
+  kept regardless — it is correct either way — and `total` is now a cross-check, so a run
+  that ends early with rows outstanding fails instead of writing a partial history that
+  the next run reads as complete.
+
+The catalog lives at `~/.nautilus_copilot/catalog`, outside the repository: a parquet
+store inside the tree would need a `.gitignore` entry, and `.gitignore` is an upstream
+file this fork does not touch.
 
 ## Bugs found upstream — fixed
 

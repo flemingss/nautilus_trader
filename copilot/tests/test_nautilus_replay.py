@@ -20,7 +20,7 @@ from copilot.validation.nautilus_replay import (
     run_nautilus_replay,
 )
 from copilot.validation.types import DailyBar, Direction, expectancy_r
-from nautilus_trader.model import BarType, OrderSide
+from nautilus_trader.model import BarType, OmsType, OrderSide
 from nautilus_trader.testkit.providers import TestInstrumentProvider
 from nautilus_trader.trading import Strategy, StrategyConfig
 
@@ -171,6 +171,69 @@ class TestReplay:
             assert trade.direction is Direction.LONG
             # r_multiple must be derived from the recorded risk, not assumed.
             assert trade.r_multiple == trade.realized_pnl / trade.risk_amount
+
+    def test_every_round_trip_is_scored_not_just_the_last(self):
+        """
+        Regression: the replay used to score exactly one trade per run.
+
+        `_FlipFlop` alternates in and out, so eight bars are four complete round trips.
+        Under `OmsType.NETTING` Nautilus reuses a single position id per instrument and
+        strategy, `cache.positions_closed()` keeps one object, and only the final round
+        trip survives to be scored — while everything else about the run looks healthy.
+
+        Asserting an exact count rather than "at least one" is the whole point. The
+        original test asserted non-emptiness and passed throughout.
+        """
+        bars = make_bars(
+            ["0.7000", "0.7100", "0.7050", "0.7150", "0.7100", "0.7200", "0.7150", "0.7250"],
+        )
+        result = run_nautilus_replay(
+            bars,
+            {"trade_size": 10_000, "stop_distance": "0.0050"},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+        assert len(result.trades) == 4
+        assert result.diagnostics["risk_records"] == 4
+        # Distinct entry prices prove these are four separate round trips rather than
+        # one position reported four times.
+        assert len({t.entry_price for t in result.trades}) == 4
+
+    def test_netting_collapses_the_trade_record(self):
+        """
+        Pins the behaviour the default exists to avoid.
+
+        Not a wish that NETTING worked — a record of what it actually does, so that
+        anyone who sets it deliberately can see the cost in the test suite rather than
+        in a walk-forward run that quietly selects nothing on every fold.
+        """
+        bars = make_bars(
+            ["0.7000", "0.7100", "0.7050", "0.7150", "0.7100", "0.7200", "0.7150", "0.7250"],
+        )
+        netting = run_nautilus_replay(
+            bars,
+            {"trade_size": 10_000, "stop_distance": "0.0050"},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000", oms_type=OmsType.NETTING),
+        )
+        assert len(netting.trades) == 1
+
+    def test_the_venue_defaults_to_the_instruments_own(self):
+        """A venue name that does not match the instrument is rejected by the engine."""
+        bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150"])
+        result = run_nautilus_replay(
+            bars,
+            {},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+        assert result.trades
 
     def test_expectancy_is_computable_from_the_result(self):
         bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150"])
