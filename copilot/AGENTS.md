@@ -13,8 +13,10 @@ For *why things are this way*, read `docs/decisions/`. Those records are immutab
 decision that stops being true is superseded by a new one, never rewritten. If this file
 and an ADR disagree, the ADR is the record and this file is the bug.
 
-For *how to draw from upstream*, read `docs/MAINTENANCE.md`. Syncing is a scheduled piece
-of work reviewed quarterly, never a step inside another task.
+For *how to draw from upstream*, read `docs/MAINTENANCE.md`. There are no syncs and no
+cadence ([ADR-0010](docs/decisions/0010-the-repository-is-ours.md)): upstream is a source
+we read and harvest from deliberately, never a base we merge, and never a step inside
+another task.
 
 For *what to work on*, read `docs/ROADMAP.md` - it is the central record, organised
 around the kill chain, and it says which items are blocked on a decision rather than on
@@ -30,9 +32,10 @@ longer earns its keep, remove it here rather than quietly working around it.
 
 ## Prime directive: every upstream change is registered
 
-This fork tracks `nautechsystems/nautilus_trader`. Every upstream file changed is a file
-that can conflict on the next merge, so **fork-local work lives under `copilot/`** by
-default - a path upstream will never create.
+This repository began as a copy of `nautechsystems/nautilus_trader` and is detached from
+it ([ADR-0010](docs/decisions/0010-the-repository-is-ours.md)). **Fork-local work lives
+under `copilot/`** by default - a path upstream will never create - so what we changed of
+the inherited code stays a short, reviewable list rather than an excavation.
 
 Upstream changes **are permitted** where they are worth it. This is a deliberate
 relaxation of the earlier rule, which forbade them outright. What replaces the rule is a
@@ -59,25 +62,24 @@ small, and individually justified, so a sync is a review of a short list. In pra
 - **Off limits regardless:** `RELEASES.md`, `.github/workflows/`, `.github/actions/`, and
   the root `ROADMAP.md`. A test enforces this too.
 
-### Sync with upstream on demand only
+### Upstream is read, never merged
 
-**The fork does not track `develop`.** Merging upstream is a deliberate, scheduled act,
-not something done because the report says we are behind. While development is active the
-fork is held still on purpose: chasing upstream mid-feature means debugging our own work
-and someone else's refactor at the same time, on two moving bases.
+**There is no sync, on any cadence** ([ADR-0010](docs/decisions/0010-the-repository-is-ours.md)).
+Wanted upstream fixes are harvested one at a time, each on its own branch with its own
+test here; the procedure is in `docs/MAINTENANCE.md`.
 
-- **Do not merge or rebase onto `upstream/develop`** unless the sync is the task.
+- **Never merge or rebase onto `upstream/develop`.**
 - `git fetch upstream` is safe and changes nothing; it only refreshes the snapshot the
   delta report reads. Everything else about upstream is opt-in.
-- The report's conflict line is a **forecast** for whenever a sync is chosen. It is not a
-  backlog item and does not need acting on when it appears.
-- **Do not contribute changes upstream while this holds.** An upstream pull request opens
-  a review front on someone else's schedule, which is the thing this policy exists to
-  avoid. It stays the cheapest way to retire a delta entry - just not now.
+- The report's conflict line is **advisory**: it describes a merge that will not happen.
+  Read it as a hint about how actively upstream is reworking something we hold opinions
+  on, and nothing more.
+- **Do not contribute changes upstream.** Nothing here is prepared as a contribution, and
+  an upstream pull request opens a review front on someone else's schedule.
 
-When a sync is eventually chosen, `UPSTREAM_DELTA.md` is the review list: each row says
-what the change is for, so re-applying it over upstream's version is a judgement about a
-known change rather than an excavation.
+`UPSTREAM_DELTA.md` stays the inventory of what we own and therefore test ourselves; each
+row says what the change is for, so judging one later is a judgement about a known change
+rather than an excavation.
 
 ### The `upstream` remote re-points `gh` at upstream
 
