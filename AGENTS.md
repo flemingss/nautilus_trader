@@ -82,7 +82,8 @@ These were our preferences, not obligations to anyone, so they stay:
 - No Conventional Commits syntax in commit messages or pull request titles.
 - No issue or pull request number in a commit subject or pull request title; a squash merge
   appends the number, and issues are referenced from the body.
-- No AI tool or model as an author, co-author or contributor, and no `Co-authored-by:` trailers
-  for them.
-- No branded footers such as `Generated with ...`.
-- Disclosure of AI assistance is optional; if used, keep it general and vendor-neutral.
+- **AI assistance is attributed.** This is a one-person project that leans heavily on LLM
+  agents, and the record should say who did what. A commit an agent wrote or co-wrote ends
+  with a `Co-Authored-By:` trailer naming the model; a pull request an agent drafted ends
+  with the tool's footer. The inherited rule was the opposite, written for a project with
+  many human contributors; it was retired 2026-09-03.

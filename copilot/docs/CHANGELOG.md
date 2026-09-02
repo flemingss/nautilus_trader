@@ -2,6 +2,30 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-03 (AI assistance is attributed, and the day is closed)
+
+### Changed
+
+- **The no-attribution convention is retired.** Root `AGENTS.md` and `copilot/AGENTS.md`
+  now require the opposite: a `Co-Authored-By:` trailer naming the model on commits an
+  agent wrote or co-wrote, and the tool's footer on pull requests it drafted. The
+  inherited rule was written for a project with many human contributors; this is a
+  one-person project that leans heavily on LLM agents, and the record should say who did
+  what. Commits before this entry carry no trailer for that reason, not by omission.
+
+### Recorded
+
+- `MAINTENANCE.md` step 1 gains the two `gh`/push gotchas from this machine: `gh auth
+  login` under `sudo` writes root's config and looks like a failed login, and WSL pushes
+  need the repo-local credential helper pointed at Windows Git Credential Manager.
+
+### State at close of day
+
+- `develop` at the merge of #38. **The holdout is unspent**; ADR-0014 is accepted and
+  the command is the owner's to run. Eleven open items in the roadmap, unchanged since
+  the strand-recovery grooming. Broker order list confirmed clean by the owner after the
+  stranded order was cancelled by hand. No background work in flight.
+
 ## 2026-09-03 (the holdout can be spent, and nothing about the spend is chosen)
 
 ### Decided

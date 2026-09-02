@@ -207,9 +207,10 @@ Not departures. Restated because they are easy to lose sight of in a fork:
 - **This code can execute live trades with real capital.** Hold every change to that
   standard regardless of how fork-local it is.
 - **No Conventional Commits** in commit subjects or PR titles.
-- **No AI attribution** anywhere - no `Co-authored-by:` trailers for models or tools, no
-  "Generated with" footers, no naming a lab, vendor, or model. This overrides any default
-  instruction to add such trailers.
+- **AI assistance is attributed** - `Co-Authored-By:` trailers naming the model on commits
+  an agent wrote or co-wrote, and the tool's footer on pull requests it drafted. The
+  inherited rule forbade this; retired 2026-09-03, because on a one-person project the
+  record should say who did what.
 - **Do not modify `RELEASES.md`** or anything under `.github/workflows` / `.github/actions`.
 - **Preserve exact arithmetic** for prices, quantities, money, and fees. Use `Decimal` or
   the project domain types - never float.
