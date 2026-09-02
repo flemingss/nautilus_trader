@@ -2,6 +2,56 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (rehydrating on a bare WSL box, and what it cost)
+
+### Added
+
+- **`MAINTENANCE.md` "Standing up a new machine" now survives a stock Ubuntu box.** The
+  checklist was written from a machine that already worked; running it on a bare one
+  found four gaps, each recorded with the derivation rather than the value:
+
+  - **`make build-debug` fails linking `nautilus-pyo3`** with
+    `rust-lld: error: unable to find library -lpython3.14`. Ubuntu ships
+    `libpython3.N.so.1.0` but not the unversioned symlink `-lpython3.N` resolves against;
+    that comes with `libpython3.N-dev`. Python's own config dir (`sysconfig` `LIBPL`)
+    carries the symlink, so putting it on `LIBRARY_PATH` fixes the link with no sudo.
+    Distinct from the existing `PYO3_PYTHON` note, which is about embedding the
+    interpreter in Rust tests; this one stops the build outright.
+  - **The two WSL addresses are now derived, not copied.** `IB_V2_HOST` is the default
+    route's gateway; the TWS Trusted IPs entry is `eth0`. Both change on reboot, and the
+    hardcoded `172.17.112.1` default belongs to a different machine. Recorded with it:
+    a container appears to TWS as `127.0.0.1` and needs no Trusted IPs entry, while a
+    native WSL process appears as the real `eth0` address and does - so a setup that
+    worked from a container fails on first connect after moving to a native build.
+  - **`MARKETSTACK_API_KEY` has a documented home** for machines that need it across
+    sessions: `~/.config/copilot/secrets.env`, mode 600, outside the tree so it cannot be
+    committed by construction, sourced at the point of use.
+  - **`make install-tools` is not needed** to build or to run the suite, and is the slow
+    step. Only `cargo-nextest` and `prek` are, at their pinned versions.
+
+### Measured
+
+- **A bare machine reproduces the recorded verdicts exactly.** Fresh toolchain, catalog
+  refetched from the vendor, then `validate --all`: AAPL 16/31 at +0.046877 R, MSFT 20/31
+  at +0.089455 R, SPY 17/30 at +0.049848 R - identical to six decimal places, with fetch
+  counts matching too (15,851 fetched, 15,849 written, 2 rejected). The
+  "reproducible from a commit" claim is now demonstrated end to end rather than asserted,
+  and a rehydration that differs on these numbers has a real problem.
+
+### Found
+
+- **The catalog can no longer be rebuilt "to today", and the guard is what says so.**
+  `--from 2005-01-01` with no `--to` fetches ~5,450 bars per symbol, which puts the
+  2022-01-01 holdout at **21.5%** - outside the charter's 15-20% band - so `carve` raises
+  `HoldoutCarveError` and every `validate` run stops.
+  [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md) predicted exactly
+  this and chose a date pin over a percentage so catalog growth would force a re-decision
+  in a commit instead of silently moving the boundary. Reproduce the recorded window with
+  `--to 2025-12-31` until that re-decision is made.
+- **The vendor's 2026 rows carry defects the earlier history does not.** Extending the
+  same fetch to today rejects 11 additional rows as `schema_or_value_error` (AAPL
+  2026-06-09 and 06-10, MSFT 2026-06-15 among them) against **zero** over 2005-2025.
+
 ## 2026-09-02 (six surfaces still described a defect that was fixed)
 
 ### Fixed
