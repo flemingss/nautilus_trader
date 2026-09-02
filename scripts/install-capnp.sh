@@ -98,8 +98,9 @@ elif [[ "${OS_TYPE}" == "macOS" ]]; then
     echo "Installed version ($INSTALLED_VER) differs from required ($CAPNP_VERSION)"
   fi
 
-  # Try Homebrew first
-  if command -v brew &> /dev/null; then
+  # Try Homebrew first - unless a prefix was requested, which means the caller
+  # wants a self-contained install that stays out of the system package manager
+  if [[ -z "${CAPNP_PREFIX:-}" ]] && command -v brew &> /dev/null; then
     echo "Trying Homebrew..."
     for ((i = 1; i <= INSTALL_ATTEMPTS; i++)); do
       if brew install capnp 2> /dev/null || brew upgrade capnp 2> /dev/null; then
@@ -136,9 +137,14 @@ elif [[ "${OS_TYPE}" == "macOS" ]]; then
     tar zxf "capnproto-c++-${CAPNP_VERSION}.tar.gz"
     cd "capnproto-c++-${CAPNP_VERSION}"
 
-    ./configure --prefix=/usr/local --disable-static
+    INSTALL_PREFIX="${CAPNP_PREFIX:-/usr/local}"
+    ./configure --prefix="${INSTALL_PREFIX}" --disable-static
     make -j"$(sysctl -n hw.ncpu)"
-    sudo make install
+    if mkdir -p "${INSTALL_PREFIX}" 2> /dev/null && [ -w "${INSTALL_PREFIX}" ]; then
+      make install
+    else
+      sudo make install
+    fi
 
     popd
   fi
