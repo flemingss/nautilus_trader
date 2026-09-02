@@ -15,16 +15,16 @@ professionals.
 
 ## Where to go next
 
-| You are | Read |
-| --- | --- |
-| Orienting, or picking what to work on | This page, then [`ROADMAP.md`](ROADMAP.md) |
-| Asking why something is the way it is | [`decisions/`](decisions/README.md) |
-| Setting up an account or broker | [`playbook/PREFLIGHT.md`](playbook/PREFLIGHT.md) |
-| Running an experiment | [`playbook/RESEARCH.md`](playbook/RESEARCH.md) |
-| Sizing a position, setting risk | [`playbook/RISK.md`](playbook/RISK.md) |
+| You are                               | Read                                               |
+| ------------------------------------- | -------------------------------------------------- |
+| Orienting, or picking what to work on | This page, then [`ROADMAP.md`](ROADMAP.md)         |
+| Asking why something is the way it is | [`decisions/`](decisions/README.md)                |
+| Setting up an account or broker       | [`playbook/PREFLIGHT.md`](playbook/PREFLIGHT.md)   |
+| Running an experiment                 | [`playbook/RESEARCH.md`](playbook/RESEARCH.md)     |
+| Sizing a position, setting risk       | [`playbook/RISK.md`](playbook/RISK.md)             |
 | Running a session, or something broke | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) |
-| Writing code in this repository | [`../AGENTS.md`](../AGENTS.md) |
-| Taking upstream changes | [`MAINTENANCE.md`](MAINTENANCE.md) |
+| Writing code in this repository       | [`../AGENTS.md`](../AGENTS.md)                     |
+| Taking upstream changes               | [`MAINTENANCE.md`](MAINTENANCE.md)                 |
 
 ## Operating model
 
@@ -32,17 +32,17 @@ The binding constraint is not compute. It is a beginner-stage operator with a sm
 account, based in Japan, able to watch one to two hours of a session that runs overnight
 locally.
 
-| Dimension | Default |
-| --- | --- |
-| Instruments | Liquid US-listed ETFs first; large caps only once the pipeline handles point-in-time universes and corporate actions |
-| Direction | Long only |
-| Leverage | None |
-| Signal frequency | Daily |
-| Decision time | After the US close, which is morning in Japan |
-| Execution | A predeclared window in the first one to two hours of the **next** session. Never assume the opening print |
-| Holding period | Days to weeks |
-| Orders | Time-bounded DAY limit or marketable-limit, with a declared maximum concession, partial-fill rule and cancellation deadline |
-| Not yet | Shorts, options, penny stocks, leveraged or inverse ETFs, extended hours, earnings events, intraday, sub-minute |
+| Dimension        | Default                                                                                                                     |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Instruments      | Liquid US-listed ETFs first; large caps only once the pipeline handles point-in-time universes and corporate actions        |
+| Direction        | Long only                                                                                                                   |
+| Leverage         | None                                                                                                                        |
+| Signal frequency | Daily                                                                                                                       |
+| Decision time    | After the US close, which is morning in Japan                                                                               |
+| Execution        | A predeclared window in the first one to two hours of the **next** session. Never assume the opening print                  |
+| Holding period   | Days to weeks                                                                                                               |
+| Orders           | Time-bounded DAY limit or marketable-limit, with a declared maximum concession, partial-fill rule and cancellation deadline |
+| Not yet          | Shorts, options, penny stocks, leveraged or inverse ETFs, extended hours, earnings events, intraday, sub-minute             |
 
 The NYSE core session is 09:30 to 16:00 New York time, which is 22:30 to 05:00 JST on US
 daylight time and 23:30 to 06:00 JST on standard time. **Use an exchange calendar and
@@ -51,13 +51,13 @@ calendar, and it exists because the data vendor emits bars on days the market wa
 
 ### Modes are different products
 
-| Mode | Allowed now | Rule |
-| --- | --- | --- |
-| Research and backtest | Yes | No broker connection, no orders |
-| Paper, supervised | After research gates | You are present and can acknowledge alerts |
-| Paper, unattended | After supervised stability | Safe mode, alerting, restart and reconciliation drills must pass |
-| Live, supervised canary | After all gates | Tiny risk, no scaling during the evidence period |
-| Live, unattended | No | Requires repeated failure drills and a written response policy |
+| Mode                    | Allowed now                | Rule                                                             |
+| ----------------------- | -------------------------- | ---------------------------------------------------------------- |
+| Research and backtest   | Yes                        | No broker connection, no orders                                  |
+| Paper, supervised       | After research gates       | You are present and can acknowledge alerts                       |
+| Paper, unattended       | After supervised stability | Safe mode, alerting, restart and reconciliation drills must pass |
+| Live, supervised canary | After all gates            | Tiny risk, no scaling during the evidence period                 |
+| Live, unattended        | No                         | Requires repeated failure drills and a written response policy   |
 
 See [ADR-0006](decisions/0006-ops-progression.md) for the deployment progression that
 carries these, and [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) for the
@@ -94,14 +94,14 @@ it.
 
 ## Gates at a glance
 
-| Gate | Where | One-line test |
-| --- | --- | --- |
-| Research | [`playbook/RESEARCH.md`](playbook/RESEARCH.md) | Would this survive if someone tried to break it? |
-| Evidence sufficiency | [`playbook/RESEARCH.md`](playbook/RESEARCH.md) | Is the effective sample big enough to say anything? |
-| Cost at target size | [`playbook/RISK.md`](playbook/RISK.md) | Does it survive at the account that would trade it? |
-| System | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Does the code do what the research says? |
-| Paper | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Correct behaviour, and forward results inside predicted ranges |
-| Live canary | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Tiny risk, no scaling, written pause and retirement rules |
+| Gate                 | Where                                              | One-line test                                                  |
+| -------------------- | -------------------------------------------------- | -------------------------------------------------------------- |
+| Research             | [`playbook/RESEARCH.md`](playbook/RESEARCH.md)     | Would this survive if someone tried to break it?               |
+| Evidence sufficiency | [`playbook/RESEARCH.md`](playbook/RESEARCH.md)     | Is the effective sample big enough to say anything?            |
+| Cost at target size  | [`playbook/RISK.md`](playbook/RISK.md)             | Does it survive at the account that would trade it?            |
+| System               | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Does the code do what the research says?                       |
+| Paper                | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Correct behaviour, and forward results inside predicted ranges |
+| Live canary          | [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) | Tiny risk, no scaling, written pause and retirement rules      |
 
 Only three decisions are ever allowed at a gate: **reject**, **revise** (which creates a
 new experiment ID), or **freeze**.
@@ -111,12 +111,12 @@ new experiment ID), or **freeze**.
 Written down because the charter was adopted after the code existed, and four conflicts
 came with it. Each is tracked in [`ROADMAP.md`](ROADMAP.md).
 
-| Charter says | Code does | Status |
-| --- | --- | --- |
-| Reserve the most recent 15-20% as a locked holdout | Walk-forward runs over the whole history | **No holdout exists.** Verdict records carry `holdout_spent: false`, which implies one does |
-| Trade no earlier than the next eligible session | The gap fade fills at the signal bar's close | **Conflict.** Documented in the module as a divergence; the charter says it is not acceptable |
-| Do not use today's survivors as a historical universe | The 20-symbol universe is today's large caps | **Survivor-biased.** Known, not yet corrected |
-| Cost must hold at the traded account size | Research default risks USD 1,000 per trade | **Resolved as [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md).** The premise is negative at the charter's account size |
+| Charter says                                          | Code does                                                          | Status                                                                                                                                           |
+| ----------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Reserve the most recent 15-20% as a locked holdout    | The carve withholds bars from 2022-01-01 before the gate sees them | **Resolved as [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md).** 18.99% reserved, pinned by date, unspent                      |
+| Trade no earlier than the next eligible session       | The gap fade fills at the signal bar's close                       | **Conflict.** Documented in the module as a divergence; the charter says it is not acceptable                                                    |
+| Do not use today's survivors as a historical universe | The 20-symbol universe is today's large caps                       | **Survivor-biased.** Known, not yet corrected                                                                                                    |
+| Cost must hold at the traded account size             | Research default risks USD 1,000 per trade                         | **Resolved as [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md).** The premise is negative at the charter's account size |
 
 ## Principles
 

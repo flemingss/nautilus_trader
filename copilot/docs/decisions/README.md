@@ -27,3 +27,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0009](0009-cost-is-modelled-at-the-target-account-size.md)     | Cost is modelled at the target account size                 | Accepted   |
 | [0010](0010-the-repository-is-ours.md)                          | The repository is ours; upstream is a source we read        | Accepted   |
 | [0011](0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) | Spread is charged at p95 from a pinned snapshot             | Accepted   |
+| [0012](0012-the-holdout-is-carved-at-2022-01-01.md)             | The holdout is carved at 2022-01-01                         | Accepted   |

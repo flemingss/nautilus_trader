@@ -19,10 +19,15 @@ ones that win gross. The record carries the snapshot name, the percentile and th
 coefficient it was charged, so a number ties to its exact cost basis the way it ties to
 a commit.
 
-What it still is not: the holdout (walk-forward is repeatable; the single-use
-out-of-sample is not, and spending it is a deliberate separate act), and not a viability
-judgment at the target account size, which is [ADR-0009]'s sweep - costs here are charged
-on the trades as replayed, at the research sizing.
+**Over the development window only, as of [ADR-0012].** The most recent slice of history
+(from 2022-01-01) is the locked holdout: `carve` withholds it before the walk-forward
+ever sees a bar, and the record names what was withheld. What the verdict still is not:
+the holdout result itself (walk-forward is repeatable; the single-use out-of-sample is
+not, and spending it is a deliberate separate act for which no tool exists yet, on
+purpose), and not a viability judgment at the target account size, which is
+[ADR-0009]'s sweep - costs here are charged on the trades as replayed, at the research
+sizing.
+
 """
 
 from __future__ import annotations
@@ -46,6 +51,8 @@ from copilot.data.catalog import read_daily_bars
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
+from copilot.validation.holdout import HOLDOUT_START
+from copilot.validation.holdout import carve
 from copilot.validation.nautilus_replay import make_replay
 from copilot.validation.walkforward import walk_forward
 
@@ -56,18 +63,24 @@ DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 @dataclass(frozen=True)
 class Verdict:
-    """One activation's walk-forward result, in a shape that survives being filed."""
+    """
+    One activation's walk-forward result, in a shape that survives being filed.
+    """
 
     activation: Activation
     report: Any
     bars: int
     first_bar: str
     last_bar: str
+    holdout_bars: int
+    holdout_range: tuple[str, str]
     seconds: float
     cost_model: CostModel
 
     def as_record(self) -> dict[str, Any]:
-        """Return the JSON form written to disk."""
+        """
+        Return the JSON form written to disk.
+        """
         evaluated = self.report.evaluated
         scores = [f.test_score for f in evaluated]
         return {
@@ -78,9 +91,16 @@ class Verdict:
             "run_at": datetime.now(tz=UTC).isoformat(),
             "runtime_seconds": round(self.seconds, 1),
             # Recorded so a verdict can be tied back to the exact experiment. A different
-            # window over the same bars is a different experiment.
+            # window over the same bars is a different experiment. These name the
+            # development window the gate actually saw; the holdout block below names
+            # what was withheld from it.
             "bars": self.bars,
             "bar_range": [self.first_bar, self.last_bar],
+            "holdout": {
+                "start": HOLDOUT_START.date().isoformat(),
+                "bars_reserved": self.holdout_bars,
+                "range": list(self.holdout_range),
+            },
             "search_space": {
                 k: [str(x) for x in v] for k, v in self.activation.setup.search_space.items()
             },
@@ -123,7 +143,9 @@ def run(
     catalog_path: str = DEFAULT_CATALOG,
     cost_model: CostModel | None = None,
 ) -> Verdict:
-    """Run the gate for one activation over stored bars, net of the pinned cost model."""
+    """
+    Run the gate for one activation over stored bars, net of the pinned cost model.
+    """
     if cost_model is None:
         cost_model = CostModel.from_snapshot()
     catalog = open_catalog(catalog_path)
@@ -136,6 +158,10 @@ def run(
             f"python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
         )
 
+    # The carve happens here, before the gate sees a bar: everything downstream of this
+    # line runs on the development window alone (ADR-0012).
+    carved = carve(bars)
+
     settings = activation.validation
     replay = make_replay(
         instrument=instrument,
@@ -145,7 +171,7 @@ def run(
 
     started = time.time()
     report = walk_forward(
-        bars,
+        carved.development,
         activation.grid(),
         train_bars=settings.train_bars,
         test_bars=settings.test_bars,
@@ -159,9 +185,14 @@ def run(
     return Verdict(
         activation=activation,
         report=report,
-        bars=len(bars),
-        first_bar=bars[0].closed_at.date().isoformat(),
-        last_bar=bars[-1].closed_at.date().isoformat(),
+        bars=len(carved.development),
+        first_bar=carved.development[0].closed_at.date().isoformat(),
+        last_bar=carved.development[-1].closed_at.date().isoformat(),
+        holdout_bars=len(carved.holdout),
+        holdout_range=(
+            carved.holdout[0].closed_at.date().isoformat(),
+            carved.holdout[-1].closed_at.date().isoformat(),
+        ),
         seconds=time.time() - started,
         cost_model=cost_model,
     )
@@ -180,7 +211,12 @@ def _print(verdict: Verdict) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Validate one activation or all of them. Returns a process exit code."""
+    """
+    Validate one activation or all of them.
+
+    Returns a process exit code.
+
+    """
     parser = argparse.ArgumentParser(
         prog="python -m copilot.strategies.validate",
         description="Run the walk-forward gate for a registered activation.",
@@ -205,7 +241,9 @@ def main(argv: list[str] | None = None) -> int:
     cost_model = CostModel.from_snapshot()
     print(
         f"Net of costs: spread at {cost_model.percentile} per side from "
-        f"{cost_model.snapshot}, plus IB commission. Not the holdout.\n",
+        f"{cost_model.snapshot}, plus IB commission.\n"
+        f"Development window only: bars from {HOLDOUT_START.date().isoformat()} are the "
+        f"locked, unspent holdout (ADR-0012).\n",
     )
     for activation in activations:
         verdict = run(activation, args.catalog, cost_model)
