@@ -2,6 +2,20 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the capnp installer stays out of the system)
+
+### Fixed
+
+- **`scripts/install-capnp.sh`: the macOS branch now honours `CAPNP_PREFIX`.** The Linux
+  branch always did, but on a Mac the same documented invocation hardcoded
+  `/usr/local` with sudo, or reached for Homebrew - a silent system modification where a
+  self-contained user-directory install was asked for. A requested prefix now bypasses
+  Homebrew entirely and sudo is used only when the destination is genuinely unwritable.
+  Registered in the delta; three contract tests pin the prefix contract across both
+  branches and fail on the pre-fix script. Found surveying the temporary-macOS question:
+  the trip machine can now take the entire toolchain without permanent system changes
+  beyond Apple's own Command Line Tools.
+
 ## 2026-09-02 (the failing msgbus test was the runner's fault)
 
 ### Fixed

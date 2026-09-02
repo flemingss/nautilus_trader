@@ -249,7 +249,11 @@ loop needs only `cargo install cargo-nextest --locked` and
 (fuzz, codspeed, llvm-cov, flamegraph, lychee, vet) mattering only for
 `make pre-flight`-grade assurance. Apple's bundled GNU make 3.81 should handle this
 Makefile (no 4.x-only features are used); `brew install make` is cheap insurance if a
-target misbehaves. Two things get *simpler* on a Mac with TWS on the same OS:
+target misbehaves. The whole footprint stays in the user's home:
+`CAPNP_PREFIX="$HOME/.local"` now works on macOS too (a requested prefix also bypasses
+Homebrew and sudo), rustup takes `--no-modify-path`, and the only system-level piece is
+the Xcode Command Line Tools - Apple's compiler and SDK, often already present, and
+removable by deleting `/Library/Developer/CommandLineTools`. Two things get *simpler* on a Mac with TWS on the same OS:
 `IB_V2_HOST` is plain `127.0.0.1`, and the WSL trusted-IP arrangement disappears. Everything else on this
 checklist applies unchanged - and research work (the gate, the cost model, the
 entry-timing experiment) needs only steps 1-3 plus `pytest`: no TWS, no broker, no
