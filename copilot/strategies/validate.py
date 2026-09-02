@@ -23,10 +23,9 @@ a commit.
 (from 2022-01-01) is the locked holdout: `carve` withholds it before the walk-forward
 ever sees a bar, and the record names what was withheld. What the verdict still is not:
 the holdout result itself (walk-forward is repeatable; the single-use out-of-sample is
-not, and spending it is a deliberate separate act for which no tool exists yet, on
-purpose), and not a viability judgment at the target account size, which is
-[ADR-0009]'s sweep - costs here are charged on the trades as replayed, at the research
-sizing.
+not, and spending it is a deliberate separate act - `spend_holdout`, [ADR-0014]), and not
+a viability judgment at the target account size, which is [ADR-0009]'s sweep - costs
+here are charged on the trades as replayed, at the research sizing.
 
 """
 
@@ -51,6 +50,7 @@ from copilot.data.catalog import read_daily_bars
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
+from copilot.strategies.spend_holdout import is_spent
 from copilot.validation.holdout import HOLDOUT_START
 from copilot.validation.holdout import carve
 from copilot.validation.nautilus_replay import make_replay
@@ -109,7 +109,10 @@ class Verdict:
             "warmup_bars": self.activation.setup.warmup_bars,
             "costs_modelled": True,
             "cost_model": self.cost_model.as_record(self.activation.symbol),
-            "holdout_spent": False,
+            # True from the moment a record exists under strategies/holdouts/ (ADR-0014):
+            # a walk-forward re-run after the spend is a development run on a premise
+            # whose one-time test has been used, and the record must say so.
+            "holdout_spent": is_spent(self.activation.name),
             "folds": len(self.report.folds),
             "folds_evaluated": len(evaluated),
             "folds_passed": self.report.passed_count,

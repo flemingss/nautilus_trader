@@ -29,3 +29,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0011](0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) | Spread is charged at p95 from a pinned snapshot             | Accepted   |
 | [0012](0012-the-holdout-is-carved-at-2022-01-01.md)             | The holdout is carved at 2022-01-01                         | Accepted   |
 | [0013](0013-entry-timing-is-evaluated-as-a-bracket.md)          | Entry timing is evaluated as a bracket                      | Accepted   |
+| [0014](0014-the-holdout-is-spent-as-one-more-fold.md)           | The holdout is spent as one more fold                       | Accepted   |

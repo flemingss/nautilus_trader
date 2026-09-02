@@ -380,6 +380,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/validation/*.py" = ["ANN401", "PLR0913"]
 "copilot/risk/guard.py" = ["ANN401"]
 "copilot/strategies/*.py" = ["ANN401", "PLR0913"]
+"copilot/strategies/spend_holdout.py" = [
+  "T201",
+] # Operator CLI: the verdict it prints is the product
 "copilot/strategies/validate.py" = [
   "ANN401",
   "T201",

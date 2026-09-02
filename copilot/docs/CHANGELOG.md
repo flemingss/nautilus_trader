@@ -2,6 +2,30 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-03 (the holdout can be spent, and nothing about the spend is chosen)
+
+### Decided
+
+- **[ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md): the holdout is
+  spent as one more fold.** Accepted 2026-09-03; no holdout has been spent yet.
+  The single-use test is scored by the same evaluator as every walk-forward fold, with
+  the whole development window minus the purge as training and the holdout as test, so
+  its number was made by the code path it is compared against. Nothing is chosen at
+  spend time; the record is the single-use marker; the diagnostic timing bound and a
+  dirty tree are refused; the owner's reject/revise/freeze is a separate act recorded in
+  a follow-up commit.
+
+### Added
+
+- **`validation/spend.py`** - `spend_holdout`, built on `evaluate_fold`, which was
+  extracted from `walk_forward` behaviour-preservingly (the six recorded verdicts
+  reproduce to six decimals afterwards). Holdout bars reach the replay exactly once,
+  for scoring, after selection - pinned by a test that watches every replay window.
+- **`strategies/spend_holdout.py`** - the command, with its four refusals and a record
+  carrying the frozen parameters, the full selection audit, the holdout tearsheet, the
+  commit, and `owner_decision: null`. `validate` now reports `holdout_spent: true` the
+  moment a record exists under `strategies/holdouts/`. Eleven tests.
+
 ## 2026-09-02 (the stranded order comes back, and cannot be cancelled)
 
 ### Added
