@@ -39,10 +39,10 @@ fire later; the paper campaign's findings answered them the same afternoon, and
 [ADR-0010](decisions/0010-the-repository-is-ours.md) is the outcome they pointed at. Kept as
 the reasoning behind that decision rather than as a live tripwire.
 
-The delta is **10 upstream files** and the paper campaign has already named an eleventh
-worth making - the reconciliation gap that leaves an external `SUBMITTED` order
-uncancellable, which sits in `crates/execution` rather than in an adapter and so has a wider
-blast radius than anything we hold today.
+The delta was **10 upstream files** and the paper campaign had already named an eleventh
+worth making - the reconciliation gap that left an external `SUBMITTED` order uncancellable,
+which sits in `crates/execution` rather than in an adapter and so has a wider blast radius
+than anything we hold today. That change was made, and the register has grown further since.
 
 The reason the count grows is structural rather than accidental. NautilusTrader's integration
 list is almost entirely crypto exchanges: one symbol namespace, no entitlements, no routing
@@ -188,31 +188,117 @@ directory was an API key.
 
 2. **Toolchain.** Follow "Rust toolchain prerequisites" in `ROADMAP.md`: the apt packages
    (the one sudo step), rustup (`rust-toolchain.toml` pins 1.98.0 automatically), uv,
-   Cap'n Proto via `scripts/install-capnp.sh`, then `make install-tools` and
-   `make build-debug`. Budget real time for the first build - 43 crates, ~26 GB of
-   `target/` - and remember the published wheel is forbidden by decision
+   Cap'n Proto via `scripts/install-capnp.sh`, then `make build-debug`. Budget real time
+   for the first build - 43 crates, ~26 GB of `target/` - and remember the published
+   wheel is forbidden by decision
    ([ADR-0007](decisions/0007-self-sourced-images.md)): it lacks this fork's engine
    fixes, and startup asserts on one of them.
+
+   `make install-tools` is **not** needed to build or to run the overlay suite. It
+   compiles a dozen cargo tools and is the slow step; the daily loop needs only
+   `cargo binstall cargo-nextest` and `uv tool install prek` at their pinned versions
+   (`bash scripts/tool-version.sh <tool>`).
+
+   **The build will fail linking `nautilus-pyo3` on a stock Ubuntu box**, and the error
+   names the cause without naming the fix:
+
+   ```text
+   rust-lld: error: unable to find library -lpython3.14
+   ```
+
+   Ubuntu ships `libpython3.N.so.1.0` and `.so.1` in `/usr/lib/<arch>` but **not** the
+   unversioned `libpython3.N.so` symlink that `-lpython3.N` resolves against - that one
+   comes with `libpython3.N-dev`. Python's own config directory carries the symlink, so
+   putting it on `LIBRARY_PATH` fixes the link with no sudo and no extra package.
+   Derive both paths rather than hardcoding them, because they move with the interpreter:
+
+   ```bash
+   export PYO3_PYTHON="$PWD/.venv/bin/python"
+   export LIBRARY_PATH="$("$PYO3_PYTHON" -c 'import sysconfig;print(sysconfig.get_config_var("LIBPL"))')${LIBRARY_PATH:+:$LIBRARY_PATH}"
+   export LD_LIBRARY_PATH="$("$PYO3_PYTHON" -c 'import sysconfig;print(sysconfig.get_config_var("LIBDIR"))')${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+   ```
+
+   `LIBRARY_PATH` is link time and `LD_LIBRARY_PATH` is run time; both are wanted. This
+   is adjacent to the `PYO3_PYTHON` note under "The shape of the codebase" above but is
+   a different failure - that one is about embedding the interpreter in Rust tests, this
+   one stops `make build-debug` outright. Measured 2026-09-02 on Ubuntu 26.04 with system
+   Python 3.14.4; a `uv`-managed interpreter ships its own libpython and may not need it.
 
 3. **Data.** The catalog lives *outside* the repository at `~/.nautilus_copilot/catalog`
    (override: `COPILOT_CATALOG_PATH`). It is ~6 MB - copy it, or rebuild it with
    `python -m copilot.data.backfill`, which needs `MARKETSTACK_API_KEY` in the
    environment. That key is the only secret the overlay uses, and it lives in a password
-   manager, never in either repository.
+   manager, never in either repository. On a machine that needs it across sessions, keep
+   it in `~/.config/copilot/secrets.env` at mode 600 - outside the tree, so it cannot be
+   committed by construction - and source it at the point of use:
+
+   ```bash
+   set -a; . ~/.config/copilot/secrets.env; set +a
+   ```
+
+   **Rebuild to 2025-12-31, not to today.** This is the trap, and the guard catches it
+   rather than the operator:
+
+   ```bash
+   python -m copilot.data.backfill --symbols AAPL,MSFT,SPY --from 2005-01-01 --to 2025-12-31
+   ```
+
+   [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md) pins the holdout at
+   2022-01-01 and `carve` refuses a share outside the charter's 15-20% band. The recorded
+   catalog is 5,283 bars per symbol, of which 1,003 are holdout - 18.99%. Fetching
+   through 2026-09-02 instead gives ~5,450 bars and a **21.5%** holdout, so every
+   `validate` run raises `HoldoutCarveError`. That is the guard working exactly as
+   designed: catalog growth forces a re-decision in a commit rather than drifting. Until
+   that re-decision is made, reproduce the recorded window.
+
+   A second reason to stop at 2025: the vendor's **2026 rows carry defects the earlier
+   history does not**. The same fetch extended to today rejects 11 extra rows as
+   `schema_or_value_error` (AAPL 2026-06-09 and 06-10, MSFT 2026-06-15 among them),
+   against **zero** such rejections over 2005-2025.
+
+   Verified 2026-09-02 from a bare machine: a fresh toolchain plus a catalog refetched
+   from the vendor reproduces all three recorded verdicts exactly - AAPL 16/31 at
+   +0.046877 R, MSFT 20/31 at +0.089455 R, SPY 17/30 at +0.049848 R. Fetch counts match
+   too (15,851 fetched, 15,849 written, 2 rejected), so a rehydration that differs on any
+   of these numbers has a real problem rather than a tolerable one.
 
 4. **Broker environment, per shell.** Three variables:
 
    ```bash
    export IBAPI_TIMEZONE_ALIASES=JST=Asia/Tokyo   # required while TWS reports JST
-   export IB_V2_HOST=...   # where TWS listens; scripts default to this WSL's host IP
+   export IB_V2_HOST=...   # where TWS listens; see the two addresses below
    export IB_V2_PORT=7497  # TWS paper
    ```
 
-   The scripts' built-in host default (`172.17.112.1`) is **this machine's** WSL gateway
-   and means nothing elsewhere - code and TWS on the same OS is plain `127.0.0.1`. The
-   timezone alias is not optional: without it every connect fails as a generic
+   The timezone alias is not optional: without it every connect fails as a generic
    "Failed to connect to IB Gateway/TWS", and this session lost ten minutes to exactly
    that in a fresh shell.
+
+   **Under WSL there are two different addresses and they are easy to confuse.** Never
+   copy either from a previous machine or a previous boot - derive them:
+
+   ```bash
+   ip route | awk '/^default/{print $3}'        # -> IB_V2_HOST, the Windows host
+   ip -4 addr show eth0 | awk '/inet /{print $2}'  # -> the TWS Trusted IPs entry
+   ```
+
+   One is where we connect *to*; the other is the source address TWS *sees*, and only
+   the second goes in Trusted IPs. Both change on reboot. On this box on 2026-09-02 they
+   were `172.25.160.1` and `172.25.160.255`; the value hardcoded as the scripts' default
+   (`172.17.112.1`) was a different machine's and means nothing here.
+
+   **A container and a native WSL process do not look the same to TWS.** Docker Desktop
+   proxies through the Windows loopback, so a container appears as `127.0.0.1`, which TWS
+   trusts implicitly and which therefore needs no Trusted IPs entry. A native WSL process
+   appears as the real `eth0` address and **does**. A setup that worked from a container
+   will fail on first connect after moving to a native build for exactly this reason.
+   Code and TWS on the same OS - a Mac, say - is plain `127.0.0.1` and the whole question
+   disappears.
+
+   Mirrored networking (`networkingMode=mirrored` in `.wslconfig`) makes the source
+   `127.0.0.1` and removes a measured ~4.65s handshake stall, which also removes the
+   reboot-churn in the Trusted IPs entry. Worth doing on a machine that will be used
+   more than once.
 
 5. **TWS settings, which live in TWS and not here.** Enable ActiveX/socket API; add the
    connecting machine's IP as a Trusted IP (under WSL that is the WSL address, not
@@ -221,9 +307,24 @@ directory was an API key.
    GUI, invisible to the API. One login session per set of credentials: a portal login
    kills the API session with error 162.
 
-6. **Verify before trusting.** `PYTHONPATH=. pytest copilot/tests/ -q` (fast, no broker),
-   then `python -m copilot.live.preflight --account DUT067974` inside a session. Stage
-   one passing proves the whole path: build, guards, environment, broker.
+6. **Verify before trusting**, cheapest first. Everything up to the last line runs
+   without a broker:
+
+   ```bash
+   python -c "from nautilus_trader.live import LiveNode; assert LiveNode.risk_engine"
+   PYTHONPATH=. pytest copilot/tests/ -q                    # 290 tests, ~2s
+   PYTHONPATH=. python -m copilot.tools.upstream_delta --check
+   git status --porcelain -uall | grep -c trade-copilot     # must print 0
+   PYTHONPATH=. python -m copilot.strategies.validate --all # reproduces the recorded verdicts
+   PYTHONPATH=. python -m copilot.live.preflight --account DUT067974   # needs a session
+   ```
+
+   The first line is the one worth understanding: it is the
+   [ADR-0007](decisions/0007-self-sourced-images.md) check. A published wheel reports
+   `risk_engine: False` and would run, connect and trade with breakers that cannot halt
+   the next order, so a build that fails this line is not merely stale - it is unsafe,
+   and no later check will catch it. Stage one passing proves the whole path: build,
+   guards, environment, broker.
 
 **A temporary macOS machine needs neither WSL nor Docker.** Surveyed 2026-09-02
 against the question "can a Mac carry this for a trip". WSL is an accident of the

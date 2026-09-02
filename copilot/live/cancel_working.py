@@ -16,23 +16,35 @@ A residual order belongs to the strategy instance that placed it, and that insta
 with the run that owns it. A strategy-scoped cancel would find nothing and report success,
 which is the worst possible outcome for a tool whose entire job is to leave nothing behind.
 
-**What this tool cannot see**
------------------------------
+**What this tool can and cannot see**
+-------------------------------------
 It cancels what is in the cache, and an order only enters the cache if reconciliation
-adopted it. Nautilus reconciliation does **not** adopt an external order the broker reports
-as ``SUBMITTED``: ``crates/execution/src/reconciliation/orders.rs`` matches ``Accepted``,
-``Triggered``, ``PartiallyFilled``, ``Filled``, ``Canceled``, ``Expired`` and ``Rejected``,
-and everything else falls through to a warning and an empty event list.
+adopted it.
 
-Measured on 2026-09-01: an order left working by a previous run was reported by IB, logged
-as *"Unhandled order status SUBMITTED for external order"*, never entered the cache, and so
-could not be cancelled through this tool - which then reported success because the cache it
-consulted was empty.
+Until 2026-09-01 that excluded any external order the broker reported as ``SUBMITTED``.
+The status match in ``crates/execution/src/reconciliation/orders.rs`` dropped it with a
+warning and an empty event list, so an order left working by a previous run was logged as
+*"Unhandled order status SUBMITTED for external order"* and then existed at the broker and
+nowhere else - and this tool reported success, because the cache it consulted was empty.
 
-A clean result therefore means **"everything this node knew about is cancelled"**, which is
-weaker than "nothing is working at the broker". Confirm the broker's own order list before
-treating a session as closed. Per ``OPERATIONS.md``, an order whose status cannot be
-confirmed is an alert, not a pass.
+**That defect is fixed here.** ``Submitted`` is adopted as an acceptance, and
+``fetch_all_open_orders=True`` in ``live/node.py`` stops ``reqOpenOrders`` from returning
+only the calling client id's orders. A sweep can now see a previous run's orders.
+
+**The caveat survives the fix, for a different reason.** A large order can trip a TWS
+precautionary size setting, which holds it in the GUI awaiting a manual transmit: our side
+records an acceptance, the broker never receives the order, and no API call can see or
+cancel it. No code change on our side reaches that state.
+
+Nor has the fix been confirmed against the broker. It carries a Rust unit test
+(``test_external_order_reported_as_submitted_is_adopted``) over the event generation, and
+has not been re-run end to end against IB, because doing so strands a live order on
+purpose.
+
+A clean result therefore still means **"everything this node knew about is cancelled"**,
+which is weaker than "nothing is working at the broker". Confirm the broker's own order
+list before treating a session as closed. Per ``OPERATIONS.md``, an order whose status
+cannot be confirmed is an alert, not a pass.
 
 """
 
@@ -178,8 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"still working:  {outstanding or 'none'}")
     print(f"\nRESULT: {'CACHE CLEAR' if not outstanding else 'FAIL'}")
     print(
-        "\nThis is not proof the broker has nothing working. An external order in "
-        "SUBMITTED\nstatus is never adopted into the cache and is invisible here - see the "
+        "\nThis is not proof the broker has nothing working. An order held by a TWS "
+        "precautionary\nsize setting never reached the broker and is invisible to the API, "
+        "and the reconciliation\nfix behind this sweep is unconfirmed against IB - see the "
         "module docstring.\nCheck the broker's own order list before calling a session "
         "closed.",
     )

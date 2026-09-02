@@ -1,0 +1,653 @@
+{
+  "activation": "aapl-gap-fade-long",
+  "strategy": "gap_reversal",
+  "lifecycle": "RESEARCH",
+  "instrument": "AAPL.XNAS",
+  "run_at": "2026-09-02T14:24:18.551297+00:00",
+  "runtime_seconds": 17.6,
+  "bars": 4280,
+  "bar_range": [
+    "2005-01-03",
+    "2021-12-31"
+  ],
+  "holdout": {
+    "start": "2022-01-01",
+    "bars_reserved": 1003,
+    "range": [
+      "2022-01-03",
+      "2025-12-31"
+    ]
+  },
+  "search_space": {
+    "min_gap_atr": [
+      "0.15",
+      "0.25",
+      "0.40"
+    ],
+    "target_1_atr": [
+      "1.0",
+      "1.5"
+    ]
+  },
+  "seeded_parameters": {
+    "long": "True",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000"
+  },
+  "validation": {
+    "train_bars": 252,
+    "test_bars": 126,
+    "purge_bars": 5,
+    "min_trades": 20,
+    "fold_min_trades": 5
+  },
+  "warmup_bars": 16,
+  "costs_modelled": true,
+  "cost_model": {
+    "snapshot": "spread_snapshot_20260901T154744Z.json",
+    "percentile": "p95",
+    "bps_per_side": "1.99025",
+    "commission": "IB Pro fixed tier: max(1.00, 0.005/share) per order, capped at 1.00% of notional, split-corrected share counts"
+  },
+  "holdout_spent": false,
+  "folds": 31,
+  "folds_evaluated": 31,
+  "folds_passed": 16,
+  "majority_passed": true,
+  "mean_oos_net_expectancy_r": "0.046877",
+  "total_test_trades": 469,
+  "fold_detail": [
+    {
+      "index": 0,
+      "test_from": "2006-01-10",
+      "test_to": "2006-07-11",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 9,
+      "net_score_r": "-0.343587",
+      "passed": false,
+      "reason": "score -0.3435870279909325819871738231 not above 0"
+    },
+    {
+      "index": 1,
+      "test_from": "2006-07-12",
+      "test_to": "2007-01-10",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 15,
+      "net_score_r": "0.453882",
+      "passed": true,
+      "reason": "score 0.4538817795089584785208300796 above 0"
+    },
+    {
+      "index": 2,
+      "test_from": "2007-01-11",
+      "test_to": "2007-07-12",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "0.268016",
+      "passed": true,
+      "reason": "score 0.2680159875300049744536543901 above 0"
+    },
+    {
+      "index": 3,
+      "test_from": "2007-07-13",
+      "test_to": "2008-01-10",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 16,
+      "net_score_r": "0.238880",
+      "passed": true,
+      "reason": "score 0.2388798423933502220641772022 above 0"
+    },
+    {
+      "index": 4,
+      "test_from": "2008-01-11",
+      "test_to": "2008-07-11",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 13,
+      "net_score_r": "-0.269749",
+      "passed": false,
+      "reason": "score -0.2697494537493846439319731683 not above 0"
+    },
+    {
+      "index": 5,
+      "test_from": "2008-07-14",
+      "test_to": "2009-01-09",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "-0.303686",
+      "passed": false,
+      "reason": "score -0.3036863021535774900094783513 not above 0"
+    },
+    {
+      "index": 6,
+      "test_from": "2009-01-12",
+      "test_to": "2009-07-13",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 20,
+      "net_score_r": "0.156752",
+      "passed": true,
+      "reason": "score 0.1567518157378855711174731494 above 0"
+    },
+    {
+      "index": 7,
+      "test_from": "2009-07-14",
+      "test_to": "2010-01-11",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 16,
+      "net_score_r": "0.235739",
+      "passed": true,
+      "reason": "score 0.2357388052755628761829321764 above 0"
+    },
+    {
+      "index": 8,
+      "test_from": "2010-01-12",
+      "test_to": "2010-07-13",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 16,
+      "net_score_r": "0.102926",
+      "passed": true,
+      "reason": "score 0.1029259327378748213523062301 above 0"
+    },
+    {
+      "index": 9,
+      "test_from": "2010-07-14",
+      "test_to": "2011-01-10",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 15,
+      "net_score_r": "0.296002",
+      "passed": true,
+      "reason": "score 0.2960018121075116837933996593 above 0"
+    },
+    {
+      "index": 10,
+      "test_from": "2011-01-11",
+      "test_to": "2011-07-12",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 18,
+      "net_score_r": "-0.017985",
+      "passed": false,
+      "reason": "score -0.01798524509238176681802996777 not above 0"
+    },
+    {
+      "index": 11,
+      "test_from": "2011-07-13",
+      "test_to": "2012-01-10",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 22,
+      "net_score_r": "0.046041",
+      "passed": true,
+      "reason": "score 0.04604126122369500805971653273 above 0"
+    },
+    {
+      "index": 12,
+      "test_from": "2012-01-11",
+      "test_to": "2012-07-11",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.0"
+      },
+      "trades": 9,
+      "net_score_r": "0.281715",
+      "passed": true,
+      "reason": "score 0.2817153121551939834579074931 above 0"
+    },
+    {
+      "index": 13,
+      "test_from": "2012-07-12",
+      "test_to": "2013-01-11",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "-0.507300",
+      "passed": false,
+      "reason": "score -0.5073002571792129751149566895 not above 0"
+    },
+    {
+      "index": 14,
+      "test_from": "2013-01-14",
+      "test_to": "2013-07-15",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.25",
+        "target_1_atr": "1.5"
+      },
+      "trades": 13,
+      "net_score_r": "-0.176508",
+      "passed": false,
+      "reason": "score -0.1765080493232295432653665435 not above 0"
+    },
+    {
+      "index": 15,
+      "test_from": "2013-07-16",
+      "test_to": "2014-01-13",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.25",
+        "target_1_atr": "1.0"
+      },
+      "trades": 10,
+      "net_score_r": "0.139687",
+      "passed": true,
+      "reason": "score 0.1396872347209518544317140894 above 0"
+    },
+    {
+      "index": 16,
+      "test_from": "2014-01-14",
+      "test_to": "2014-07-15",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 11,
+      "net_score_r": "-0.138995",
+      "passed": false,
+      "reason": "score -0.1389949887126674301987164823 not above 0"
+    },
+    {
+      "index": 17,
+      "test_from": "2014-07-16",
+      "test_to": "2015-01-13",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 13,
+      "net_score_r": "0.358158",
+      "passed": true,
+      "reason": "score 0.3581584118698379707255408225 above 0"
+    },
+    {
+      "index": 18,
+      "test_from": "2015-01-14",
+      "test_to": "2015-07-15",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 15,
+      "net_score_r": "-0.018888",
+      "passed": false,
+      "reason": "score -0.0188884369268180382847370456 not above 0"
+    },
+    {
+      "index": 19,
+      "test_from": "2015-07-16",
+      "test_to": "2016-01-13",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 20,
+      "net_score_r": "-0.362781",
+      "passed": false,
+      "reason": "score -0.3627809415565244024148913362 not above 0"
+    },
+    {
+      "index": 20,
+      "test_from": "2016-01-14",
+      "test_to": "2016-07-14",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 18,
+      "net_score_r": "-0.216666",
+      "passed": false,
+      "reason": "score -0.216665587138331575985126397 not above 0"
+    },
+    {
+      "index": 21,
+      "test_from": "2016-07-15",
+      "test_to": "2017-01-12",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.25",
+        "target_1_atr": "1.0"
+      },
+      "trades": 17,
+      "net_score_r": "-0.053592",
+      "passed": false,
+      "reason": "score -0.05359213845001262900921188231 not above 0"
+    },
+    {
+      "index": 22,
+      "test_from": "2017-01-13",
+      "test_to": "2017-07-14",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "0.543973",
+      "passed": true,
+      "reason": "score 0.5439731130670541823530578365 above 0"
+    },
+    {
+      "index": 23,
+      "test_from": "2017-07-17",
+      "test_to": "2018-01-12",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 15,
+      "net_score_r": "0.291616",
+      "passed": true,
+      "reason": "score 0.2916164556216817147349178381 above 0"
+    },
+    {
+      "index": 24,
+      "test_from": "2018-01-16",
+      "test_to": "2018-07-16",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.25",
+        "target_1_atr": "1.5"
+      },
+      "trades": 17,
+      "net_score_r": "0.024842",
+      "passed": true,
+      "reason": "score 0.02484230300304157065785431691 above 0"
+    },
+    {
+      "index": 25,
+      "test_from": "2018-07-17",
+      "test_to": "2019-01-15",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 21,
+      "net_score_r": "-0.183459",
+      "passed": false,
+      "reason": "score -0.1834586916717280619919876870 not above 0"
+    },
+    {
+      "index": 26,
+      "test_from": "2019-01-16",
+      "test_to": "2019-07-17",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.0"
+      },
+      "trades": 18,
+      "net_score_r": "-0.023811",
+      "passed": false,
+      "reason": "score -0.02381108895941761148164896192 not above 0"
+    },
+    {
+      "index": 27,
+      "test_from": "2019-07-18",
+      "test_to": "2020-01-15",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 17,
+      "net_score_r": "0.748046",
+      "passed": true,
+      "reason": "score 0.7480459458346466704215640582 above 0"
+    },
+    {
+      "index": 28,
+      "test_from": "2020-01-16",
+      "test_to": "2020-07-16",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 15,
+      "net_score_r": "-0.067143",
+      "passed": false,
+      "reason": "score -0.06714300288673495332493290607 not above 0"
+    },
+    {
+      "index": 29,
+      "test_from": "2020-07-17",
+      "test_to": "2021-01-14",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "0.132451",
+      "passed": true,
+      "reason": "score 0.1324505533881770133613715986 above 0"
+    },
+    {
+      "index": 30,
+      "test_from": "2021-01-15",
+      "test_to": "2021-07-16",
+      "selected": {
+        "long": "True",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.0"
+      },
+      "trades": 10,
+      "net_score_r": "-0.181390",
+      "passed": false,
+      "reason": "score -0.1813895352084290437043631187 not above 0"
+    }
+  ]
+}

@@ -2,6 +2,166 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the stranded order comes back, and cannot be cancelled)
+
+### Added
+
+- **`live/strand_recovery.py`** - strands a one-share far-from-market GTC limit on
+  purpose, then recovers it from a fresh node on different client ids. Stage three's
+  accident, made deliberately and at the smallest size that asks the question. The record
+  says which phase failed rather than collapsing three claims into one bit, and the
+  recovery node runs with orders disabled - cancels bypass the risk engine, so a node
+  that cannot submit can still sweep, and cannot make the situation worse.
+
+### Measured
+
+- **Adoption is confirmed at the broker.** A fresh node with an empty cache received the
+  stranded external `SUBMITTED` order through reconciliation. The 2026-09-01 engine fix
+  is now watched working against IB, not merely unit-tested - the half of
+  `recover_unknown_working_order` that reconciliation owns is closed.
+
+### Found
+
+- **The adapter cannot cancel the order it just adopted, and fails silently.** The
+  stranded order's IB id (`832000002`) belongs to the stranding client's id partition
+  (`client_id % 1000`); the recovering client's adapter maps have no entry for it, and
+  the sweep's cancel dies inside the adapter with "Instrument ID not found for pending
+  cancel order" - **without raising any order event**, so nothing above the log line
+  learns the cancel failed. The order was cancelled by hand in TWS. Net operational
+  state: an unknown working order is now *visible* to a recovering node, which makes the
+  manual step findable instead of a surprise, and the remaining fix is in the adapter's
+  execution core, ours under ADR-0010. Tracked in the roadmap alongside a second
+  surfaced item: reconciliation logs false `Cannot open NETTING position ... from
+  reduce-only fill` ERROR lines for historical round trips in the lookback, which must be
+  quieted before `shutdown_on_error` is ever considered.
+
+## 2026-09-02 (entry timing becomes a bracket, and the bracket surprises)
+
+### Decided
+
+- **[ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md): entry timing is
+  evaluated as a bracket.** The plan to move the gap fade's entry to the next session's
+  *open* died against the engine, measured five ways: an order submitted from ``on_bar``
+  settles against the book the signal bar left (market and marketable limit both fill at
+  the signal close), a deferred market order fills at the *next* session's close, a
+  resting limit fills at its own price with no opening improvement, and the matching
+  engine rejects ``AT_THE_OPEN`` outright. Next-open entry - and the charter's
+  concession-bounded window - is not expressible on a daily-bar replay. So the premise
+  runs at both bounds that are: ``signal_close`` (diagnostic only, never promotable) and
+  ``next_close`` (charter-compliant, the only mode a holdout may be spent on). The
+  entry-timing charter conflict closes, and the holdout spend is un-gated.
+
+### Added
+
+- **`entry_timing` on the gap fade** - identity, not a searchable axis (ADR-0005): it
+  lives in an activation's `[parameters]`, never in `SEARCH_SPACE`. In ``next_close``
+  mode the decision freezes at the signal bar (trigger and the ATR the levels are built
+  from) and the entry submits on the following bar, consuming its action; a signal on a
+  window's final bar simply never fills, as the charter's own rule would have it. An
+  unknown mode raises rather than silently measuring the wrong bound. Five tests,
+  including one verified to fail against a sabotaged (live-ATR) deferral.
+- **Three `*-gap-fade-long-next-close` activations** - new experiments per the charter,
+  not edits to the existing three, which keep their names and their history.
+
+### Measured
+
+- **All six activations majority-pass net, and the bounds did not order as assumed.**
+  Deferring entry a full session raised AAPL (+0.0469 to **+0.1017 R**, 20/30) and SPY
+  (+0.0498 to **+0.0530 R**, 19/31) and lowered only MSFT (+0.0895 to +0.0660 R, 17/31).
+  The reversion this premise captures is therefore not concentrated in session t+1, and
+  the fear that charter-compliant entry kills the edge is answered: it does not. The
+  AAPL jump is to be read with suspicion, not excitement - the modes trade materially
+  different populations (deferral blocks consecutive-gap re-entries), which is why
+  ADR-0013 forbids cross-mode comparison. Verdicts filed for all six from one catalog
+  and commit state.
+
+## 2026-09-02 (rehydrating on a bare WSL box, and what it cost)
+
+### Added
+
+- **`MAINTENANCE.md` "Standing up a new machine" now survives a stock Ubuntu box.** The
+  checklist was written from a machine that already worked; running it on a bare one
+  found four gaps, each recorded with the derivation rather than the value:
+
+  - **`make build-debug` fails linking `nautilus-pyo3`** with
+    `rust-lld: error: unable to find library -lpython3.14`. Ubuntu ships
+    `libpython3.N.so.1.0` but not the unversioned symlink `-lpython3.N` resolves against;
+    that comes with `libpython3.N-dev`. Python's own config dir (`sysconfig` `LIBPL`)
+    carries the symlink, so putting it on `LIBRARY_PATH` fixes the link with no sudo.
+    Distinct from the existing `PYO3_PYTHON` note, which is about embedding the
+    interpreter in Rust tests; this one stops the build outright.
+  - **The two WSL addresses are now derived, not copied.** `IB_V2_HOST` is the default
+    route's gateway; the TWS Trusted IPs entry is `eth0`. Both change on reboot, and the
+    hardcoded `172.17.112.1` default belongs to a different machine. Recorded with it:
+    a container appears to TWS as `127.0.0.1` and needs no Trusted IPs entry, while a
+    native WSL process appears as the real `eth0` address and does - so a setup that
+    worked from a container fails on first connect after moving to a native build.
+  - **`MARKETSTACK_API_KEY` has a documented home** for machines that need it across
+    sessions: `~/.config/copilot/secrets.env`, mode 600, outside the tree so it cannot be
+    committed by construction, sourced at the point of use.
+  - **`make install-tools` is not needed** to build or to run the suite, and is the slow
+    step. Only `cargo-nextest` and `prek` are, at their pinned versions.
+
+### Measured
+
+- **A bare machine reproduces the recorded verdicts exactly.** Fresh toolchain, catalog
+  refetched from the vendor, then `validate --all`: AAPL 16/31 at +0.046877 R, MSFT 20/31
+  at +0.089455 R, SPY 17/30 at +0.049848 R - identical to six decimal places, with fetch
+  counts matching too (15,851 fetched, 15,849 written, 2 rejected). The
+  "reproducible from a commit" claim is now demonstrated end to end rather than asserted,
+  and a rehydration that differs on these numbers has a real problem.
+
+### Found
+
+- **The catalog can no longer be rebuilt "to today", and the guard is what says so.**
+  `--from 2005-01-01` with no `--to` fetches ~5,450 bars per symbol, which puts the
+  2022-01-01 holdout at **21.5%** - outside the charter's 15-20% band - so `carve` raises
+  `HoldoutCarveError` and every `validate` run stops.
+  [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md) predicted exactly
+  this and chose a date pin over a percentage so catalog growth would force a re-decision
+  in a commit instead of silently moving the boundary. Reproduce the recorded window with
+  `--to 2025-12-31` until that re-decision is made.
+- **The vendor's 2026 rows carry defects the earlier history does not.** Extending the
+  same fetch to today rejects 11 additional rows as `schema_or_value_error` (AAPL
+  2026-06-09 and 06-10, MSFT 2026-06-15 among them) against **zero** over 2005-2025.
+
+## 2026-09-02 (six surfaces still described a defect that was fixed)
+
+### Fixed
+
+- **The unknown-working-order gap was fixed on 2026-09-01 and six surfaces still called it
+  a known failure.** `crates/execution/src/reconciliation/orders.rs` adopts an external
+  order reported as `SUBMITTED`, and `live/node.py` sets `fetch_all_open_orders=True`, both
+  landed in PR #23 with a Rust test. Meanwhile `live/cancel_working.py` told the operator in
+  its docstring *and at runtime* that such an order "is never adopted into the cache and is
+  invisible here"; `live/failure_injection.py` carried it as `KNOWN FAILURE` in a report key
+  literally named `known_failure`; and `ROADMAP.md`, `PAPER_CAMPAIGN.md` (twice),
+  `OPERATIONS.md` and `MAINTENANCE.md` each asserted the pre-fix behaviour as current. A
+  tool that understates what it can see is the same class of defect as one that overstates
+  it - both leave the operator with a wrong model of what is protecting them.
+
+- **The correction is not "it works now".** The engine defect is fixed and unit-tested;
+  **nobody has watched a stranded order come back and be cancelled**, because confirming it
+  strands a live order on purpose. Stage six now records the case as `UNCONFIRMED` rather
+  than `KNOWN FAILURE`, which is the honest label and the one that points at the right next
+  action: a known failure wants a fix, an unconfirmed fix wants a session.
+
+- **`cancel_working.py`'s caveat survives, with its justification replaced.** A clean sweep
+  is still not proof the broker has nothing working - but the reason is now the TWS
+  precautionary size setting, which holds a large order in the GUI where no API call can see
+  or cancel it, plus the unconfirmed fix. The old reason had been fixed out from under it.
+
+### Changed
+
+- `failure_injection.py`: `UNRECOVERABLE_CASE` renamed `UNCONFIRMED_CASE`, and the report
+  key `known_failure` renamed `unconfirmed`. Reports under `live/out/` written before today
+  keep the old key and stand as dated records.
+- Two further stale rows found in the same sweep: `PAPER_CAMPAIGN.md` listed failure
+  injection as "Stage 6, **failing**" and `ROADMAP.md` listed it as "the last unbuilt piece
+  of paper stages 1-6". It is built, run, and passing on the second run. The "Ready to
+  build" group now holds the broker confirmation instead, keeping the open-item count at
+  eleven under the grooming rule.
+
 ## 2026-09-02 (the capnp installer stays out of the system)
 
 ### Fixed

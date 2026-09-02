@@ -115,16 +115,26 @@ do with our system, which turns a real limitation into background noise.
 
 """
 
-UNRECOVERABLE_CASE = {
+UNCONFIRMED_CASE = {
     "name": "recover_unknown_working_order",
-    "status": "KNOWN FAILURE",
+    "status": "HALF",
     "detail": (
-        "Nautilus reconciliation drops an external order reported as SUBMITTED "
-        "(crates/execution/src/reconciliation/orders.rs), so it never enters the cache and "
-        "cannot be cancelled. Evidenced by stage three on 2026-09-01; not re-run here "
-        "because re-running strands another live order to re-learn it."
+        "Measured 2026-09-02 by live/strand_recovery.py, which strands an order on purpose. "
+        "Adoption is CONFIRMED: a fresh node on different client ids receives the external "
+        "SUBMITTED order through reconciliation into its cache. The cancel is a KNOWN "
+        "FAILURE: the IB adapter cannot cancel an adopted order whose IB order id belongs "
+        "to another client id partition ('Instrument ID not found for pending cancel "
+        "order'), the failure raises no order event, and the order is cancelled by hand in "
+        "TWS. The remaining fix is in the adapter's execution core, not in reconciliation."
     ),
 }
+"""
+A case measured to a split verdict: adoption works, the foreign cancel does not.
+
+Not scored either way. Scoring the pass half would hide the failing half, and the failing
+half's fix lives in the adapter rather than in anything this probe can drill.
+
+"""
 
 
 @dataclass
@@ -491,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     observed_unscored = result.unscored.get(NOT_TESTABLE_ON_PAPER["name"], "-")
     for case, observed in (
         (NOT_TESTABLE_ON_PAPER, observed_unscored),
-        (UNRECOVERABLE_CASE, "invisible"),
+        (UNCONFIRMED_CASE, "not run"),
     ):
         print(
             f"{case['name']:<26}{case['status']:<8}{'-':<12}{observed:<12}{case['detail'][:50]}",
@@ -502,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"cancel rejections: {result.cancel_rejections}")
     print(
         f"\nRESULT: {'PASS' if result.passed else 'FAIL'}"
-        " (the two cases above are excluded: one paper cannot decide, one is a known gap)",
+        " (the two cases above are excluded: one paper cannot decide, one is unconfirmed)",
     )
 
     report = {
@@ -512,7 +522,7 @@ def main(argv: list[str] | None = None) -> int:
         "source": f"interactive_brokers {args.host}:{args.port}",
         "passed": result.passed,
         "not_testable_on_paper": NOT_TESTABLE_ON_PAPER,
-        "known_failure": UNRECOVERABLE_CASE,
+        "unconfirmed": UNCONFIRMED_CASE,
         "result": asdict(result),
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)
