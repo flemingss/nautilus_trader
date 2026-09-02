@@ -225,6 +225,25 @@ directory was an API key.
    then `python -m copilot.live.preflight --account DUT067974` inside a session. Stage
    one passing proves the whole path: build, guards, environment, broker.
 
+**A temporary macOS machine needs neither WSL nor Docker.** Surveyed 2026-09-02
+against the question "can a Mac carry this for a trip". WSL is an accident of the
+current host, not a requirement: the engine must compile and run on Linux, macOS and
+Windows (upstream policy, kept), macOS ARM64 is a supported build target, and
+`docs/developer_guide/environment_setup.md` carries the macOS quick-setup
+(`xcode-select --install`, then the same rustup/uv/capnp/`make build-debug` path -
+the `LD_LIBRARY_PATH` step is Linux-only and is skipped on macOS). Docker is not part
+of development at all: `.docker/` is deployment image packaging under
+[ADR-0007](decisions/0007-self-sourced-images.md), and **no dev container definition
+exists in this repository** - a devcontainer + Docker Desktop route is viable in
+principle (Linux ARM64 is also a supported target) but would have to be authored first
+and buys parity nothing requires, at the cost of slower I/O for a ~26 GB `target/`
+inside the VM and `host.docker.internal` networking to reach TWS. Prefer the native
+build. Two things get *simpler* on a Mac with TWS on the same OS: `IB_V2_HOST` is plain
+`127.0.0.1`, and the WSL trusted-IP arrangement disappears. Everything else on this
+checklist applies unchanged - and research work (the gate, the cost model, the
+entry-timing experiment) needs only steps 1-3 plus `pytest`: no TWS, no broker, no
+Marketstack key if the ~6 MB catalog is copied rather than rebuilt.
+
 The agent-side note that belongs with this: Claude's auto-memory is machine-local and
 does not travel. The repository documents are the durable copy - which is why this file
 and `ROADMAP.md` carry the warm-start records rather than leaving them in memory.
