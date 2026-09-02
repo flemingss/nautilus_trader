@@ -238,8 +238,19 @@ exists in this repository** - a devcontainer + Docker Desktop route is viable in
 principle (Linux ARM64 is also a supported target) but would have to be authored first
 and buys parity nothing requires, at the cost of slower I/O for a ~26 GB `target/`
 inside the VM and `host.docker.internal` networking to reach TWS. Prefer the native
-build. Two things get *simpler* on a Mac with TWS on the same OS: `IB_V2_HOST` is plain
-`127.0.0.1`, and the WSL trusted-IP arrangement disappears. Everything else on this
+build. The toolchain itself is macOS-aware end to end: `rust-toolchain.toml` auto-installs
+the pinned 1.98.0 for the Mac target on first use, `.cargo/config.toml` carries dedicated
+`aarch64-apple-darwin` link flags (lld is Linux-only and not wanted), and
+`scripts/install-capnp.sh` has a full Darwin branch (Homebrew first, source fallback,
+version-checked against the pin). For a *temporary* machine, skip the full
+`make install-tools` (it compiles a dozen cargo tools and is the slow step): the daily
+loop needs only `cargo install cargo-nextest --locked` and
+`cargo binstall prek --no-confirm --locked` at the pinned versions, with the rest
+(fuzz, codspeed, llvm-cov, flamegraph, lychee, vet) mattering only for
+`make pre-flight`-grade assurance. Apple's bundled GNU make 3.81 should handle this
+Makefile (no 4.x-only features are used); `brew install make` is cheap insurance if a
+target misbehaves. Two things get *simpler* on a Mac with TWS on the same OS:
+`IB_V2_HOST` is plain `127.0.0.1`, and the WSL trusted-IP arrangement disappears. Everything else on this
 checklist applies unchanged - and research work (the gate, the cost model, the
 entry-timing experiment) needs only steps 1-3 plus `pytest`: no TWS, no broker, no
 Marketstack key if the ~6 MB catalog is copied rather than rebuilt.
