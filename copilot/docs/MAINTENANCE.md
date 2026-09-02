@@ -39,10 +39,10 @@ fire later; the paper campaign's findings answered them the same afternoon, and
 [ADR-0010](decisions/0010-the-repository-is-ours.md) is the outcome they pointed at. Kept as
 the reasoning behind that decision rather than as a live tripwire.
 
-The delta is **10 upstream files** and the paper campaign has already named an eleventh
-worth making - the reconciliation gap that leaves an external `SUBMITTED` order
-uncancellable, which sits in `crates/execution` rather than in an adapter and so has a wider
-blast radius than anything we hold today.
+The delta was **10 upstream files** and the paper campaign had already named an eleventh
+worth making - the reconciliation gap that left an external `SUBMITTED` order uncancellable,
+which sits in `crates/execution` rather than in an adapter and so has a wider blast radius
+than anything we hold today. That change was made, and the register has grown further since.
 
 The reason the count grows is structural rather than accidental. NautilusTrader's integration
 list is almost entirely crypto exchanges: one symbol namespace, no entitlements, no routing

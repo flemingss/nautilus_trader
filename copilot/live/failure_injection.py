@@ -115,16 +115,26 @@ do with our system, which turns a real limitation into background noise.
 
 """
 
-UNRECOVERABLE_CASE = {
+UNCONFIRMED_CASE = {
     "name": "recover_unknown_working_order",
-    "status": "KNOWN FAILURE",
+    "status": "UNCONFIRMED",
     "detail": (
-        "Nautilus reconciliation drops an external order reported as SUBMITTED "
-        "(crates/execution/src/reconciliation/orders.rs), so it never enters the cache and "
-        "cannot be cancelled. Evidenced by stage three on 2026-09-01; not re-run here "
-        "because re-running strands another live order to re-learn it."
+        "The defect this case was named for is fixed: reconciliation now adopts an external "
+        "order reported as SUBMITTED (crates/execution/src/reconciliation/orders.rs), and "
+        "the execution client sets fetch_all_open_orders=True. A Rust unit test pins the "
+        "event generation. **Neither has been confirmed end to end against IB**, because "
+        "confirming it strands a live order on purpose - so this is recorded as unconfirmed "
+        "rather than scored as a pass."
     ),
 }
+"""
+A case whose defect is fixed but whose recovery is unproven at the broker.
+
+Not scored, for the opposite reason to ``NOT_TESTABLE_ON_PAPER`` above: paper can decide
+this one, and simply has not been asked yet. Scoring it as a pass on the strength of a unit
+test would report an operational capability nobody has seen work.
+
+"""
 
 
 @dataclass
@@ -491,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
     observed_unscored = result.unscored.get(NOT_TESTABLE_ON_PAPER["name"], "-")
     for case, observed in (
         (NOT_TESTABLE_ON_PAPER, observed_unscored),
-        (UNRECOVERABLE_CASE, "invisible"),
+        (UNCONFIRMED_CASE, "not run"),
     ):
         print(
             f"{case['name']:<26}{case['status']:<8}{'-':<12}{observed:<12}{case['detail'][:50]}",
@@ -502,7 +512,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"cancel rejections: {result.cancel_rejections}")
     print(
         f"\nRESULT: {'PASS' if result.passed else 'FAIL'}"
-        " (the two cases above are excluded: one paper cannot decide, one is a known gap)",
+        " (the two cases above are excluded: one paper cannot decide, one is unconfirmed)",
     )
 
     report = {
@@ -512,7 +522,7 @@ def main(argv: list[str] | None = None) -> int:
         "source": f"interactive_brokers {args.host}:{args.port}",
         "passed": result.passed,
         "not_testable_on_paper": NOT_TESTABLE_ON_PAPER,
-        "known_failure": UNRECOVERABLE_CASE,
+        "unconfirmed": UNCONFIRMED_CASE,
         "result": asdict(result),
     }
     OUT_DIR.mkdir(parents=True, exist_ok=True)

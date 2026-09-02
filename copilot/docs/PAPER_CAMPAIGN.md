@@ -326,11 +326,16 @@ Stale-feed detection fired at 20.2 seconds after the subscription was cut. That 
 detector against a real feed going quiet; it does not test IB going quiet, which is a
 different fault with the same symptom.
 
-### The fourth case is still a known failure
+### The fourth case was a known failure at this point
 
-Recovering an unknown working order remains impossible - reconciliation drops an external
-order reported as `SUBMITTED`. Not re-run, because re-running strands another live order to
-re-learn something already evidenced.
+Recovering an unknown working order was impossible on this run - reconciliation dropped an
+external order reported as `SUBMITTED`. Not re-run, because re-running strands another live
+order to re-learn something already evidenced.
+
+**Superseded the same day.** The engine defect was fixed under
+[ADR-0010](decisions/0010-the-repository-is-ours.md); see "The residue problem" below for
+the three causes and the fix. What has still never happened is a confirmation at the
+broker.
 
 ## Stage six, second run: the engine was fixed rather than the test
 
@@ -363,8 +368,14 @@ notice if IB ever started enforcing it, but scoring it would make stage six perm
 unpassable for a reason that has nothing to do with our system. **The rejection path must be
 verified on the live account before any size increase.**
 
-**`recover_unknown_working_order` - still a known failure.** Reconciliation drops an external
-order reported as `SUBMITTED`. Now fixable under ADR-0010; not yet fixed.
+**`recover_unknown_working_order` - fixed in the engine, unconfirmed at the broker.**
+Reconciliation now adopts an external order reported as `SUBMITTED`, and the execution
+client sets `fetch_all_open_orders=True`; a Rust unit test pins the event generation. That
+is not the same as having watched a stranded order come back and be cancelled, which has
+never been done because doing it strands a live order on purpose. Excluded from scoring as
+**unconfirmed** rather than as a known failure - the distinction matters, because the two
+call for opposite next actions: a known failure wants a fix, an unconfirmed fix wants a
+session.
 
 ### The bug the reclassification introduced
 
@@ -448,7 +459,7 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | Preflight check script        | [`../live/preflight.py`](../live/preflight.py)                   | Built and run. Stages 1 and 2.                                    |
 | Instrument id bridge          | [`../live/symbology.py`](../live/symbology.py)                   | Built, 10 tests. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`. |
 | Controlled order              | [`../live/controlled_order.py`](../live/controlled_order.py)     | Built and run. Stage 3.                                           |
-| Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)         | Built. Cannot see external SUBMITTED orders; says so.             |
+| Working-order sweep           | [`../live/cancel_working.py`](../live/cancel_working.py)         | Built. Sees external SUBMITTED orders since the fix; unconfirmed. |
 | Order type matrix             | [`../live/order_types.py`](../live/order_types.py)               | Built and run. Stage 4.                                           |
 | Supervised round trip         | [`../live/supervised_session.py`](../live/supervised_session.py) | Built and run. Stage 5.                                           |
-| Failure injection             | [`../live/failure_injection.py`](../live/failure_injection.py)   | Built and run. Stage 6, **failing**.                              |
+| Failure injection             | [`../live/failure_injection.py`](../live/failure_injection.py)   | Built and run. Stage 6 passes on the second run.                  |

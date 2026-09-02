@@ -111,13 +111,18 @@ cannot be confirmed.**
 If broker state is uncertain, **remain in safe mode**. Do not submit replacement or
 flattening orders until reconciliation completes.
 
-**What the cancel actually reaches, measured 2026-09-01.** `live/cancel_working.py` cancels
-what is in the cache, and an order only enters the cache if reconciliation adopted it.
-Nautilus does not adopt an external order the broker reports as `SUBMITTED`, so an order
-left working by a previous run is invisible to the sweep, which then reports success
-because the cache it consulted was empty. **A clean sweep is not proof the broker has
-nothing working.** Confirm against the broker's own order list, and treat an order whose
-status cannot be confirmed as an alert rather than a pass.
+**What the cancel actually reaches.** `live/cancel_working.py` cancels what is in the
+cache, and an order only enters the cache if reconciliation adopted it. Measured
+2026-09-01: Nautilus did not adopt an external order the broker reported as `SUBMITTED`, so
+an order left working by a previous run was invisible to the sweep, which then reported
+success because the cache it consulted was empty. **Fixed the same day** - `Submitted` is
+adopted, and the execution client fetches orders from every client id - though the recovery
+has never been confirmed against the broker.
+
+**A clean sweep is still not proof the broker has nothing working**, and this does not
+depend on that fix. An order held by a TWS precautionary size setting never reaches the
+broker at all and no API call can see it. Confirm against the broker's own order list, and
+treat an order whose status cannot be confirmed as an alert rather than a pass.
 
 ### After
 

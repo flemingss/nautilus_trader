@@ -2,6 +2,43 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (six surfaces still described a defect that was fixed)
+
+### Fixed
+
+- **The unknown-working-order gap was fixed on 2026-09-01 and six surfaces still called it
+  a known failure.** `crates/execution/src/reconciliation/orders.rs` adopts an external
+  order reported as `SUBMITTED`, and `live/node.py` sets `fetch_all_open_orders=True`, both
+  landed in PR #23 with a Rust test. Meanwhile `live/cancel_working.py` told the operator in
+  its docstring *and at runtime* that such an order "is never adopted into the cache and is
+  invisible here"; `live/failure_injection.py` carried it as `KNOWN FAILURE` in a report key
+  literally named `known_failure`; and `ROADMAP.md`, `PAPER_CAMPAIGN.md` (twice),
+  `OPERATIONS.md` and `MAINTENANCE.md` each asserted the pre-fix behaviour as current. A
+  tool that understates what it can see is the same class of defect as one that overstates
+  it - both leave the operator with a wrong model of what is protecting them.
+
+- **The correction is not "it works now".** The engine defect is fixed and unit-tested;
+  **nobody has watched a stranded order come back and be cancelled**, because confirming it
+  strands a live order on purpose. Stage six now records the case as `UNCONFIRMED` rather
+  than `KNOWN FAILURE`, which is the honest label and the one that points at the right next
+  action: a known failure wants a fix, an unconfirmed fix wants a session.
+
+- **`cancel_working.py`'s caveat survives, with its justification replaced.** A clean sweep
+  is still not proof the broker has nothing working - but the reason is now the TWS
+  precautionary size setting, which holds a large order in the GUI where no API call can see
+  or cancel it, plus the unconfirmed fix. The old reason had been fixed out from under it.
+
+### Changed
+
+- `failure_injection.py`: `UNRECOVERABLE_CASE` renamed `UNCONFIRMED_CASE`, and the report
+  key `known_failure` renamed `unconfirmed`. Reports under `live/out/` written before today
+  keep the old key and stand as dated records.
+- Two further stale rows found in the same sweep: `PAPER_CAMPAIGN.md` listed failure
+  injection as "Stage 6, **failing**" and `ROADMAP.md` listed it as "the last unbuilt piece
+  of paper stages 1-6". It is built, run, and passing on the second run. The "Ready to
+  build" group now holds the broker confirmation instead, keeping the open-item count at
+  eleven under the grooming rule.
+
 ## 2026-09-02 (the capnp installer stays out of the system)
 
 ### Fixed

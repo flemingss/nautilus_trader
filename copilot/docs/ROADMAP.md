@@ -161,7 +161,7 @@ What stages 1 to 6 need built, none of it blocked:
 | Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                             |
 | A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                    |
 | Map catalog ids to broker ids   | **Built**, `live/symbology.py`. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`, with the routing table listed rather than defaulted so an unmapped venue raises.               |
-| Failure injection               | **Open, tracked** under "Ready to build" below. Stage 6: stale data, disconnect, reject, reconciliation mismatch. The reconciliation gap below is one of these, found early.    |
+| Failure injection               | **Built, run, passing** on the second run, `live/failure_injection.py`. Two cases are excluded and named rather than scored: one paper cannot decide, one is unconfirmed.       |
 
 ## Open work, grouped by what unblocks it
 
@@ -191,9 +191,15 @@ groups below inherit their block, which is why they sit first.
 Nothing stands in front of these - no account event, no decision, no spend. Promoted
 2026-09-02 under the grooming rule above.
 
+**Failure injection is built and passing** and has left this group. What replaced it is the
+confirmation that stage 6 deliberately does not score. Note what the row is *not*: the
+reject leg still needs the live account, and sits under "Waiting on the account" with the
+rest of it - **the reject path must be seen to work before any size increase**, and paper
+cannot decide it.
+
 | Item                  | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                            |
 | --------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Failure injection** | 08    | Paper stage 6: stale data, disconnect, broker reject, reconciliation mismatch. The last unbuilt piece of paper stages 1-6. The reject leg needs deliberate provocation - the paper account accepted a USD 1.2M and a USD 24M order without complaint - and **the reject path must be seen to work before any size increase**. Wants a live TWS session for the data-driven legs. |
+| **Confirm unknown-working-order recovery at the broker** | 08    | The engine defect is fixed - reconciliation adopts an external `SUBMITTED` order and the client sets `fetch_all_open_orders=True` - and a Rust unit test pins the event generation. **Nobody has watched a stranded order come back and be cancelled.** Stage 6 records it as `UNCONFIRMED` rather than scoring it. Wants a live TWS session: strand an order on purpose, reconnect on a fresh client id, sweep, and confirm against the TWS order list. |
 
 **Resolved 2026-09-02: the msgbus test was never broken - the runner was.**
 `test_republish_external_msgbus_message_logs_topic_and_error_chain` installs a global
