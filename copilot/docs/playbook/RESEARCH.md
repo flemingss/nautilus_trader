@@ -99,11 +99,13 @@ partial reopening.
 > ([ADR-0012](../decisions/0012-the-holdout-is-carved-at-2022-01-01.md)): bars from
 > 2022-01-01 (18.99% of the catalog) are withheld before the gate sees them, every
 > verdict names what was withheld, and `holdout_spent: false` is backed by a real
-> reservation. No tool for spending it exists yet, deliberately. The entry-timing gate
-> on the spend is resolved
-> ([ADR-0013](../decisions/0013-entry-timing-is-evaluated-as-a-bracket.md)): a holdout
-> is spent only on a `next_close` activation, so the one-time test cannot be burned on
-> fill semantics the charter rejects.
+> reservation. The spend tool exists - `python -m copilot.strategies.spend_holdout` -
+> and scores the holdout as exactly one more walk-forward fold
+> ([ADR-0014](../decisions/0014-the-holdout-is-spent-as-one-more-fold.md), proposed):
+> nothing is chosen at spend time, the record is the single-use marker, and only a
+> `next_close` activation may spend
+> ([ADR-0013](../decisions/0013-entry-timing-is-evaluated-as-a-bracket.md)). No holdout
+> has been spent.
 
 ## Configuration search
 

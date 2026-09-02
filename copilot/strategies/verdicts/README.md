@@ -12,10 +12,10 @@ tied to an experiment rather than to a memory of one.
 
 ## Read the flags first
 
-| Field            | Meaning                                                                                                              |
-| ---------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `costs_modelled` | `false` means the engine charged **no commission and no spread**. The number is gross of costs and is not an edge.   |
-| `holdout_spent`  | `false` means this is walk-forward, which is repeatable. The single-use out-of-sample is a separate, deliberate act. |
+| Field            | Meaning                                                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `costs_modelled` | `false` means the engine charged **no commission and no spread**. The number is gross of costs and is not an edge.                                                                                                                               |
+| `holdout_spent`  | `false` means the activation's single-use out-of-sample is still unspent. `true` means a record exists under `../holdouts/` and this walk-forward run post-dates the spend: development evidence on a premise whose one-time test has been used. |
 
 A file with `costs_modelled: false` records that the machinery works, not that the premise
 makes money. trade-copilot's own analysis names the cost model as the number that decides

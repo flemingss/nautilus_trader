@@ -329,78 +329,110 @@ def walk_forward(
         step_bars=step_bars,
     )
 
-    results: list[FoldResult] = []
-    for fold in folds:
-        train_slice = ordered[fold.train]
-        report = search_in_sample(
-            train_slice,
+    results = [
+        evaluate_fold(
+            ordered,
+            fold,
             grid,
             replay=replay,
             objective=objective,
             min_trades=min_trades,
             cliff_drop=cliff_drop,
+            warmup_bars=warmup_bars,
+            fold_min_trades=fold_min_trades,
+            threshold=threshold,
         )
-        selected = report.selected
-
-        test_slice = ordered[fold.test]
-        test_from = test_slice[0].closed_at
-        test_to = test_slice[-1].closed_at
-
-        if selected is None:
-            results.append(
-                FoldResult(
-                    index=fold.index,
-                    windows=fold,
-                    train_from=train_slice[0].closed_at,
-                    test_from=test_from,
-                    test_to=test_to,
-                    in_sample=report,
-                    selected=None,
-                    test_trades=0,
-                    test_score=Decimal(0),
-                    passed=False,
-                    reason="in_sample_selected_nothing",
-                ),
-            )
-            continue
-
-        warmup_start = max(0, fold.purge_end - warmup_bars)
-        replayed = replay(ordered[warmup_start : fold.test_end], selected.parameters)
-        # Score only what the test window itself produced: the warm-up exists to give
-        # the feature engine history, not to contribute trades.
-        scored = tuple(t for t in replayed.trades if test_from <= t.signal_created_at <= test_to)
-        windowed = BacktestRunResult(
-            trades=scored,
-            signals=replayed.signals,
-            features=replayed.features,
-        )
-        score = objective(windowed)
-
-        if len(scored) < fold_min_trades:
-            passed, reason = False, f"insufficient_test_trades: {len(scored)} < {fold_min_trades}"
-        elif score > threshold:
-            passed, reason = True, f"score {score} above {threshold}"
-        else:
-            passed, reason = False, f"score {score} not above {threshold}"
-
-        results.append(
-            FoldResult(
-                index=fold.index,
-                windows=fold,
-                train_from=train_slice[0].closed_at,
-                test_from=test_from,
-                test_to=test_to,
-                in_sample=report,
-                selected=selected,
-                test_trades=len(scored),
-                test_score=score,
-                passed=passed,
-                reason=reason,
-                test_trade_details=scored,
-            ),
-        )
-
+        for fold in folds
+    ]
     return WalkForwardReport(folds=tuple(results), threshold=threshold)
+
+
+def evaluate_fold(
+    ordered: Sequence[DailyBar],
+    fold: FoldWindows,
+    grid: ParameterGrid,
+    *,
+    replay: Replay,
+    objective: Callable[[BacktestRunResult], Decimal],
+    min_trades: int,
+    cliff_drop: Decimal,
+    warmup_bars: int,
+    fold_min_trades: int,
+    threshold: Decimal,
+) -> FoldResult:
+    """
+    Select on the fold's training window, then score its test window.
+
+    The one evaluator behind every fold of every verdict - and, through
+    :mod:`copilot.validation.spend`, behind the single-use holdout test, which is built
+    as exactly one more fold so that the number it produces was made by the same code
+    path as the thirty it is compared against. ``ordered`` must already be sorted by
+    ``closed_at``.
+
+    """
+    train_slice = ordered[fold.train]
+    report = search_in_sample(
+        train_slice,
+        grid,
+        replay=replay,
+        objective=objective,
+        min_trades=min_trades,
+        cliff_drop=cliff_drop,
+    )
+    selected = report.selected
+
+    test_slice = ordered[fold.test]
+    test_from = test_slice[0].closed_at
+    test_to = test_slice[-1].closed_at
+
+    if selected is None:
+        return FoldResult(
+            index=fold.index,
+            windows=fold,
+            train_from=train_slice[0].closed_at,
+            test_from=test_from,
+            test_to=test_to,
+            in_sample=report,
+            selected=None,
+            test_trades=0,
+            test_score=Decimal(0),
+            passed=False,
+            reason="in_sample_selected_nothing",
+        )
+
+    warmup_start = max(0, fold.purge_end - warmup_bars)
+    replayed = replay(ordered[warmup_start : fold.test_end], selected.parameters)
+    # Score only what the test window itself produced: the warm-up exists to give
+    # the feature engine history, not to contribute trades.
+    scored = tuple(t for t in replayed.trades if test_from <= t.signal_created_at <= test_to)
+    windowed = BacktestRunResult(
+        trades=scored,
+        signals=replayed.signals,
+        features=replayed.features,
+    )
+    score = objective(windowed)
+
+    if len(scored) < fold_min_trades:
+        passed, reason = False, f"insufficient_test_trades: {len(scored)} < {fold_min_trades}"
+    elif score > threshold:
+        passed, reason = True, f"score {score} above {threshold}"
+    else:
+        passed, reason = False, f"score {score} not above {threshold}"
+
+    return FoldResult(
+        index=fold.index,
+        windows=fold,
+        train_from=train_slice[0].closed_at,
+        test_from=test_from,
+        test_to=test_to,
+        in_sample=report,
+        selected=selected,
+        test_trades=len(scored),
+        test_score=score,
+        passed=passed,
+        reason=reason,
+        test_trade_details=scored,
+    )
 
 
 __all__ = [
@@ -409,5 +441,6 @@ __all__ = [
     "FoldWindows",
     "WalkForwardReport",
     "build_folds",
+    "evaluate_fold",
     "walk_forward",
 ]
