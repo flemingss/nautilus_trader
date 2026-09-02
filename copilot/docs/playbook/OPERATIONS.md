@@ -131,6 +131,39 @@ treat an order whose status cannot be confirmed as an alert rather than a pass.
 - Archive logs, config, data manifest, identifier map and any incident report.
 - Attribute P&L to market move, signal, spread, slippage, fees, FX and manual intervention.
 
+## Which layer owns a surprise
+
+The first question on any failure, asked before the cause is guessed at. Every surprise
+on the broker path lives in one of four layers, each with its own reference and its own
+fix, and the week that established this list spent most of its debugging time on the
+layer *between* a symptom and its owner.
+
+| Layer                                  | What it decides                                                                                           | Reference                                                                                          |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| **The broker** - IB's servers and TWS  | Entitlements, sessions, error codes, order binding, GUI-side settings, what the paper environment honours | IB's TWS API reference; `PREFLIGHT.md` and `PAPER_CAMPAIGN.md` for what this account actually does |
+| **The wire crate** - `ibapi` (Rust)    | How our code speaks the protocol, what a call returns, which conveniences exist                           | `docs.rs/ibapi`; a third party's reasoning arriving as a dependency                                |
+| **Our adapter and engine** - inherited | What we do with the broker's answers: maps, events, reconciliation, risk checks                           | The code, Nautilus's developer guides, `UPSTREAM_DELTA.md`                                         |
+| **Our environment** - this machine     | Addresses, timezones, credentials, which venv a hook sees                                                 | `MAINTENANCE.md`, "Standing up a new machine"                                                      |
+
+Sorted from the first week of broker work, so the pattern is visible:
+
+| Symptom                                                                | Layer       | Why it was not the layer it resembled                                                                                      |
+| ---------------------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------- |
+| IB 2188 on every historical request                                    | Broker      | Looked like an adapter bug; it is a subscription rule, documented, and unchanged by any code                               |
+| IB 162 after opening the web portal                                    | Broker      | Looked like an entitlement change; it is one-session-per-login, and reading 2188 while 162 is active gives a wrong answer  |
+| IB 321, then no account, no balances                                   | Broker      | Two failures that named nothing; a Read-Only API checkbox in the TWS GUI                                                   |
+| Four orders sitting in TWS hours later                                 | Broker      | A precautionary size setting holding them unsent; invisible to every API call, unfixable in code                           |
+| Paper accepts a USD 24M order on a USD 1M account                      | Broker      | Paper does not enforce buying power on a far-from-market limit; the reject path cannot be decided here                     |
+| "Failed to connect" on every attempt in a fresh shell                  | Wire crate  | Looked like TWS; `ibapi` has no alias for the `JST` TWS reports, and says nothing useful                                   |
+| `max_notional_per_order` never fires                                   | Our engine  | Looked like paper leniency; the account lookup by instrument venue fails on IB and the check was skipped, silently         |
+| A working order reported on every reconnect, cancellable by no tool    | Our engine  | Looked like a broker quirk; reconciliation dropped external `SUBMITTED` orders on the floor                                |
+| Cancel-all sends the cancel, then nothing - no event, cache still open | Our adapter | Looked like IB refusing a foreign-client cancel; TWS accepted it, and only our bookkeeping failed                          |
+| Trusted IPs entry that worked yesterday does not today                 | Environment | Looked like a TWS regression; the WSL address changes on reboot, and a container appears as loopback while native does not |
+
+The tell, in every row: the symptom's wording named the wrong layer. Read the layer off
+the *mechanism* once it is found, never off the error text, and write the row here when
+it is.
+
 ## Disconnect and recovery
 
 IBKR publishes reset windows and warns that login and order management can be interrupted
