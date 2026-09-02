@@ -2,6 +2,19 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the front page says what this is)
+
+### Changed
+
+- **`README.md` rewritten for ownership.** The inherited front page was upstream's
+  product page - their badges, release tables, install story and community links - so
+  the first thing a reader saw answered "what is this repository" with someone else's
+  product. The rewrite states what this copy is (a privately operated system on a
+  detached copy of NautilusTrader, per ADR-0010), routes readers to the charter,
+  roadmap and working rules, and credits upstream, whose LGPL-3.0 license continues to
+  apply. Registered in the delta; the last item of the ownership pass that started with
+  PR #26.
+
 ## 2026-09-02 (the holdout is carved)
 
 ### Decided
