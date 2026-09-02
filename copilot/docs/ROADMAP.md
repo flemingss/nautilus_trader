@@ -152,14 +152,19 @@ What stages 1 to 6 need built, none of it blocked:
 | Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                             |
 | A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                    |
 | Map catalog ids to broker ids   | **Built**, `live/symbology.py`. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`, with the routing table listed rather than defaulted so an unmapped venue raises.               |
-| Failure injection               | **Open.** Stage 6: stale data, disconnect, reject, reconciliation mismatch. The reconciliation gap below is one of these, found early.                                          |
+| Failure injection               | **Open, tracked** under "Ready to build" below. Stage 6: stale data, disconnect, reject, reconciliation mismatch. The reconciliation gap below is one of these, found early.    |
 
 ## Open work, grouped by what unblocks it
 
-Eleven items. Grouped by blocking condition rather than by component, because that is
+Fourteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
+
+**The grooming rule:** anything surfaced as an action - in a session, a review, or a
+detail table below - gets a row in one of these groups before the session that surfaced
+it ends. Three items sat outside the count because they lived only in a status table, a
+conversation, and a test log; the count exists so that cannot happen quietly.
 
 ### Waiting on the account (3)
 
@@ -171,6 +176,17 @@ groups below inherit their block, which is why they sit first.
 | **Clear the IBKR market-data equity minimum**                     | 10     | Market-data subscriptions are gated on account equity and the account is below the bar. Funds have been added; settlement expected **on or after 2026-09-08**. Until then the only US equity quotes available are the complimentary **delayed, non-consolidated** feed. |
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
+
+### Ready to build (3)
+
+Nothing stands in front of these - no account event, no decision, no spend. Promoted
+2026-09-02 under the grooming rule above.
+
+| Item                                     | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Failure injection**                    | 08    | Paper stage 6: stale data, disconnect, broker reject, reconciliation mismatch. The last unbuilt piece of paper stages 1-6. The reject leg needs deliberate provocation - the paper account accepted a USD 1.2M and a USD 24M order without complaint - and **the reject path must be seen to work before any size increase**. Wants a live TWS session for the data-driven legs. |
+| Rewrite the README for ownership         | -     | The root README is still upstream's product page: their logo, badges, release table, support address, and links into `nautechsystems/*`. Its own pull request; the ownership pass of 2026-09-02 deliberately left it out because it is a rewrite, not a deletion.                                                                                                                |
+| Triage the failing inherited msgbus test | -     | `test_republish_external_msgbus_message_logs_topic_and_error_chain` in `crates/live` fails on a clean tree (confirmed 2026-09-02 while validating the `add_actor` change). A defect in inherited code is a defect in ours: diagnose, then fix here or record why the test is wrong, registering the file if one changes.                                                         |
 
 ### Waiting on a decision (1)
 
