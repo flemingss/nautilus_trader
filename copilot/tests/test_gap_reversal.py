@@ -20,6 +20,7 @@ import pytest
 
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
+from copilot.strategies.gap_reversal import ENTRY_TIMINGS
 from copilot.strategies.gap_reversal import MAX_SEARCHABLE_MIN_GAP_ATR
 from copilot.strategies.gap_reversal import SEARCH_SPACE
 from copilot.strategies.gap_reversal import GapReversalConfig
@@ -167,6 +168,92 @@ def test_a_larger_threshold_takes_strictly_fewer_trades():
     loose = len(run(specs, min_gap_atr="0.15").trades)
     tight = len(run(specs, min_gap_atr="1.2").trades)
     assert tight <= loose
+
+
+# ---------------------------------------------------------------- entry timing
+
+
+# One series serving both bounds of the ADR-0013 bracket: the gap fires on the bar
+# closing at 98, the following session closes at 99, and the tail then reaches a long's
+# target from either entry without approaching either stop.
+BRACKET_SPECS = [
+    *flat_series(20),
+    ("96", "99", "95", "98"),  # signal bar: 2 ATR gap down, closes 98
+    ("97", "99.5", "96.5", "99"),  # the next session, closing 99
+    ("99", "101.5", "98.5", "101"),
+    *flat_series(3, price="101"),
+]
+
+
+def test_the_bracket_bounds_fill_one_session_apart():
+    """
+    ADR-0013's two bounds, measured on the same bars.
+
+    ``signal_close`` fills at the close that produced the signal; ``next_close`` freezes
+    the decision and fills at the following session's close. Same premise, same trigger
+    bar, entries one session and one price apart - which is the entire point of running
+    both.
+
+    """
+    optimistic = run(BRACKET_SPECS, min_gap_atr="0.25")
+    pessimistic = run(BRACKET_SPECS, min_gap_atr="0.25", entry_timing="next_close")
+
+    assert len(optimistic.trades) == 1
+    assert len(pessimistic.trades) == 1
+    assert optimistic.trades[0].entry_price == Decimal(98)
+    assert pessimistic.trades[0].entry_price == Decimal(99)
+    assert pessimistic.trades[0].opened_at - optimistic.trades[0].opened_at == timedelta(days=1)
+
+
+def test_next_close_freezes_the_atr_at_the_signal_bar():
+    """
+    The deferral carries the signal-time ATR, not the fill bar's.
+
+    The fill bar here has a range wide enough to multiply a live ATR several times over.
+    If the levels were rebuilt from it, the recorded stop distance (risk over quantity)
+    would be several times the frozen one - so a small distance is only reachable with
+    the ATR frozen at the signal.
+
+    """
+    specs = [
+        *flat_series(20),
+        ("96", "99", "95", "98"),  # signal bar; ATR ~= 2 here
+        ("97", "120", "90", "99"),  # its session: a 30-wide bar the live ATR would eat
+        ("99", "101.5", "98.5", "101"),
+        *flat_series(3, price="101"),
+    ]
+    result = run(specs, min_gap_atr="0.25", entry_timing="next_close")
+
+    assert len(result.trades) == 1
+    trade = result.trades[0]
+    stop_distance = trade.risk_amount / trade.quantity
+    # Frozen: ~2 ATR x 1.5 = ~3. Live at the fill bar would be at least double that.
+    assert stop_distance < Decimal(5)
+
+
+def test_a_signal_on_the_final_bar_never_fills_under_next_close():
+    """
+    A deferred decision with no next session is a trade left on the table, silently.
+
+    The charter's own rule has the same property - an order for the next session cannot
+    fill when no next session exists - so the run must end clean rather than erroring or
+    inventing a same-bar fill.
+
+    """
+    specs = [*flat_series(20), ("96", "99", "95", "98")]
+    result = run(specs, min_gap_atr="0.25", entry_timing="next_close")
+
+    assert result.trades == ()
+
+
+def test_an_unknown_entry_timing_is_rejected():
+    """
+    A typo here would silently measure the optimistic bound while the operator believes
+    the charter-compliant one is running - the config refuses instead.
+    """
+    with pytest.raises(ValueError, match="entry_timing"):
+        a_strategy(entry_timing="next_open")
+    assert ENTRY_TIMINGS == ("signal_close", "next_close")
 
 
 def test_require_unfilled_rejects_a_gap_the_session_closed():
@@ -355,6 +442,7 @@ def test_the_search_space_ceiling_is_pinned():
 
     Raising this ceiling is allowed. Raising it without counting events on the current
     universe is not, and that is what this test is here to interrupt.
+
     """
     assert max(SEARCH_SPACE["min_gap_atr"]) == MAX_SEARCHABLE_MIN_GAP_ATR
     assert Decimal("0.40") == MAX_SEARCHABLE_MIN_GAP_ATR
@@ -364,9 +452,10 @@ def test_the_search_space_stays_small():
     """
     Size is quantitative, not stylistic.
 
-    The best score obtainable from pure noise grows with the number of trials, so a
-    six-point space buys real headroom against the deflation statistic that an 81-point
-    one does not.
+    The best score obtainable from pure noise grows with the number of trials, so a six-
+    point space buys real headroom against the deflation statistic that an 81-point one
+    does not.
+
     """
     points = 1
     for values in SEARCH_SPACE.values():
@@ -381,6 +470,7 @@ def test_every_searched_threshold_produces_trades_on_real_bars():
     `test_the_searched_thresholds_all_produce_trades` above pins it on synthetic bars.
     This one guards the pairing: if a value is ever added to `SEARCH_SPACE` that the
     synthetic fixture happens not to cover, it is still asserted here.
+
     """
     assert set(SEARCH_SPACE["min_gap_atr"]) == {
         Decimal("0.15"),

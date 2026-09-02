@@ -1,0 +1,23 @@
+strategy = "gap_reversal"
+lifecycle = "RESEARCH"
+note = "The pessimistic bound of the ADR-0013 entry-timing bracket: the decision freezes at the signal close, the entry fills at the NEXT session's close. The only timing mode a holdout may be spent on. Same premise and identity as the signal_close activation of the same name, but a different experiment - verdicts are not comparable across timing modes."
+
+[instrument]
+symbol = "SPY"
+venue = "ARCX"
+
+[parameters]
+long = true
+entry_timing = "next_close"
+require_unfilled = false
+atr_period = 14
+stop_atr = "1.5"
+entry_buffer_atr = "0.25"
+risk_budget = "1000"
+
+[validation]
+train_bars = 252
+test_bars = 126
+purge_bars = 5
+min_trades = 20
+fold_min_trades = 5

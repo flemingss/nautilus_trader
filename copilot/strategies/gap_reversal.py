@@ -29,28 +29,34 @@ The economic content is the overnight-to-intraday reversal, with the asymmetry t
 gap-downs revert materially more often than gap-ups (~52% vs ~35% on SPY), which is why
 the legs stay separate strategies rather than one rule taking the absolute gap.
 
-Port note: entry fills at the signal bar's close
-------------------------------------------------
-**This is a real divergence from the original and it changes results.**
+Entry timing: a bracket, not a point (ADR-0013)
+-----------------------------------------------
+The charter requires trading no earlier than the next eligible session; this port
+originally filled at the signal bar's close. Neither the original's next-*open* entry
+nor the charter's concession-bounded window is expressible on a daily-bar replay -
+the next session's open is consumed as a matching tick before any order submitted from
+``on_bar`` can arrive, and the matching engine rejects ``AT_THE_OPEN`` outright
+(measured; the table is in
+`ADR-0013 <../docs/decisions/0013-entry-timing-is-evaluated-as-a-bracket.md>`_).
 
-trade-copilot evaluates at the close and fills at the *next open*, and its docstring is
-explicit that this is a weaker version of the published effect because much of the
-intraday reversion has already happened by then.
+So ``entry_timing`` selects one of the two bounds that *are* expressible:
 
-Nautilus fills a market order submitted from ``on_bar`` at the **close of the bar that
-triggered it** - verified against the engine, not assumed. That is not lookahead:
-``on_bar`` fires after the bar has closed, so the price is known when the decision is
-made. It is a market-on-close assumption, and it is mildly optimistic in a different
-way: it assumes the closing print can be transacted at exactly the level that was just
-used to decide.
+- ``"signal_close"`` - the **optimistic bound**. A market order submitted from
+  ``on_bar(t)`` settles against the book bar t left, so it fills at the close that was
+  just used to decide. Not lookahead - ``on_bar`` fires after the close - but it assumes
+  the closing print is transactable at that level. Diagnostic only; never promotable
+  past RESEARCH and never the holdout candidate.
+- ``"next_close"`` - the **pessimistic bound**, and the only spendable one. The decision
+  freezes at bar t (trigger, direction, and the ATR the levels are built from); the
+  entry submits on bar t+1 and fills at *its* close, giving away a full further session
+  of the reversion - deliberately more than the charter's first-hours window would.
 
-Two consequences, both deliberate:
+Verdicts are never comparable across timing modes, and neither mode is comparable with
+trade-copilot's next-open verdicts on the same premise.
 
-- **Verdicts from this port are not comparable with trade-copilot's** on the same
-  premise. The entry is a session earlier, so the two are measuring different trades.
-- The MOC assumption is exactly what the paper run's final step checks - compare
-  realised fills against the modelled cost. Until then it is an assumption on the
-  record, not a validated one.
+The fill assumption at either bound is exactly what the paper run's final step checks -
+compare realised fills against the modelled cost. Until then it is an assumption on the
+record, not a validated one.
 
 Risk reporting
 --------------
@@ -113,17 +119,31 @@ SEARCH_SPACE: dict[str, tuple[Decimal, ...]] = {
 }
 
 MAX_SEARCHABLE_MIN_GAP_ATR = Decimal("0.40")
-"""Loosest threshold that still clears the eligibility floor.
+"""
+Loosest threshold that still clears the eligibility floor.
 
 Widening past this produces folds with too few trades to score, which the gate reports
-as no verdict rather than a weak one - the failure that looks like a bug."""
+as no verdict rather than a weak one - the failure that looks like a bug.
+
+"""
+
+ENTRY_TIMINGS = ("signal_close", "next_close")
+"""
+The two expressible bounds of ADR-0013's bracket.
+
+Anything else is a typo.
+
+"""
 
 WARMUP_BARS = DEFAULT_ATR_PERIOD + 2
-"""History the rule needs before it can fire.
+"""
+History the rule needs before it can fire.
 
 The trigger compares this bar's open against the previous close, so two bars is the true
 requirement; sized to the ATR window anyway so a warm-up taken from this figure is never
-shorter than the indicator needs."""
+shorter than the indicator needs.
+
+"""
 
 
 class GapReversalConfig(StrategyConfig):
@@ -149,6 +169,7 @@ class GapReversalConfig(StrategyConfig):
         "risk_budget",
         "require_unfilled",
         "long",
+        "entry_timing",
     )
 
     def __new__(cls, *args: object, **kwargs: object):  # noqa: ANN204 - pyo3 base
@@ -171,11 +192,18 @@ class GapReversalConfig(StrategyConfig):
         risk_budget: str = DEFAULT_RISK_BUDGET,
         require_unfilled: bool = False,
         long: bool = True,
+        entry_timing: str = "signal_close",
         **_kwargs: object,
     ) -> None:
         """
         Configure one leg of the fade.
         """
+        if entry_timing not in ENTRY_TIMINGS:
+            # A misspelled mode would otherwise run the optimistic bound while the
+            # operator believes the charter-compliant one is being measured.
+            raise ValueError(
+                f"entry_timing must be one of {ENTRY_TIMINGS}, got {entry_timing!r}",
+            )
         super().__init__()
         self.instrument_id = instrument_id
         self.bar_type = bar_type
@@ -186,6 +214,7 @@ class GapReversalConfig(StrategyConfig):
         self.risk_budget = risk_budget
         self.require_unfilled = require_unfilled
         self.long = long
+        self.entry_timing = entry_timing
 
 
 class GapReversalStrategy(Strategy):
@@ -202,6 +231,15 @@ class GapReversalStrategy(Strategy):
         self._previous_close: Decimal | None = None
         self._registry: Any = None
         self._pending_risk = Decimal(0)
+        self._deferred_atr: Decimal | None = None
+        """
+        A decision frozen at the signal bar, awaiting its session (``next_close`` only).
+
+        The ATR is the whole frozen state: direction and level multiples are config, and
+        the entry anchors to the fill bar's close, so the signal-time ATR is the one
+        input the deferral has to carry across.
+
+        """
         self.skips: dict[str, int] = {}
         """
         Why the rule declined, counted by reason.
@@ -237,6 +275,13 @@ class GapReversalStrategy(Strategy):
         """
         previous_close, self._previous_close = self._previous_close, Decimal(str(bar.close))
 
+        # A deferred entry executes on this bar before anything else is considered: the
+        # decision was made at the previous close and this bar is its session. Either
+        # way it consumes this bar's action - evaluating a fresh signal on the same bar
+        # would stack a second commitment the risk budget was never sized for.
+        if self._execute_deferred(bar):
+            return
+
         if not self._atr.initialized:
             self._skip("insufficient_history")
             return
@@ -256,10 +301,30 @@ class GapReversalStrategy(Strategy):
             self._skip("position_already_open")
             return
 
-        if not self._triggered(bar, previous_close, atr):
-            return
+        if self._triggered(bar, previous_close, atr):
+            if self.config.entry_timing == "next_close":
+                # Freeze the decision; the next session executes it. A signal on the
+                # last bar of a window simply never fills, the same trade the charter's
+                # own rule would have left on the table.
+                self._deferred_atr = atr
+            else:
+                self._enter(bar, atr)
 
-        self._enter(bar, atr)
+    def _execute_deferred(self, bar: Bar) -> bool:
+        """
+        Fill a decision frozen on the previous bar.
+
+        Returns whether this bar was consumed by it.
+
+        """
+        if self._deferred_atr is None:
+            return False
+        deferred_atr, self._deferred_atr = self._deferred_atr, None
+        if self.portfolio.is_net_flat(self.config.instrument_id):
+            self._enter(bar, deferred_atr)
+        else:
+            self._skip("deferred_entry_blocked_by_position")
+        return True
 
     def _triggered(self, bar: Bar, previous_close: Decimal, atr: Decimal) -> bool:
         """
@@ -377,6 +442,7 @@ def strategy_factory(
             risk_budget=str(parameters.get("risk_budget", DEFAULT_RISK_BUDGET)),
             require_unfilled=bool(parameters.get("require_unfilled", False)),
             long=bool(parameters.get("long", True)),
+            entry_timing=str(parameters.get("entry_timing", "signal_close")),
         ),
     )
     strategy.configure(risk_registry)
@@ -389,6 +455,7 @@ __all__ = [
     "DEFAULT_RISK_BUDGET",
     "DEFAULT_STOP_ATR",
     "DEFAULT_TARGET_ATR",
+    "ENTRY_TIMINGS",
     "MAX_SEARCHABLE_MIN_GAP_ATR",
     "SEARCH_SPACE",
     "WARMUP_BARS",

@@ -77,11 +77,24 @@ the development window only
 python -m copilot.strategies.validate --all --write
 ```
 
-| Symbol | Folds passed | Mean OOS, net   | Trades | Majority |
-| ------ | ------------ | --------------- | ------ | -------- |
-| AAPL   | 16 / 31      | **+0.046877 R** | 469    | pass     |
-| MSFT   | 20 / 31      | **+0.089455 R** | 444    | pass     |
-| SPY    | 17 / 30      | **+0.049848 R** | 490    | pass     |
+The premise runs at both bounds of the
+[ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md) entry-timing
+bracket - `signal_close` is diagnostic only, `next_close` is charter-compliant and the
+only spendable mode:
+
+| Symbol | `signal_close` (diagnostic) | `next_close` (spendable)        | Majority   |
+| ------ | --------------------------- | ------------------------------- | ---------- |
+| AAPL   | 16 / 31, +0.046877 R, 469 t | 20 / 30, **+0.101677 R**, 401 t | pass, both |
+| MSFT   | 20 / 31, +0.089455 R, 444 t | 17 / 31, **+0.065973 R**, 375 t | pass, both |
+| SPY    | 17 / 30, +0.049848 R, 490 t | 19 / 31, **+0.053016 R**, 439 t | pass, both |
+
+**The bounds did not order the way their assumptions suggested.** Deferring the entry a
+full session *raised* AAPL's and SPY's net edge and lowered only MSFT's - so the
+reversion this premise captures is not concentrated in session t+1, and the fear that
+charter-compliant entry would kill the edge is answered: it does not. Read the AAPL jump
+with suspicion rather than excitement: the two modes trade materially different
+populations (deferral blocks consecutive-gap re-entries and shifts every subsequent
+entry), which is exactly why ADR-0013 forbids comparing verdicts across modes.
 
 The development window is 2005-01-03 to 2021-12-31 (4,280 bars per symbol); the 1,003
 bars from 2022-01-03 on are the locked holdout, withheld before the gate sees a bar.
@@ -103,14 +116,15 @@ experiment rather than to a memory of one.
    now exists - carved at 2022-01-01
    ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)), so the flag is
    finally backed by a real reservation - but it has never been spent, and spending it
-   is a deliberate separate act for which no tool exists yet, on purpose. It must wait
-   for the entry-timing conflict below to be resolved first, or the one-time test is
-   spent on fill semantics the charter has already rejected.
-2. **Entry fills at the signal bar's close**, not the next open as in the original - a
-   different and slightly more favourable execution assumption, documented in the module.
-   The two systems' verdicts on this premise are not comparable - and the cost model's
-   spread is sampled mid-session, not at the entry moment, which is one of the reasons
-   [ADR-0011] chose p95.
+   is a deliberate separate act for which no tool exists yet, on purpose. The
+   entry-timing gate on the spend is resolved (ADR-0013): the spend, when chosen, goes
+   to `spy-gap-fade-long-next-close` and to no `signal_close` activation ever.
+2. **Neither bound models the charter's actual execution rule** - a limit inside the
+   first hours of session t+1 lies between `signal_close` and `next_close`, and neither
+   bound's verdict is comparable with the original's next-open entry. The cost model's
+   spread is also sampled mid-session, not at the entry moment, which is one of the
+   reasons [ADR-0011] chose p95. Superseding the bracket by measuring the real window
+   is the intraday-data trigger named in ADR-0013.
 3. **SPY is the lead candidate; the single-name verdicts are provisional.** The charter's
    instrument default is *"liquid US-listed ETFs first; large caps only once the pipeline
    handles point-in-time universes and corporate actions"* - and the pipeline handles
@@ -165,7 +179,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Eleven items. Grouped by blocking condition rather than by component, because that is
+Ten items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -230,21 +244,21 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Charter conflicts, opened 2026-09-01 (2)
+### Charter conflicts, opened 2026-09-01 (1)
 
 Adopting [`CHARTER.md`](CHARTER.md) surfaced four places where the code does not match the
-process it is now governed by. Two are resolved -
-[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) and, as of
-2026-09-02, the holdout carve
-([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): pinned at
-2022-01-01, 18.99% reserved, unspent). These two are open, and the entry-timing one now
-**gates the holdout spend**: walk-forward re-runs are free, the holdout is not, so the
-fill semantics must match the charter before the one-time test is used.
+process it is now governed by. Three are resolved -
+[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md), the holdout
+carve ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): pinned at
+2022-01-01, 18.99% reserved, unspent), and as of 2026-09-02 entry timing
+([ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md): next-open entry is
+not expressible on the daily-bar replay, so the premise runs at both bounds that are, and
+**only a `next_close` activation may spend a holdout**). The entry-timing resolution
+un-gates the holdout spend; the bracket verdict is under stage 02 below.
 
-| Item                                 | Stage | Notes                                                                                                                                                                                   |
-| ------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Move entry to the next session**   | 02    | The gap fade fills at the signal bar's close. The charter requires next-eligible-session entry. Changing it is a new experiment rather than a fix, so it resets the premise's evidence. |
-| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities.                  |
+| Item                                 | Stage | Notes                                                                                                                                                                  |
+| ------------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities. |
 
 ### Waiting on spend (2)
 
@@ -314,14 +328,16 @@ and without one there is nothing to validate or deploy.
    [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): pinned at
    2022-01-01, and all three activations re-validated over the development window alone.
    All three majority-pass net.
-4. **Move entry to the next session, then re-validate** - the remaining charter conflict
-   that gates everything after it. Spending the holdout on signal-close fills would
-   burn the one-time test on execution semantics the charter has already rejected;
-   walk-forward re-runs after the change are free.
-5. **Spend the holdout - SPY first** - the deliberate one-time act, for a candidate that
-   still passes step 4. **SPY first**: the charter trades ETFs before single names, and
-   SPY's is the only verdict that leans on neither the survivor-chosen universe nor the
-   hand-maintained splits table.
+4. ~~**Move entry to the next session, then re-validate**~~ - done 2026-09-02,
+   [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md): next-open entry
+   is not expressible on the daily-bar replay, so the premise runs at both expressible
+   bounds. All six activations majority-pass net; the bracket table is under stage 02.
+5. **Spend the holdout - `spy-gap-fade-long-next-close` first** - the deliberate
+   one-time act, now un-gated. Only a `next_close` activation is spendable (ADR-0013),
+   and **SPY first**: the charter trades ETFs before single names, and SPY's is the only
+   verdict that leans on neither the survivor-chosen universe nor the hand-maintained
+   splits table. No spend tool exists yet, on purpose - building it is the next piece of
+   this step.
 6. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
    survives step 5. This is the first time the breakers can fire; they cannot fire in a
    backtest by design.

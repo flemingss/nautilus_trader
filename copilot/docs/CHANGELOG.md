@@ -2,6 +2,46 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (entry timing becomes a bracket, and the bracket surprises)
+
+### Decided
+
+- **[ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md): entry timing is
+  evaluated as a bracket.** The plan to move the gap fade's entry to the next session's
+  *open* died against the engine, measured five ways: an order submitted from ``on_bar``
+  settles against the book the signal bar left (market and marketable limit both fill at
+  the signal close), a deferred market order fills at the *next* session's close, a
+  resting limit fills at its own price with no opening improvement, and the matching
+  engine rejects ``AT_THE_OPEN`` outright. Next-open entry - and the charter's
+  concession-bounded window - is not expressible on a daily-bar replay. So the premise
+  runs at both bounds that are: ``signal_close`` (diagnostic only, never promotable) and
+  ``next_close`` (charter-compliant, the only mode a holdout may be spent on). The
+  entry-timing charter conflict closes, and the holdout spend is un-gated.
+
+### Added
+
+- **`entry_timing` on the gap fade** - identity, not a searchable axis (ADR-0005): it
+  lives in an activation's `[parameters]`, never in `SEARCH_SPACE`. In ``next_close``
+  mode the decision freezes at the signal bar (trigger and the ATR the levels are built
+  from) and the entry submits on the following bar, consuming its action; a signal on a
+  window's final bar simply never fills, as the charter's own rule would have it. An
+  unknown mode raises rather than silently measuring the wrong bound. Five tests,
+  including one verified to fail against a sabotaged (live-ATR) deferral.
+- **Three `*-gap-fade-long-next-close` activations** - new experiments per the charter,
+  not edits to the existing three, which keep their names and their history.
+
+### Measured
+
+- **All six activations majority-pass net, and the bounds did not order as assumed.**
+  Deferring entry a full session raised AAPL (+0.0469 to **+0.1017 R**, 20/30) and SPY
+  (+0.0498 to **+0.0530 R**, 19/31) and lowered only MSFT (+0.0895 to +0.0660 R, 17/31).
+  The reversion this premise captures is therefore not concentrated in session t+1, and
+  the fear that charter-compliant entry kills the edge is answered: it does not. The
+  AAPL jump is to be read with suspicion, not excitement - the modes trade materially
+  different populations (deferral blocks consecutive-gap re-entries), which is why
+  ADR-0013 forbids cross-mode comparison. Verdicts filed for all six from one catalog
+  and commit state.
+
 ## 2026-09-02 (rehydrating on a bare WSL box, and what it cost)
 
 ### Added

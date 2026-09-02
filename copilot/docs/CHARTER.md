@@ -111,12 +111,12 @@ new experiment ID), or **freeze**.
 Written down because the charter was adopted after the code existed, and four conflicts
 came with it. Each is tracked in [`ROADMAP.md`](ROADMAP.md).
 
-| Charter says                                          | Code does                                                          | Status                                                                                                                                           |
-| ----------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Reserve the most recent 15-20% as a locked holdout    | The carve withholds bars from 2022-01-01 before the gate sees them | **Resolved as [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md).** 18.99% reserved, pinned by date, unspent                      |
-| Trade no earlier than the next eligible session       | The gap fade fills at the signal bar's close                       | **Conflict.** Documented in the module as a divergence; the charter says it is not acceptable                                                    |
-| Do not use today's survivors as a historical universe | The 20-symbol universe is today's large caps                       | **Survivor-biased.** Known, not yet corrected                                                                                                    |
-| Cost must hold at the traded account size             | Research default risks USD 1,000 per trade                         | **Resolved as [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md).** The premise is negative at the charter's account size |
+| Charter says                                          | Code does                                                          | Status                                                                                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Reserve the most recent 15-20% as a locked holdout    | The carve withholds bars from 2022-01-01 before the gate sees them | **Resolved as [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md).** 18.99% reserved, pinned by date, unspent                       |
+| Trade no earlier than the next eligible session       | The gap fade fills at the signal bar's close                       | **Resolved as [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md).** Both expressible bounds run; only `next_close` is spendable |
+| Do not use today's survivors as a historical universe | The 20-symbol universe is today's large caps                       | **Survivor-biased.** Known, not yet corrected                                                                                                     |
+| Cost must hold at the traded account size             | Research default risks USD 1,000 per trade                         | **Resolved as [ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md).** The premise is negative at the charter's account size  |
 
 ## Principles
 

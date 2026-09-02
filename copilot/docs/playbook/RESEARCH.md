@@ -99,9 +99,11 @@ partial reopening.
 > ([ADR-0012](../decisions/0012-the-holdout-is-carved-at-2022-01-01.md)): bars from
 > 2022-01-01 (18.99% of the catalog) are withheld before the gate sees them, every
 > verdict names what was withheld, and `holdout_spent: false` is backed by a real
-> reservation. No tool for spending it exists yet, deliberately - and the spend waits on
-> the entry-timing conflict, so the one-time test is not burned on fill semantics the
-> charter rejects.
+> reservation. No tool for spending it exists yet, deliberately. The entry-timing gate
+> on the spend is resolved
+> ([ADR-0013](../decisions/0013-entry-timing-is-evaluated-as-a-bracket.md)): a holdout
+> is spent only on a `next_close` activation, so the one-time test cannot be burned on
+> fill semantics the charter rejects.
 
 ## Configuration search
 
@@ -141,11 +143,13 @@ observe completed bar t -> calculate signal after close
   -> create order intent -> trade no earlier than the next eligible session
 ```
 
-> **The gap fade violates this.** It fills at the signal bar's close, verified against the
-> engine rather than assumed. That is a market-on-close assumption: not lookahead, since
-> `on_bar` fires after the bar closed, but it does assume the closing print is transactable
-> at the level just used to decide. Tracked, and a reason its verdicts are not comparable
-> with anything using next-session entry.
+> **Resolved as a bracket
+> ([ADR-0013](../decisions/0013-entry-timing-is-evaluated-as-a-bracket.md), 2026-09-02).**
+> Next-open entry is not expressible on the daily-bar replay, so the gap fade runs at both
+> bounds that are: `signal_close` (a market-on-close assumption - not lookahead, but it
+> assumes the closing print is transactable at the level just used to decide; diagnostic
+> only) and `next_close` (next session's close; charter-compliant and the only mode a
+> holdout may be spent on). Verdicts are never comparable across timing modes.
 
 Model commission and regulatory fees; half or full spread depending on order policy;
 slippage that worsens with volatility and size; gap risk between decision and execution;
