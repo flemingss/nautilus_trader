@@ -165,7 +165,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twelve items. Grouped by blocking condition rather than by component, because that is
+Eleven items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -186,15 +186,23 @@ groups below inherit their block, which is why they sit first.
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
-### Ready to build (2)
+### Ready to build (1)
 
 Nothing stands in front of these - no account event, no decision, no spend. Promoted
 2026-09-02 under the grooming rule above.
 
-| Item                                     | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Failure injection**                    | 08    | Paper stage 6: stale data, disconnect, broker reject, reconciliation mismatch. The last unbuilt piece of paper stages 1-6. The reject leg needs deliberate provocation - the paper account accepted a USD 1.2M and a USD 24M order without complaint - and **the reject path must be seen to work before any size increase**. Wants a live TWS session for the data-driven legs. |
-| Triage the failing inherited msgbus test | -     | `test_republish_external_msgbus_message_logs_topic_and_error_chain` in `crates/live` fails on a clean tree (confirmed 2026-09-02 while validating the `add_actor` change). A defect in inherited code is a defect in ours: diagnose, then fix here or record why the test is wrong, registering the file if one changes.                                                         |
+| Item                  | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                            |
+| --------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Failure injection** | 08    | Paper stage 6: stale data, disconnect, broker reject, reconciliation mismatch. The last unbuilt piece of paper stages 1-6. The reject leg needs deliberate provocation - the paper account accepted a USD 1.2M and a USD 24M order without complaint - and **the reject path must be seen to work before any size increase**. Wants a live TWS session for the data-driven legs. |
+
+**Resolved 2026-09-02: the msgbus test was never broken - the runner was.**
+`test_republish_external_msgbus_message_logs_topic_and_error_chain` installs a global
+logger (`log::set_logger`), which is process-wide and can only succeed once; under bare
+`cargo test`, 328 tests share one process and whichever LiveNode test initialises
+logging first wins. The project's own runner is **cargo-nextest** (`.config/nextest.toml`,
+every `make cargo-test*` target), which runs each test in its own process: 328/328 pass.
+Upstream carries the identical test. Run Rust tests through nextest, never bare
+`cargo test`.
 
 ### Waiting on a decision (1)
 
@@ -746,6 +754,7 @@ sudo apt-get install -y build-essential clang lld curl git make pkg-config
 curl https://sh.rustup.rs -sSf | sh          # rust-toolchain.toml pins 1.98.0
 source "$HOME/.cargo/env"
 cargo install cargo-binstall --locked
+cargo install cargo-nextest --locked          # the test runner; bare `cargo test` is off-book
 CAPNP_PREFIX="$HOME/.local" ./scripts/install-capnp.sh   # 1.5.0; prefix avoids sudo
 make install-tools                            # includes prek, needed by make pre-commit
 make sync

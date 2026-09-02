@@ -2,6 +2,22 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the failing msgbus test was the runner's fault)
+
+### Fixed
+
+- **`test_republish_external_msgbus_message_logs_topic_and_error_chain` passes: 328/328
+  in `nautilus-live` under cargo-nextest.** The test installs a process-global logger
+  (`log::set_logger` succeeds once per process), so under bare `cargo test` - 328 tests,
+  one process - whichever LiveNode test initialises logging first wins and the capture
+  test panics. The project's own runner has been cargo-nextest all along
+  (`.config/nextest.toml`, every `make cargo-test*` target), which isolates each test in
+  its own process; it simply was not installed on this machine, so earlier sessions ran
+  the wrong harness and recorded a "pre-existing failure" that was actually a
+  harness artifact. Upstream carries the identical test. No code changed; cargo-nextest
+  (0.9.143, the pinned version) is now installed, the toolchain instructions install it,
+  and MAINTENANCE.md says to never run Rust tests with bare `cargo test`.
+
 ## 2026-09-02 (the front page says what this is)
 
 ### Changed

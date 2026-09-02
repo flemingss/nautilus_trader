@@ -118,8 +118,12 @@ Consequences that repeatedly matter here:
   with it. A Rust signature change is compile -> regenerate -> recompile, and the stubs are
   generated artifacts: change the Rust, never the file. This is why a one-method binding
   change touches exactly the Rust source and a stub.
-- **Engine and adapter defects are Rust fixes with `cargo test`s.** There is no Python layer
-  to patch, which is why `UPSTREAM_DELTA.md` tracks Rust paths almost exclusively.
+- **Engine and adapter defects are Rust fixes with their own Rust tests.** There is no
+  Python layer to patch, which is why `UPSTREAM_DELTA.md` tracks Rust paths almost
+  exclusively. Run them through **cargo-nextest** (`make cargo-test*`, or
+  `cargo nextest run -p <crate>`), never bare `cargo test`: nextest gives each test its
+  own process, and at least one inherited test (the msgbus republish log capture)
+  requires that isolation because `log::set_logger` is process-global.
 - **The feature matrix is where build complexity lives**, not the language boundary. The
   wheel builds with `extension-module, arrow, betfair, high-precision, mimalloc, redis,
   postgres, defi, hypersync, tracing-bridge`, and each of ~20 adapters sits behind its own
