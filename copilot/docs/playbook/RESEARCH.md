@@ -101,7 +101,7 @@ partial reopening.
 > verdict names what was withheld, and `holdout_spent: false` is backed by a real
 > reservation. The spend tool exists - `python -m copilot.strategies.spend_holdout` -
 > and scores the holdout as exactly one more walk-forward fold
-> ([ADR-0014](../decisions/0014-the-holdout-is-spent-as-one-more-fold.md), proposed):
+> ([ADR-0014](../decisions/0014-the-holdout-is-spent-as-one-more-fold.md)):
 > nothing is chosen at spend time, the record is the single-use marker, and only a
 > `next_close` activation may spend
 > ([ADR-0013](../decisions/0013-entry-timing-is-evaluated-as-a-bracket.md)). No holdout

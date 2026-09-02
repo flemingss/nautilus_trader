@@ -4,10 +4,10 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 ## 2026-09-03 (the holdout can be spent, and nothing about the spend is chosen)
 
-### Proposed
+### Decided
 
 - **[ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md): the holdout is
-  spent as one more fold.** Awaiting the owner's acceptance; no holdout has been spent.
+  spent as one more fold.** Accepted 2026-09-03; no holdout has been spent yet.
   The single-use test is scored by the same evaluator as every walk-forward fold, with
   the whole development window minus the purge as training and the holdout as test, so
   its number was made by the code path it is compared against. Nothing is chosen at

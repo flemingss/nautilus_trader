@@ -1,6 +1,6 @@
 # 14. The holdout is spent as one more fold
 
-- **Status:** Proposed - awaiting the project owner's acceptance before any spend
+- **Status:** Accepted
 - **Date:** 2026-09-03
 - **Deciders:** Project owner; mechanics proposed in-session
 

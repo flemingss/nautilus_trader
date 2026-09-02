@@ -116,8 +116,8 @@ experiment rather than to a memory of one.
    now exists - carved at 2022-01-01
    ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)), so the flag is
    finally backed by a real reservation - but it has never been spent, and spending it
-   is a deliberate separate act: `spend_holdout` exists ([ADR-0014], proposed) and
-   has not been run. The entry-timing gate on the spend is resolved (ADR-0013): the
+   is a deliberate separate act: `spend_holdout` exists ([ADR-0014]) and has not been
+   run. The entry-timing gate on the spend is resolved (ADR-0013): the
    spend, when chosen, goes to `spy-gap-fade-long-next-close` and to no `signal_close`
    activation ever.
 2. **Neither bound models the charter's actual execution rule** - a limit inside the
@@ -337,14 +337,13 @@ and without one there is nothing to validate or deploy.
    is not expressible on the daily-bar replay, so the premise runs at both expressible
    bounds. All six activations majority-pass net; the bracket table is under stage 02.
 5. **Spend the holdout - `spy-gap-fade-long-next-close` first** - the deliberate
-   one-time act, now un-gated and now buildable: `spend_holdout` scores the holdout as
-   one more walk-forward fold with nothing chosen at spend time
-   ([ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md), **proposed and
-   awaiting acceptance** - the tool refuses nothing about the ADR's status, so accept or
-   amend it before running). Only a `next_close` activation is spendable (ADR-0013), and
-   **SPY first**: the charter trades ETFs before single names, and SPY's is the only
-   verdict that leans on neither the survivor-chosen universe nor the hand-maintained
-   splits table.
+   one-time act, now un-gated and built: `spend_holdout` scores the holdout as one more
+   walk-forward fold with nothing chosen at spend time
+   ([ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md), accepted
+   2026-09-03). Only a `next_close` activation is spendable (ADR-0013), and **SPY
+   first**: the charter trades ETFs before single names, and SPY's is the only verdict
+   that leans on neither the survivor-chosen universe nor the hand-maintained splits
+   table. **Unspent.** The command is the owner's to run.
 6. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
    survives step 5. This is the first time the breakers can fire; they cannot fire in a
    backtest by design.
