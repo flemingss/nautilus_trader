@@ -186,6 +186,20 @@ directory was an API key.
    Not every `gh` subcommand honours the default - pass `-R flemingss/nautilus_trader`
    explicitly anyway.
 
+   Two things that cost time on 2026-09-02/03. **`gh auth login` must run as the working
+   user, never under `sudo`**: under sudo it writes root's `~/.config/gh` and the working
+   user's `gh auth status` still says not logged in, which looks exactly like a failed
+   login. And under WSL, **pushes need a credential helper** - with Git for Windows
+   installed, point the repo-local config at its Git Credential Manager and the first
+   push completes a one-time browser sign-in on the Windows side:
+
+   ```bash
+   git config --local credential.helper \
+     "/mnt/c/Program\\ Files/Git/mingw64/bin/git-credential-manager.exe"
+   ```
+
+   Both are `.git/config` or user-config state and do not survive a fresh clone.
+
 2. **Toolchain.** Follow "Rust toolchain prerequisites" in `ROADMAP.md`: the apt packages
    (the one sudo step), rustup (`rust-toolchain.toml` pins 1.98.0 automatically), uv,
    Cap'n Proto via `scripts/install-capnp.sh`, then `make build-debug`. Budget real time
