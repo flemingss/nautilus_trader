@@ -49,7 +49,7 @@ stalls.
 | 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                       |
 | 02  | Research / strategy  | `copilot/strategies`          | **Ready.** Gap fade ported; first verdict below           |
 | 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                       |
-| 04  | Validation gate      | `copilot/validation`          | Ready. Proven end to end on real history                  |
+| 04  | Validation gate      | `copilot/validation`          | **Ready.** Holdout carved ([ADR-0012]); unspent           |
 | 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
 | 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
@@ -68,24 +68,29 @@ at all. A gap's trigger *is* its quality measure, so there is nothing to AND on 
 nothing to dilute, and the original's search values were picked so every one clears the
 floor.
 
-**The verdict, net of costs as of 2026-09-02
-([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)):**
+**The verdict, net of costs
+([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)) and over
+the development window only
+([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)), as of 2026-09-02:**
 
 ```bash
 python -m copilot.strategies.validate --all --write
 ```
 
-| Symbol | Folds passed | Mean OOS, net   | (was gross)      | Trades | Majority     |
-| ------ | ------------ | --------------- | ---------------- | ------ | ------------ |
-| AAPL   | 19 / 39      | **+0.034544 R** | +0.049150, 20/39 | 612    | **now fail** |
-| MSFT   | 24 / 39      | **+0.068233 R** | +0.090638        | 576    | pass         |
-| SPY    | 21 / 38      | **+0.054098 R** | +0.063737, 22/38 | 609    | pass         |
+| Symbol | Folds passed | Mean OOS, net   | Trades | Majority |
+| ------ | ------------ | --------------- | ------ | -------- |
+| AAPL   | 16 / 31      | **+0.046877 R** | 469    | pass     |
+| MSFT   | 20 / 31      | **+0.089455 R** | 444    | pass     |
+| SPY    | 17 / 30      | **+0.049848 R** | 490    | pass     |
 
-Charging the measured spread at p95 and IB's commission schedule **flipped AAPL from
-majority-pass to majority-fail** - one fold crossed under - and moved parameter selection
-on two symbols, visible as changed trade counts: the in-sample search now picks what
-survives costs rather than what wins gross. Records before 2026-09-02 carry
-`costs_modelled: false` and are not comparable to records after it.
+The development window is 2005-01-03 to 2021-12-31 (4,280 bars per symbol); the 1,003
+bars from 2022-01-03 on are the locked holdout, withheld before the gate sees a bar.
+**Every verdict filed before the carve is superseded** - including the full-window net
+run of the same morning, where AAPL was majority-fail (19/39). The folds that dragged
+AAPL under sit in what is now the holdout, and a verdict that changes when the window
+does is exactly why the single-name results stay provisional (qualifier 3). Two earlier
+generations of records are likewise not comparable: pre-cost files carry
+`costs_modelled: false`, and pre-carve files lack the `holdout` block.
 
 Every run files a record under `copilot/strategies/verdicts/` carrying the activation, the
 search space as declared at the time, the seeded parameters, the fold geometry and the
@@ -94,9 +99,13 @@ experiment rather than to a memory of one.
 
 **Still not a green light.** Three qualifiers remain:
 
-1. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The single-use
-   out-of-sample has never been spent, and spending it is a deliberate separate act -
-   and no holdout has been carved yet, which is the open charter conflict below.
+1. **`holdout_spent: false`.** This is walk-forward, which is repeatable. The holdout
+   now exists - carved at 2022-01-01
+   ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)), so the flag is
+   finally backed by a real reservation - but it has never been spent, and spending it
+   is a deliberate separate act for which no tool exists yet, on purpose. It must wait
+   for the entry-timing conflict below to be resolved first, or the one-time test is
+   spent on fill semantics the charter has already rejected.
 2. **Entry fills at the signal bar's close**, not the next open as in the original - a
    different and slightly more favourable execution assumption, documented in the module.
    The two systems' verdicts on this premise are not comparable - and the cost model's
@@ -114,7 +123,7 @@ experiment rather than to a memory of one.
 Trade counts land at 21-29 per 252 bars against the original's 30-37, because this port
 holds one position at a time and a run of gap days therefore blocks its own re-entries.
 
-278 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+287 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
 
 ### Stage 08 - what a paper run actually needs
 
@@ -156,7 +165,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Fourteen items. Grouped by blocking condition rather than by component, because that is
+Thirteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -208,18 +217,21 @@ ready-to-build below. The condition attached to the clearance is that every upst
 this fork touches is tracked, which is what `docs/UPSTREAM_DELTA.md` and
 `tools/upstream_delta.py` now do.
 
-### Charter conflicts, opened 2026-09-01 (3)
+### Charter conflicts, opened 2026-09-01 (2)
 
 Adopting [`CHARTER.md`](CHARTER.md) surfaced four places where the code does not match the
-process it is now governed by. One is resolved as
-[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md); these three are
-open.
+process it is now governed by. Two are resolved -
+[ADR-0009](decisions/0009-cost-is-modelled-at-the-target-account-size.md) and, as of
+2026-09-02, the holdout carve
+([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): pinned at
+2022-01-01, 18.99% reserved, unspent). These two are open, and the entry-timing one now
+**gates the holdout spend**: walk-forward re-runs are free, the holdout is not, so the
+fill semantics must match the charter before the one-time test is used.
 
-| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                    |
-| ------------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Carve out the locked holdout**     | 04    | The charter reserves the most recent 15-20%. `walk_forward` runs over the whole history and no holdout exists, while every verdict record carries `holdout_spent: false`, which implies one does. **No verdict from this repository currently has an out-of-sample estimate behind it.** |
-| Move entry to the next session       | 02    | The gap fade fills at the signal bar's close. The charter requires next-eligible-session entry. Changing it is a new experiment rather than a fix, so it resets the premise's evidence.                                                                                                  |
-| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities.                                                                                                                   |
+| Item                                 | Stage | Notes                                                                                                                                                                                   |
+| ------------------------------------ | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Move entry to the next session**   | 02    | The gap fade fills at the signal bar's close. The charter requires next-eligible-session entry. Changing it is a new experiment rather than a fix, so it resets the premise's evidence. |
+| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities.                  |
 
 ### Waiting on spend (2)
 
@@ -285,15 +297,22 @@ and without one there is nothing to validate or deploy.
 2. ~~**Set the cost coefficient** and wire it per instrument~~ - done 2026-09-02,
    [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md): the gate
    scores net, and AAPL's majority flipped to fail the day the placeholder died.
-3. **Carve the locked holdout, then run the gate for real** - walk-forward is done and
-   net; the single-use out-of-sample has never been carved, let alone spent. **SPY
-   first**: the charter trades ETFs before single names, and SPY's is the only verdict
-   that leans on neither the survivor-chosen universe nor the hand-maintained splits
-   table.
-4. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
-   survives step 3. This is the first time the breakers can fire; they cannot fire in a
+3. ~~**Carve the locked holdout**, then run the gate for real~~ - done 2026-09-02,
+   [ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): pinned at
+   2022-01-01, and all three activations re-validated over the development window alone.
+   All three majority-pass net.
+4. **Move entry to the next session, then re-validate** - the remaining charter conflict
+   that gates everything after it. Spending the holdout on signal-close fills would
+   burn the one-time test on execution semantics the charter has already rejected;
+   walk-forward re-runs after the change are free.
+5. **Spend the holdout - SPY first** - the deliberate one-time act, for a candidate that
+   still passes step 4. **SPY first**: the charter trades ETFs before single names, and
+   SPY's is the only verdict that leans on neither the survivor-chosen universe nor the
+   hand-maintained splits table.
+6. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
+   survives step 5. This is the first time the breakers can fire; they cannot fire in a
    backtest by design.
-5. **Compare realised fills** against the modelled cost and close the loop.
+7. **Compare realised fills** against the modelled cost and close the loop.
 
 Nothing here goes near live capital.
 

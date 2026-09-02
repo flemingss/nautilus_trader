@@ -2,6 +2,39 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the holdout is carved)
+
+### Decided
+
+- **[ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md): the holdout is
+  carved at 2022-01-01, pinned by date.** Bars closing at or after the pin (1,003 of
+  5,283 per symbol, 18.99% - inside the charter's 15-20%) are withheld before the gate
+  sees them. A date rather than a percentage for the same reason the cost snapshot is
+  pinned by name: a percentage boundary moves silently when the catalog grows, and would
+  leak held-out bars into development. The carve refuses a history that does not
+  straddle the pin or a share outside the band, so catalog growth forces a re-decision
+  in a commit instead of a quiet drift. No spend tool exists, deliberately: the spend
+  also now waits on the entry-timing conflict, so the one-time test is not burned on
+  fill semantics the charter rejects.
+
+### Added
+
+- **`validation/holdout.py`** - `carve` splits every history at `HOLDOUT_START` and is
+  the only path into the walk-forward from `validate`. Nine tests, including that the
+  pin itself is asserted (moving it fails a test and demands an ADR), that a bar closing
+  exactly at the pin instant is holdout, and that the band guard refuses in both
+  directions. Verdict records gain a `holdout` block (start, bars reserved, range) so
+  `holdout_spent: false` finally points at something real.
+
+### Measured
+
+- **The development-window verdicts (2005-2021, 31 folds): all three majority-pass
+  net.** AAPL 16/31 at +0.0469 R, MSFT 20/31 at +0.0895 R, SPY 17/30 at +0.0498 R.
+  Every earlier verdict is superseded - including the same morning's full-window net
+  run, where AAPL was majority-fail: the folds that dragged it under sit in what is now
+  the holdout. A verdict that changes when the window does is the argument, in one
+  datum, for treating single-name results as provisional and leading with SPY.
+
 ## 2026-09-02 (the gate goes net of costs)
 
 ### Decided

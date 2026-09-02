@@ -80,13 +80,13 @@ is real rather than ceremonial:
 
 **Never shuffle a financial time series.**
 
-| Partition | Purpose | Permitted use |
-| --- | --- | --- |
-| Discovery | Build and debug the hypothesis | Inspect repeatedly |
-| Validation | Compare declared configurations | Limited, logged selection |
-| Final holdout | Estimate selected-candidate behaviour | **Open once** |
-| Paper forward | Observe real-time decisions and operations | No performance tuning |
-| Live canary | Measure actual execution at tiny risk | No scaling until review |
+| Partition     | Purpose                                    | Permitted use             |
+| ------------- | ------------------------------------------ | ------------------------- |
+| Discovery     | Build and debug the hypothesis             | Inspect repeatedly        |
+| Validation    | Compare declared configurations            | Limited, logged selection |
+| Final holdout | Estimate selected-candidate behaviour      | **Open once**             |
+| Paper forward | Observe real-time decisions and operations | No performance tuning     |
+| Live canary   | Measure actual execution at tiny risk      | No scaling until review   |
 
 Reserve the most recent **15% to 20%** of history as a locked final holdout. Within the
 earlier data use expanding or rolling walk-forward folds; where labels or holding periods
@@ -95,10 +95,13 @@ overlap, purge the overlap and embargo at least as long as the maximum overlap.
 **Once viewed, the holdout is development data for every future decision.** There is no
 partial reopening.
 
-> **This is not yet true of the code.** `walk_forward` runs over the entire history and no
-> holdout is reserved, while verdict records carry `holdout_spent: false` - which implies
-> one exists. Carving it out is a tracked roadmap item, and until it lands no verdict from
-> this repository has an out-of-sample estimate behind it.
+> **True of the code as of 2026-09-02**
+> ([ADR-0012](../decisions/0012-the-holdout-is-carved-at-2022-01-01.md)): bars from
+> 2022-01-01 (18.99% of the catalog) are withheld before the gate sees them, every
+> verdict names what was withheld, and `holdout_spent: false` is backed by a real
+> reservation. No tool for spending it exists yet, deliberately - and the spend waits on
+> the entry-timing conflict, so the one-time test is not burned on fill semantics the
+> charter rejects.
 
 ## Configuration search
 
@@ -152,15 +155,15 @@ strategy that works only at zero cost is not a candidate.**
 
 ## Scorecard
 
-| Area | Metrics |
-| --- | --- |
-| Return | Total, CAGR, average and median trade, expectancy |
-| Risk | Max drawdown, recovery time, volatility, downside deviation, worst day and trade |
-| Risk-adjusted | Sharpe, Sortino, Calmar, each labelled with frequency and assumptions |
-| Trading | Trade count, win rate, average win and loss, profit factor, holding time |
-| Implementation | Turnover, exposure, concentration, estimated cost, capacity |
-| Stability | Walk-forward folds, regime splits, parameter neighbourhood, bootstrap interval |
-| Attribution | Return by symbol, year, regime, and largest contributors |
+| Area           | Metrics                                                                          |
+| -------------- | -------------------------------------------------------------------------------- |
+| Return         | Total, CAGR, average and median trade, expectancy                                |
+| Risk           | Max drawdown, recovery time, volatility, downside deviation, worst day and trade |
+| Risk-adjusted  | Sharpe, Sortino, Calmar, each labelled with frequency and assumptions            |
+| Trading        | Trade count, win rate, average win and loss, profit factor, holding time         |
+| Implementation | Turnover, exposure, concentration, estimated cost, capacity                      |
+| Stability      | Walk-forward folds, regime splits, parameter neighbourhood, bootstrap interval   |
+| Attribution    | Return by symbol, year, regime, and largest contributors                         |
 
 **Win rate alone is nearly meaningless.** A 70% win rate loses money if the losses are
 large enough. Use net expectancy, where `C` is average all-in cost per trade:
