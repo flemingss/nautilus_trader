@@ -117,22 +117,22 @@ do with our system, which turns a real limitation into background noise.
 
 UNCONFIRMED_CASE = {
     "name": "recover_unknown_working_order",
-    "status": "UNCONFIRMED",
+    "status": "HALF",
     "detail": (
-        "The defect this case was named for is fixed: reconciliation now adopts an external "
-        "order reported as SUBMITTED (crates/execution/src/reconciliation/orders.rs), and "
-        "the execution client sets fetch_all_open_orders=True. A Rust unit test pins the "
-        "event generation. **Neither has been confirmed end to end against IB**, because "
-        "confirming it strands a live order on purpose - so this is recorded as unconfirmed "
-        "rather than scored as a pass."
+        "Measured 2026-09-02 by live/strand_recovery.py, which strands an order on purpose. "
+        "Adoption is CONFIRMED: a fresh node on different client ids receives the external "
+        "SUBMITTED order through reconciliation into its cache. The cancel is a KNOWN "
+        "FAILURE: the IB adapter cannot cancel an adopted order whose IB order id belongs "
+        "to another client id partition ('Instrument ID not found for pending cancel "
+        "order'), the failure raises no order event, and the order is cancelled by hand in "
+        "TWS. The remaining fix is in the adapter's execution core, not in reconciliation."
     ),
 }
 """
-A case whose defect is fixed but whose recovery is unproven at the broker.
+A case measured to a split verdict: adoption works, the foreign cancel does not.
 
-Not scored, for the opposite reason to ``NOT_TESTABLE_ON_PAPER`` above: paper can decide
-this one, and simply has not been asked yet. Scoring it as a pass on the strength of a unit
-test would report an operational capability nobody has seen work.
+Not scored either way. Scoring the pass half would hide the failing half, and the failing
+half's fix lives in the adapter rather than in anything this probe can drill.
 
 """
 

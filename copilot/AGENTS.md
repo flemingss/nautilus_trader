@@ -220,13 +220,20 @@ Not departures. Restated because they are easy to lose sight of in a fork:
 
 ```bash
 export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"   # required, or every IB connect fails
-export IB_V2_HOST=172.17.112.1 IB_V2_PORT=7497
+export IB_V2_HOST=...                            # derive it: ip route | awk '/^default/{print $3}'
+export IB_V2_PORT=7497
 
 PYTHONPATH=. .venv/bin/python -m pytest copilot/tests/ -q
 ruff check copilot/ --config python/pyproject.toml
 ruff format --check copilot/ --config python/pyproject.toml
-prek run --all-files                             # what `make pre-commit` runs
+UV_PROJECT_ENVIRONMENT="$PWD/.venv" prek run --all-files   # what `make pre-commit` runs
 ```
+
+**Bare `prek` is not `make pre-commit` without that export.** The Makefile exports
+`UV_PROJECT_ENVIRONMENT` at the repository root, and the `ty` and docformatter hooks run
+`uv run --project python`, which without it resolves to a bare `python/.venv` and fails
+with `Failed to spawn: ty` - a missing-tool error for a tool that is installed. Cost a
+real diagnosis on 2026-09-02.
 
 **`make pre-commit` now runs.** It needs only `prek`, not the whole `make install-tools`
 chain, which compiles ten cargo tools this fork does not use:

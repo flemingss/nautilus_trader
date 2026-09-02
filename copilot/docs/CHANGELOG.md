@@ -2,6 +2,39 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-02 (the stranded order comes back, and cannot be cancelled)
+
+### Added
+
+- **`live/strand_recovery.py`** - strands a one-share far-from-market GTC limit on
+  purpose, then recovers it from a fresh node on different client ids. Stage three's
+  accident, made deliberately and at the smallest size that asks the question. The record
+  says which phase failed rather than collapsing three claims into one bit, and the
+  recovery node runs with orders disabled - cancels bypass the risk engine, so a node
+  that cannot submit can still sweep, and cannot make the situation worse.
+
+### Measured
+
+- **Adoption is confirmed at the broker.** A fresh node with an empty cache received the
+  stranded external `SUBMITTED` order through reconciliation. The 2026-09-01 engine fix
+  is now watched working against IB, not merely unit-tested - the half of
+  `recover_unknown_working_order` that reconciliation owns is closed.
+
+### Found
+
+- **The adapter cannot cancel the order it just adopted, and fails silently.** The
+  stranded order's IB id (`832000002`) belongs to the stranding client's id partition
+  (`client_id % 1000`); the recovering client's adapter maps have no entry for it, and
+  the sweep's cancel dies inside the adapter with "Instrument ID not found for pending
+  cancel order" - **without raising any order event**, so nothing above the log line
+  learns the cancel failed. The order was cancelled by hand in TWS. Net operational
+  state: an unknown working order is now *visible* to a recovering node, which makes the
+  manual step findable instead of a surprise, and the remaining fix is in the adapter's
+  execution core, ours under ADR-0010. Tracked in the roadmap alongside a second
+  surfaced item: reconciliation logs false `Cannot open NETTING position ... from
+  reduce-only fill` ERROR lines for historical round trips in the lookback, which must be
+  quieted before `shutdown_on_error` is ever considered.
+
 ## 2026-09-02 (entry timing becomes a bracket, and the bracket surprises)
 
 ### Decided

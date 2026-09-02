@@ -368,14 +368,29 @@ notice if IB ever started enforcing it, but scoring it would make stage six perm
 unpassable for a reason that has nothing to do with our system. **The rejection path must be
 verified on the live account before any size increase.**
 
-**`recover_unknown_working_order` - fixed in the engine, unconfirmed at the broker.**
-Reconciliation now adopts an external order reported as `SUBMITTED`, and the execution
-client sets `fetch_all_open_orders=True`; a Rust unit test pins the event generation. That
-is not the same as having watched a stranded order come back and be cancelled, which has
-never been done because doing it strands a live order on purpose. Excluded from scoring as
-**unconfirmed** rather than as a known failure - the distinction matters, because the two
-call for opposite next actions: a known failure wants a fix, an unconfirmed fix wants a
-session.
+**`recover_unknown_working_order` - measured 2026-09-02, and the verdict splits.**
+`live/strand_recovery.py` stranded a one-share far-from-market GTC limit on purpose
+(client ids 831/832), then started a fresh node on different ids (841/842) with an empty
+cache. **Adoption is confirmed**: the external `SUBMITTED` order arrived in the fresh
+node's cache through reconciliation - the 2026-09-01 engine fix watched working at the
+broker, not merely unit-tested. **The cancel is a known failure**: the IB adapter could
+not execute the sweep's cancel because the order's IB id (`832000002`) belongs to the
+stranding client's id partition and the adapter's own maps have no entry for it -
+
+```text
+Error handling order update: Trader ID not found for Interactive Brokers order 832000002
+Failed to emit pending cancel for order O-20260902-144719-001-000-1
+    (IB order ID: 832000002): Instrument ID not found for pending cancel order
+```
+
+Two aggravations. The failure is **event-silent** - no `on_order_cancel_rejected` fires,
+so the only trace is a Rust ERROR log and the residual-order warning at shutdown; a sweep
+that trusts order events waits forever. And it means the operational recovery path for an
+unknown working order is still "cancel it by hand in TWS" - what changed is that the
+order is now *visible* to the recovering node, which is the half that makes the manual
+step findable rather than a surprise. The remaining fix lives in the adapter's execution
+core (`crates/adapters/interactive_brokers/src/execution/`), ours under ADR-0010, and is
+tracked in the roadmap.
 
 ### The bug the reclassification introduced
 
@@ -439,16 +454,17 @@ broker actually holds.
 
 Evidence, dated. A stage without a row here has not passed, whatever anyone remembers.
 
-| Date       | Stage | Result                                                                                                                                                                                                                                                                                                                           | Evidence                                            |
-| ---------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
-| 2026-09-01 | 1     | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                                                                 | `live/out/preflight_20260901T121340Z.json`          |
-| 2026-09-01 | 2     | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                                                          | `live/out/preflight_20260901T122835Z.json`          |
-| 2026-09-01 | 3     | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below.                                        | `live/out/controlled_order_20260901T124521Z.json`   |
-| 2026-09-01 | 4     | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                                                                     | `live/out/order_types_20260901T130102Z.json`        |
-| 2026-09-02 | 5     | **Pass**, repeated at a third of the size to test whether commission scales. 1 AAPL at market inside USD 500 of capital. Entry filled 326.28, both children accepted, closed on purpose at 326.23, nothing left working. Realised **-2.06 USD**, of which **2.01 USD was commission** - one cent less than the three-share trip. | `live/out/supervised_session_20260901T155038Z.json` |
-| 2026-09-01 | 5     | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.                                                    | `live/out/supervised_session_20260901T133242Z.json` |
-| 2026-09-01 | 6     | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                                                         | `live/out/failure_injection_20260901T134539Z.json`  |
-| 2026-09-01 | 6     | **Pass**, after fixing the engine it failed against. Both scored probes pass: the notional cap now denies (`NOTIONAL_EXCEEDS_MAX_PER_ORDER`), stale-feed detection fires at 20.6s, nothing left working. Two cases excluded and named: one paper cannot decide, one is a known gap.                                              | `live/out/failure_injection_*.json`                 |
+| Date       | Stage          | Result                                                                                                                                                                                                                                                                                                                           | Evidence                                            |
+| ---------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------- |
+| 2026-09-02 | 6-confirmation | **Split.** Stranded `O-20260902-144719-001-000-1` on purpose; a fresh node on different client ids **adopted it through reconciliation** (the engine fix confirmed at the broker), but the adapter could not cancel it - IB order id in another client's partition, no order event raised. Cancelled by hand in TWS.             | `live/out/strand_recovery_20260902T144708Z.json`    |
+| 2026-09-01 | 1              | **Pass.** Connected to paper on `172.17.112.1:7497`. Halt applied before start and **still `HALTED` after startup**. Three instruments resolved. Clean shutdown.                                                                                                                                                                 | `live/out/preflight_20260901T121340Z.json`          |
+| 2026-09-01 | 2              | **Pass** on the third attempt. Account `IB-DUT067974` reported by the broker, USD 1,000,000, reconciliation clean (0 orders, 0 positions). Two earlier attempts failed: Read-Only API, then a venue-lookup bug of mine.                                                                                                          | `live/out/preflight_20260901T122835Z.json`          |
+| 2026-09-01 | 3              | **Pass** on the third attempt. `AAPL=STK.SMART` BUY LIMIT 1 @ 135.93 submitted, accepted (venue order id `832000001`), cancelled. No fill, no reject, no deny. **One order from an earlier attempt is still working at the broker and cannot be cancelled through Nautilus** - see below.                                        | `live/out/controlled_order_20260901T124521Z.json`   |
+| 2026-09-01 | 4              | **Pass**, second attempt. Five shapes round tripped: LIMIT/GTC, LIMIT/DAY, STOP_MARKET/GTC, STOP_LIMIT/GTC and a three-order bracket. Run **pre-open**, and MARKET is untested by design - both noted below.                                                                                                                     | `live/out/order_types_20260901T130102Z.json`        |
+| 2026-09-02 | 5              | **Pass**, repeated at a third of the size to test whether commission scales. 1 AAPL at market inside USD 500 of capital. Entry filled 326.28, both children accepted, closed on purpose at 326.23, nothing left working. Realised **-2.06 USD**, of which **2.01 USD was commission** - one cent less than the three-share trip. | `live/out/supervised_session_20260901T155038Z.json` |
+| 2026-09-01 | 5              | **Pass**, first attempt, during RTH. 3 AAPL at market inside USD 1,000 of capital. Entry filled 315.71, both bracket children accepted and working, position closed on purpose at 315.62, nothing left working. Realised **-2.29 USD**, of which **2.02 USD was commission**.                                                    | `live/out/supervised_session_20260901T133242Z.json` |
+| 2026-09-01 | 6              | **FAIL, and correctly so.** Stale-feed detection passed. Both refusal probes were **accepted**: our own `max_notional_per_order` never fired, and IB paper accepted a USD 24M order on a USD 1M account.                                                                                                                         | `live/out/failure_injection_20260901T134539Z.json`  |
+| 2026-09-01 | 6              | **Pass**, after fixing the engine it failed against. Both scored probes pass: the notional cap now denies (`NOTIONAL_EXCEEDS_MAX_PER_ORDER`), stale-feed detection fires at 20.6s, nothing left working. Two cases excluded and named: one paper cannot decide, one is a known gap.                                              | `live/out/failure_injection_*.json`                 |
 
 ## Where the code is
 
@@ -463,3 +479,4 @@ Evidence, dated. A stage without a row here has not passed, whatever anyone reme
 | Order type matrix             | [`../live/order_types.py`](../live/order_types.py)               | Built and run. Stage 4.                                           |
 | Supervised round trip         | [`../live/supervised_session.py`](../live/supervised_session.py) | Built and run. Stage 5.                                           |
 | Failure injection             | [`../live/failure_injection.py`](../live/failure_injection.py)   | Built and run. Stage 6 passes on the second run.                  |
+| Strand recovery               | [`../live/strand_recovery.py`](../live/strand_recovery.py)       | Built and run. Adoption confirmed; foreign cancel fails.          |

@@ -1,0 +1,57 @@
+{
+  "started_at": "2026-09-02T14:47:08.271750+00:00",
+  "finished_at": "2026-09-02T14:48:28.786649+00:00",
+  "stage": "6-confirmation",
+  "case": "recover_unknown_working_order",
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "instrument_id": "AAPL=STK.SMART",
+  "limit_price": "163.00",
+  "quantity": 1,
+  "passed": false,
+  "outcome": {
+    "stranded_client_order_id": "O-20260902-144719-001-000-1",
+    "stranded_venue_order_id": "832000002",
+    "strand_accepted": true,
+    "strand_filled": false,
+    "adopted_open_orders": [
+      "O-20260902-144719-001-000-1"
+    ],
+    "adopted": true,
+    "cancel_acknowledged": false,
+    "left_open": [
+      "O-20260902-144719-001-000-1"
+    ],
+    "events": [
+      {
+        "at": "2026-09-02T14:47:19.587092+00:00",
+        "phase": "strand",
+        "kind": "submitted",
+        "detail": "O-20260902-144719-001-000-1"
+      },
+      {
+        "at": "2026-09-02T14:47:19.588575+00:00",
+        "phase": "strand",
+        "kind": "accepted",
+        "detail": "832000002"
+      },
+      {
+        "at": "2026-09-02T14:47:48.692634+00:00",
+        "phase": "strand",
+        "kind": "node_stopped",
+        "detail": "order left working on purpose"
+      },
+      {
+        "at": "2026-09-02T14:47:59.882050+00:00",
+        "phase": "recover",
+        "kind": "cache_after_reconciliation",
+        "detail": "open=['O-20260902-144719-001-000-1']"
+      },
+      {
+        "at": "2026-09-02T14:47:59.882121+00:00",
+        "phase": "sweep",
+        "kind": "cancel_all_sent",
+        "detail": ""
+      }
+    ]
+  }
+}

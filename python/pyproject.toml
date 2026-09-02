@@ -402,6 +402,13 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "PLR0913",
   "T201",
 ] # Operator CLI: the verdict it prints is the product
+"copilot/live/strand_recovery.py" = [
+  "ANN202",
+  "ANN401",
+  "PLR0913",
+  "T201",
+  "TRY400",
+] # Operator CLI; ANN401 for the pyo3 event objects it receives
 "copilot/live/failure_injection.py" = [
   "ANN401",
   "E501",
