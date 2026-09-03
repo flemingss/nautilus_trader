@@ -119,6 +119,10 @@ DEFAULT_DATASET = "EQUS.MINI"
 
 DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
+# Bulk pulls land here, outside the repository and beside the catalog, because they are
+# machine state rather than source. Same backup obligation as the catalog.
+DEFAULT_STORE = "~/.nautilus_copilot/databento"
+
 # The venue datasets reach 2018-05-01, six years deeper than the consolidated summary,
 # and their `statistics` schema carries the **official closing auction print** rather
 # than a trade-derived bar. For a listed security the listing venue runs that auction,
@@ -413,6 +417,62 @@ class DatabentoClient:
                 out[name][day] = Decimal(str(row["price"])) / scale
         return out
 
+    def fetch_to_file(
+        self,
+        *,
+        dataset: str,
+        symbols: list[str],
+        schema: str,
+        start: str,
+        end: str,
+        path: Path,
+    ) -> int:
+        """
+        Stream a bulk range to disk as zstd-compressed CSV; this spends.
+
+        Returns the bytes written.
+
+        **Not JSON.** Cost is billed on the uncompressed binary size either way, so the
+        encoding is free to choose - but a year of one-minute bars for twenty symbols is
+        tens of millions of rows, and decoding that as JSON in memory is the difference
+        between a minute and an hour. CSV streamed straight to a file also means the
+        pull survives being analysed twice without being bought twice.
+
+        """
+        query = urlencode(
+            {
+                "dataset": dataset,
+                "symbols": ",".join(symbols),
+                "schema": schema,
+                "start": start,
+                "end": end,
+                "stype_in": "raw_symbol",
+                "encoding": "csv",
+                "compression": "zstd",
+            },
+        )
+        token = base64.b64encode(f"{self._api_key}:".encode()).decode()
+        request = Request(  # noqa: S310 - fixed https scheme from DEFAULT_BASE_URL
+            f"{self._base_url}/timeseries.get_range?{query}",
+            headers={"Authorization": f"Basic {token}", "User-Agent": USER_AGENT},
+        )
+        path.parent.mkdir(parents=True, exist_ok=True)
+        written = 0
+        try:
+            with (
+                urlopen(request, timeout=TIMEOUT_SECONDS * 30) as response,  # noqa: S310
+                path.open("wb") as sink,
+            ):
+                while chunk := response.read(1 << 20):
+                    sink.write(chunk)
+                    written += len(chunk)
+        except HTTPError as e:
+            detail = e.read().decode(errors="replace")[:400]
+            raise DatabentoError(f"bulk fetch failed: HTTP {e.code} {detail}") from e
+        except URLError as e:
+            raise DatabentoError(f"bulk fetch failed: {e.reason}") from e
+        return written
+
     def resolve_symbols(
         self,
         symbols: list[str],
@@ -660,6 +720,73 @@ def catalog_closes(catalog_path: str) -> dict[str, dict[date, tuple[Decimal, int
     return {symbol: series for symbol, (_, series) in catalog_series(catalog_path).items()}
 
 
+def _pull(client: DatabentoClient, args: argparse.Namespace) -> int:
+    """
+    Buy one schema over the catalog's universe, routed per listing venue.
+
+    Prints the metered price of every leg before buying any of it, because a bundle is
+    where a mistake compounds: four legs at the wrong schema is four times the surprise.
+
+    """
+    held = catalog_series(args.catalog)
+    by_venue: dict[str, list[str]] = {}
+    for symbol, (venue, _) in held.items():
+        by_venue.setdefault(venue, []).append(symbol)
+
+    legs = []
+    for venue, symbols in sorted(by_venue.items()):
+        dataset = args.dataset or LISTING_DATASETS.get(venue)
+        if dataset is None:
+            print(f"  no listing dataset for venue {venue}; skipped {sorted(symbols)}")
+            continue
+        price = client.cost(sorted(symbols), args.schema, args.start, args.end, dataset)
+        legs.append((dataset, sorted(symbols), price))
+        print(f"  {dataset:<14}{len(symbols):>3} symbols  {args.schema:<10}${price:>9.4f}")
+
+    total = sum(price for _, _, price in legs)
+    print(f"  {'TOTAL':<14}{'':>3}          {'':<10}${total:>9.4f}")
+    if not args.spend:
+        print("\n  priced only. Pass --spend to buy it.", file=sys.stderr)
+        return 0
+    if total > args.budget:
+        print(
+            f"\n  refusing: ${total:.2f} exceeds --budget ${args.budget:.2f}",
+            file=sys.stderr,
+        )
+        return 2
+
+    store = Path(args.store).expanduser()
+    for dataset, symbols, _ in legs:
+        path = store / dataset / args.schema / f"{args.start}_{args.end}.csv.zst"
+        print(f"\n  fetching {dataset} {args.schema} -> {path}", flush=True)
+        written = client.fetch_to_file(
+            dataset=dataset,
+            symbols=symbols,
+            schema=args.schema,
+            start=args.start,
+            end=args.end,
+            path=path,
+        )
+        print(f"  wrote {written / 1e6:.1f} MB", flush=True)
+
+        # The rows identify their instrument by numeric id and carry no symbol, so a
+        # pull without its map is unreadable later. It is free, so it is never skipped.
+        intervals = client.resolve_symbols(symbols, args.start, args.end, dataset)
+        sidecar = path.with_suffix(".symbology.json")
+        sidecar.write_text(
+            json.dumps(
+                [
+                    {"symbol": s, "instrument_id": i, "from": a.isoformat(), "to": b.isoformat()}
+                    for s, i, a, b in intervals
+                ],
+                indent=2,
+            )
+            + "\n",
+        )
+        print(f"  mapped {len(intervals)} instrument ids -> {sidecar.name}", flush=True)
+    return 0
+
+
 def _client(args: argparse.Namespace) -> DatabentoClient:
     key = os.environ.get(API_KEY_ENV, "")
     dataset = args.dataset or os.environ.get(DATASET_ENV) or DEFAULT_DATASET
@@ -770,6 +897,20 @@ def _probe(client: DatabentoClient, symbol: str, start: str, end: str) -> int:
     return 0
 
 
+def _preflight(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+    """
+    Refuse a run that names no action, or one that would spend without saying so.
+
+    ``--pull`` is exempt from the second rule because it prices every leg and prints
+    the total before it buys anything; the others go straight to the wire.
+
+    """
+    if not (args.survey or args.cost or args.probe or args.audit or args.pull):
+        parser.error("choose --survey, --cost, --probe SYMBOL, --audit, or --pull")
+    if (args.audit or args.probe) and not args.spend:
+        parser.error("--audit and --probe spend credit: price it with --cost, then --spend")
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Survey the account, price a pull, or probe a vendor's intraday fidelity.
@@ -791,6 +932,15 @@ def main(argv: list[str] | None = None) -> int:
         help="Check the catalog's closes against the daily series (spends)",
     )
     parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    parser.add_argument("--pull", action="store_true", help="Buy one schema in bulk")
+    parser.add_argument("--schema", default="ohlcv-1m", help="Schema for --pull")
+    parser.add_argument("--store", default=DEFAULT_STORE, help="Where bulk pulls land")
+    parser.add_argument(
+        "--budget",
+        type=float,
+        default=25.0,
+        help="Refuse a pull priced above this, in USD",
+    )
     parser.add_argument(
         "--deep",
         action="store_true",
@@ -803,8 +953,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--to", dest="end", default="2024-01-03", help="End date")
     args = parser.parse_args(argv)
 
-    if not (args.survey or args.cost or args.probe or args.audit):
-        parser.error("choose --survey, --cost, --probe SYMBOL, or --audit")
+    _preflight(parser, args)
 
     client = _client(args)
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
@@ -815,13 +964,10 @@ def main(argv: list[str] | None = None) -> int:
     if args.cost:
         _cost(client, symbols, args.start, args.end)
 
-    if (args.audit or args.probe) and not args.spend:
-        print(
-            "\n--audit and --probe spend credit. Price the shape with --cost first, "
-            "then pass --spend.",
-            file=sys.stderr,
-        )
-        return 2
+    if args.pull:
+        failed = _pull(client, args)
+        if failed:
+            return failed
 
     if args.audit:
         step = _audit_deep if args.deep else _audit

@@ -375,8 +375,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/data/backfill.py" = ["T201"]
 "copilot/data/databento.py" = [
   "ANN401",
+  "PLR0913",
   "T201",
-] # Operator CLI printing its verdict; decoded JSON is genuinely dynamic
+] # Operator CLI printing its verdict; decoded JSON is dynamic; a bulk pull names
+# dataset, symbols, schema and window as explicit keyword args
 "copilot/data/marketstack.py" = [
   "PLR0913",
 ] # Endpoint, paging and retry policy as explicit keyword args
