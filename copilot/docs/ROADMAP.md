@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Eleven items. Grouped by blocking condition rather than by component, because that is
+Ten items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -201,7 +201,7 @@ groups below inherit their block, which is why they sit first.
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
-### Ready to build (2)
+### Ready to build (1)
 
 Nothing stands in front of these - no account event, no decision, no spend.
 
@@ -214,10 +214,9 @@ mechanism. The reject leg still needs the live account and sits under "Waiting o
 account" - **the reject path must be seen to work before any size increase**, and paper
 cannot decide it.
 
-| Item                                                    | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| ------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Fix the adapter's cancel of adopted external orders** | 08    | Measured 2026-09-02: an adopted order's IB id (`832000002`) belongs to the stranding client's id partition, the adapter's maps have no entry, and the cancel dies inside `crates/adapters/interactive_brokers/src/execution/` with "Instrument ID not found for pending cancel order" - **raising no order event**, so a sweep that trusts events waits forever. Two halves: populate the adapter's maps on adoption (or resolve by permId), and surface the failure as a cancel-reject event. Re-run `live/strand_recovery.py` to verify; until then recovery of an unknown working order ends at the TWS GUI, visibly. |
-| **Silence the reduce-only reconciliation false errors** | 08    | Every startup whose lookback holds a completed round trip logs `ERROR Cannot open NETTING position ... from reduce-only fill` twice - historical exit fills with no position to attach to. Harmless today, but it is exactly the class of noise `shutdown_on_error=true` would turn into a restart loop, so it must be understood and quieted (or reclassified) before that flag is ever considered. Surfaced by the 2026-09-02 preflight on a fresh machine.                                                                                                                                                            |
+| Item                                                    | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Silence the reduce-only reconciliation false errors** | 08    | Every startup whose lookback holds a completed round trip logs `ERROR Cannot open NETTING position ... from reduce-only fill` twice - historical exit fills with no position to attach to. Harmless today, but it is exactly the class of noise `shutdown_on_error=true` would turn into a restart loop, so it must be understood and quieted (or reclassified) before that flag is ever considered. Surfaced by the 2026-09-02 preflight on a fresh machine. |
 
 **Resolved 2026-09-02: the msgbus test was never broken - the runner was.**
 `test_republish_external_msgbus_message_logs_topic_and_error_chain` installs a global
@@ -227,6 +226,21 @@ logging first wins. The project's own runner is **cargo-nextest** (`.config/next
 every `make cargo-test*` target), which runs each test in its own process: 328/328 pass.
 Upstream carries the identical test. Run Rust tests through nextest, never bare
 `cargo test`.
+
+**Fixed 2026-09-03, awaiting a live re-run: the two cancel paths had diverged.**
+Single-order cancel routed an order's identity into the adapter's ID maps before
+emitting (`cache_cancel_order_tracking`); cancel-all did not, so an order adopted from
+the venue - in the cache, never submitted by this client, therefore absent from the maps
+
+- died emitting with "Instrument ID not found for pending cancel order", and a failed
+cancel was logged and nothing more. Cancel-all now carries each order's identity out of
+the cache, routes it through the shared `cache_order_identity` before the cancel goes
+out, and reports a failed cancel as `OrderCancelRejected` so a sweep waiting on events
+is told. Three tests, 419/419 in the crate, clippy clean; registered in the delta.
+**Verification is a live `live/strand_recovery.py` re-run** - the second half of the
+finding, that IB may refuse a cross-client-id cancel outright, is a broker rule this fix
+cannot change: what it changes is that the refusal now arrives as an event instead of
+silence.
 
 ### Waiting on a decision (1)
 

@@ -3248,3 +3248,160 @@ fn test_get_leg_position_three_leg_spread() {
     let result = InteractiveBrokersExecutionClient::get_leg_position(&spread_id, &leg_id3);
     assert_eq!(result, 2);
 }
+
+#[rstest]
+fn test_cache_order_identity_routes_an_adopted_order() {
+    // The defect this pins: an order adopted from the venue by reconciliation is in the
+    // cache but has no entry in this client's ID maps, because this client never
+    // submitted it. Emitting any event for it then dies looking up an instrument that
+    // was never mapped. Routing the identity first is what makes the emit possible.
+    let order_id = 832_000_002; // The IB ID from the 2026-09-02 strand recovery.
+    let client_order_id = ClientOrderId::from("O-ADOPTED-001");
+    let instrument_id = create_test_spread_instrument();
+    let order_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let venue_order_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let instrument_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let trader_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let strategy_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let pending_cancel_orders = Arc::new(Mutex::new(ahash::AHashSet::new()));
+    let (exec_sender, mut exec_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    // Before routing, the emit fails exactly as it did against the broker.
+    let unrouted = InteractiveBrokersExecutionClient::emit_order_pending_cancel(
+        order_id,
+        client_order_id,
+        VenueOrderId::from("832000002"),
+        &instrument_id_map,
+        &trader_id_map,
+        &strategy_id_map,
+        &pending_cancel_orders,
+        &exec_sender,
+        UnixNanos::new(1),
+        AccountId::from("IB-001"),
+    );
+    assert!(
+        unrouted.is_err(),
+        "an unrouted order must not silently emit"
+    );
+    assert!(
+        exec_receiver.try_recv().is_err(),
+        "no event should have been sent"
+    );
+    pending_cancel_orders.lock().unwrap().clear();
+
+    InteractiveBrokersExecutionClient::cache_order_identity(
+        order_id,
+        client_order_id,
+        instrument_id,
+        TraderId::from("TRADER-001"),
+        StrategyId::from("STRATEGY-001"),
+        &order_id_map,
+        &venue_order_id_map,
+        &instrument_id_map,
+        &trader_id_map,
+        &strategy_id_map,
+    )
+    .unwrap();
+
+    InteractiveBrokersExecutionClient::emit_order_pending_cancel(
+        order_id,
+        client_order_id,
+        VenueOrderId::from("832000002"),
+        &instrument_id_map,
+        &trader_id_map,
+        &strategy_id_map,
+        &pending_cancel_orders,
+        &exec_sender,
+        UnixNanos::new(1),
+        AccountId::from("IB-001"),
+    )
+    .unwrap();
+
+    match exec_receiver.try_recv().unwrap() {
+        ExecutionEvent::Order(OrderEventAny::PendingCancel(event)) => {
+            assert_eq!(event.client_order_id, client_order_id);
+            assert_eq!(event.instrument_id, instrument_id);
+            assert_eq!(event.venue_order_id, Some(VenueOrderId::from("832000002")));
+        }
+        event => panic!("Expected OrderPendingCancel, was {event:?}"),
+    }
+
+    // Both directions of the route, so a later order-status callback resolves too.
+    assert_eq!(
+        venue_order_id_map.lock().unwrap().get(&order_id).copied(),
+        Some(client_order_id)
+    );
+    assert_eq!(
+        order_id_map.lock().unwrap().get(&client_order_id).copied(),
+        Some(order_id)
+    );
+}
+
+#[rstest]
+fn test_cache_order_identity_refuses_to_steal_a_mapped_ib_order_id() {
+    let order_id = 7002;
+    let instrument_id = create_test_spread_instrument();
+    let order_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let venue_order_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let instrument_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let trader_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let strategy_id_map = Arc::new(Mutex::new(AHashMap::new()));
+
+    venue_order_id_map
+        .lock()
+        .unwrap()
+        .insert(order_id, ClientOrderId::from("O-INCUMBENT-001"));
+
+    let result = InteractiveBrokersExecutionClient::cache_order_identity(
+        order_id,
+        ClientOrderId::from("O-INTRUDER-001"),
+        instrument_id,
+        TraderId::from("TRADER-001"),
+        StrategyId::from("STRATEGY-001"),
+        &order_id_map,
+        &venue_order_id_map,
+        &instrument_id_map,
+        &trader_id_map,
+        &strategy_id_map,
+    );
+
+    assert!(result.is_err(), "an IB order ID must not be re-pointed");
+    assert_eq!(
+        venue_order_id_map.lock().unwrap().get(&order_id).copied(),
+        Some(ClientOrderId::from("O-INCUMBENT-001")),
+        "the incumbent mapping must survive the refusal"
+    );
+}
+
+#[rstest]
+fn test_a_failed_cancel_is_reported_as_a_rejection() {
+    // A swallowed cancel failure is what left the strand recovery waiting on an event
+    // that was never coming; the sweep must be told.
+    let (exec_sender, mut exec_receiver) = tokio::sync::mpsc::unbounded_channel();
+    let identity = OrderIdentity {
+        instrument_id: create_test_spread_instrument(),
+        trader_id: TraderId::from("TRADER-001"),
+        strategy_id: StrategyId::from("STRATEGY-001"),
+    };
+
+    InteractiveBrokersExecutionClient::send_cancel_rejected_for_identity(
+        ClientOrderId::from("O-ADOPTED-001"),
+        VenueOrderId::from("832000002"),
+        &identity,
+        "Failed to cancel order at Interactive Brokers: no such order",
+        &exec_sender,
+        UnixNanos::new(1),
+        AccountId::from("IB-001"),
+    )
+    .unwrap();
+
+    match exec_receiver.try_recv().unwrap() {
+        ExecutionEvent::Order(OrderEventAny::CancelRejected(event)) => {
+            assert_eq!(event.client_order_id, ClientOrderId::from("O-ADOPTED-001"));
+            assert_eq!(event.venue_order_id, Some(VenueOrderId::from("832000002")));
+            assert_eq!(event.instrument_id, identity.instrument_id);
+            assert!(event.reason.contains("no such order"));
+        }
+        event => panic!("Expected OrderCancelRejected, was {event:?}"),
+    }
+}

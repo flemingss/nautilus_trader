@@ -1705,9 +1705,12 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
 
         // Get open orders from cache before spawning async task (Rc doesn't work across async boundaries)
         // Note: In Rust, instrument_id is always required, so we always filter by it
-        let orders_to_cancel: Vec<(ClientOrderId, Option<VenueOrderId>)> = {
+        let orders_to_cancel: Vec<CancelAllTarget> = {
             let cache = self.core.cache();
-            let mut orders_to_cancel: Vec<(ClientOrderId, Option<VenueOrderId>)> = cache
+            // The identity is carried out of the cache rather than looked up later: an
+            // order adopted from the venue has a cache entry but no entry in this
+            // client's ID maps, and every event the adapter emits needs the identity.
+            let mut orders_to_cancel: Vec<CancelAllTarget> = cache
                 .orders_open(
                     None,                     // venue
                     Some(&cmd.instrument_id), // instrument_id (always filter by it in Rust)
@@ -1716,7 +1719,15 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
                     None,                     // side (IB doesn't support side filtering)
                 )
                 .iter()
-                .map(|order| (order.client_order_id(), order.venue_order_id()))
+                .map(|order| CancelAllTarget {
+                    client_order_id: order.client_order_id(),
+                    venue_order_id: order.venue_order_id(),
+                    identity: Some(OrderIdentity {
+                        instrument_id: order.instrument_id(),
+                        trader_id: order.trader_id(),
+                        strategy_id: order.strategy_id(),
+                    }),
+                })
                 .collect();
 
             if orders_to_cancel.is_empty() {
@@ -1740,16 +1751,18 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
 
                 orders_to_cancel.extend(ib_order_ids.into_iter().filter_map(|ib_order_id| {
                     venue_map.get(&ib_order_id).copied().map(|client_order_id| {
-                        (
+                        // Sourced from the ID maps, so the identity is already routed.
+                        CancelAllTarget {
                             client_order_id,
-                            Some(VenueOrderId::from(ib_order_id.to_string())),
-                        )
+                            venue_order_id: Some(VenueOrderId::from(ib_order_id.to_string())),
+                            identity: None,
+                        }
                     })
                 }));
             }
 
-            orders_to_cancel.sort_by_key(|(client_order_id, _)| client_order_id.to_string());
-            orders_to_cancel.dedup_by_key(|(client_order_id, _)| *client_order_id);
+            orders_to_cancel.sort_by_key(|target| target.client_order_id.to_string());
+            orders_to_cancel.dedup_by_key(|target| target.client_order_id);
             orders_to_cancel
         };
 
@@ -1766,6 +1779,7 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
 
         let client_clone = client.as_arc().clone();
         let order_id_map = Arc::clone(&self.order_id_map);
+        let venue_order_id_map = Arc::clone(&self.venue_order_id_map);
         let instrument_id_map = Arc::clone(&self.instrument_id_map);
         let trader_id_map = Arc::clone(&self.trader_id_map);
         let strategy_id_map = Arc::clone(&self.strategy_id_map);
@@ -1779,6 +1793,7 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
             if let Err(e) = Self::handle_cancel_all_orders_async(
                 &client_clone,
                 &order_id_map,
+                &venue_order_id_map,
                 &instrument_id_map,
                 &trader_id_map,
                 &strategy_id_map,
@@ -1916,6 +1931,34 @@ impl InteractiveBrokersExecutionClient {
         exec_sender
             .send(ExecutionEvent::Order(OrderEventAny::ModifyRejected(event)))
             .map_err(|e| anyhow::anyhow!("Failed to send order modify rejected event: {e}"))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn send_cancel_rejected_for_identity(
+        client_order_id: ClientOrderId,
+        venue_order_id: VenueOrderId,
+        identity: &OrderIdentity,
+        reason: &str,
+        exec_sender: &tokio::sync::mpsc::UnboundedSender<ExecutionEvent>,
+        ts_event: UnixNanos,
+        account_id: AccountId,
+    ) -> anyhow::Result<()> {
+        let event = OrderCancelRejected::new(
+            identity.trader_id,
+            identity.strategy_id,
+            identity.instrument_id,
+            client_order_id,
+            Ustr::from(reason),
+            UUID4::new(),
+            ts_event,
+            ts_event,
+            false,
+            Some(venue_order_id),
+            Some(account_id),
+        );
+        exec_sender
+            .send(ExecutionEvent::Order(OrderEventAny::CancelRejected(event)))
+            .map_err(|e| anyhow::anyhow!("Failed to send order cancel rejected event: {e}"))
     }
 
     fn send_order_cancel_rejected(
@@ -2249,9 +2292,11 @@ impl InteractiveBrokersExecutionClient {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn handle_cancel_all_orders_async(
         client: &Arc<Client>,
         order_id_map: &Arc<Mutex<AHashMap<ClientOrderId, i32>>>,
+        venue_order_id_map: &Arc<Mutex<AHashMap<i32, ClientOrderId>>>,
         instrument_id_map: &Arc<Mutex<AHashMap<i32, InstrumentId>>>,
         trader_id_map: &Arc<Mutex<AHashMap<i32, TraderId>>>,
         strategy_id_map: &Arc<Mutex<AHashMap<i32, StrategyId>>>,
@@ -2260,26 +2305,26 @@ impl InteractiveBrokersExecutionClient {
         ts_init: UnixNanos,
         account_id: AccountId,
         request_timeout_secs: u64,
-        orders_to_cancel: Vec<(ClientOrderId, Option<VenueOrderId>)>,
+        orders_to_cancel: Vec<CancelAllTarget>,
     ) -> anyhow::Result<()> {
         // Get all IB order selectors first, then drop the guard before awaiting
-        let order_selectors: Vec<(ClientOrderId, IbOrderSelector, Option<VenueOrderId>)> = {
+        let order_selectors: Vec<(CancelAllTarget, IbOrderSelector)> = {
             let order_id_map_guard = order_id_map
                 .lock()
                 .map_err(|_| anyhow::anyhow!("Failed to lock order ID map"))?;
 
             orders_to_cancel
                 .into_iter()
-                .filter_map(|(client_order_id, venue_order_id)| {
-                    if let Some(venue_order_id) = venue_order_id {
+                .filter_map(|target| {
+                    if let Some(venue_order_id) = target.venue_order_id {
                         match IbOrderSelector::from_venue_order_id(&venue_order_id) {
                             Ok(order_selector) => {
-                                return Some((client_order_id, order_selector, Some(venue_order_id)));
+                                return Some((target, order_selector));
                             }
                             Err(e) => {
                                 tracing::error!(
                                     "Failed resolve cancel-all order {} from venue order ID {}: {e}",
-                                    client_order_id,
+                                    target.client_order_id,
                                     venue_order_id
                                 );
                                 return None;
@@ -2288,21 +2333,16 @@ impl InteractiveBrokersExecutionClient {
                     }
 
                     order_id_map_guard
-                        .get(&client_order_id)
+                        .get(&target.client_order_id)
                         .copied()
-                        .map(|ib_order_id| {
-                            (
-                                client_order_id,
-                                IbOrderSelector::OrderId(ib_order_id),
-                                None,
-                            )
-                        })
+                        .map(|ib_order_id| (target, IbOrderSelector::OrderId(ib_order_id)))
                 })
                 .collect()
         };
 
         // Now cancel each order (guard is dropped, so we can await)
-        for (client_order_id, order_selector, venue_order_id) in order_selectors {
+        for (target, order_selector) in order_selectors {
+            let client_order_id = target.client_order_id;
             let ib_order_id = match Self::resolve_ib_order_id(
                 client,
                 order_selector,
@@ -2317,8 +2357,33 @@ impl InteractiveBrokersExecutionClient {
                     continue;
                 }
             };
-            let venue_order_id =
-                venue_order_id.unwrap_or_else(|| VenueOrderId::from(ib_order_id.to_string()));
+            let venue_order_id = target
+                .venue_order_id
+                .unwrap_or_else(|| VenueOrderId::from(ib_order_id.to_string()));
+
+            // Route the identity before the cancel goes out, so both the acknowledgement
+            // and the rejection have somewhere to be emitted from. An adopted order has
+            // no route until this runs.
+            if let Some(identity) = target.identity
+                && let Err(e) = Self::cache_order_identity(
+                    ib_order_id,
+                    client_order_id,
+                    identity.instrument_id,
+                    identity.trader_id,
+                    identity.strategy_id,
+                    order_id_map,
+                    venue_order_id_map,
+                    instrument_id_map,
+                    trader_id_map,
+                    strategy_id_map,
+                )
+            {
+                tracing::error!(
+                    "Failed to route identity for cancel-all order {} (IB order ID: {}): {e}",
+                    client_order_id,
+                    ib_order_id
+                );
+            }
 
             if let Err(e) = client.cancel_order(ib_order_id, "").await {
                 tracing::error!(
@@ -2326,6 +2391,26 @@ impl InteractiveBrokersExecutionClient {
                     client_order_id,
                     ib_order_id
                 );
+                // A swallowed failure is worse than a loud one: a sweep that waits on
+                // events would wait forever for an order the venue never cancelled.
+                if let Some(identity) = target.identity {
+                    let reason = format!("Failed to cancel order at Interactive Brokers: {e}");
+
+                    if let Err(send_error) = Self::send_cancel_rejected_for_identity(
+                        client_order_id,
+                        venue_order_id,
+                        &identity,
+                        &reason,
+                        exec_sender,
+                        ts_init,
+                        account_id,
+                    ) {
+                        tracing::error!(
+                            "Failed to emit cancel rejected for order {}: {send_error}",
+                            client_order_id
+                        );
+                    }
+                }
             } else {
                 if let Err(e) = Self::emit_order_pending_cancel(
                     ib_order_id,
@@ -2403,6 +2488,28 @@ impl InteractiveBrokersExecutionClient {
 
         Ok(())
     }
+}
+
+/// The identity every order event needs, carried alongside an order being cancelled.
+///
+/// Read from the cache rather than the adapter's ID maps, because an order adopted from
+/// the venue is in the cache and not in the maps.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct OrderIdentity {
+    pub(super) instrument_id: InstrumentId,
+    pub(super) trader_id: TraderId,
+    pub(super) strategy_id: StrategyId,
+}
+
+/// One order a cancel-all is about to send, with its identity when the cache knew it.
+///
+/// `identity` is `None` only for targets sourced from the ID maps themselves, which are
+/// routed by construction.
+#[derive(Debug, Clone)]
+pub(super) struct CancelAllTarget {
+    pub(super) client_order_id: ClientOrderId,
+    pub(super) venue_order_id: Option<VenueOrderId>,
+    pub(super) identity: Option<OrderIdentity>,
 }
 
 const MUTEX_POISONED: &str = "Mutex poisoned";
