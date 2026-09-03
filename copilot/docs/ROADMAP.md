@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Nine items. Grouped by blocking condition rather than by component, because that is
+Twelve items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -190,7 +190,7 @@ detail table below - gets a row in one of these groups before the session that s
 it ends. Three items sat outside the count because they lived only in a status table, a
 conversation, and a test log; the count exists so that cannot happen quietly.
 
-### Waiting on the account (3)
+### Waiting on the account (4)
 
 Recorded 2026-09-01. **The operator's to close, not the repository's.** Three items in the
 groups below inherit their block, which is why they sit first.
@@ -200,6 +200,7 @@ groups below inherit their block, which is why they sit first.
 | **Clear the IBKR market-data equity minimum**                     | 10     | Market-data subscriptions are gated on account equity and the account is below the bar. Funds have been added; settlement expected **on or after 2026-09-08**. Until then the only US equity quotes available are the complimentary **delayed, non-consolidated** feed. |
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
+| **Paste the Databento key, and cap the spend in the portal**      | 00     | Account is open; `DATABENTO_API_KEY` is blank in `trade-copilot/.env`. Historical billing meters uncompressed bytes delivered, so a portal spend limit is the only backstop a careless query cannot route around. Unblocks the survey and the probe below.              |
 
 **Fixed and verified live 2026-09-03: the adopted-order cancel path.** The two cancel
 paths had diverged - single-order cancel routed an order's identity into the adapter's ID
@@ -235,13 +236,14 @@ distinguishable without guessing, and the rejection itself is unchanged. `shutdo
 is no longer blocked by this class of noise. One test drives an orphan fill both ways and
 was verified to fail on the unfixed engine; registered in the delta.
 
-### Waiting on a decision (1)
+### Waiting on a decision (2)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
-| Item                                    | Stage  | The decision                                                                                                                                    |
-| --------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Buy consolidated US equity data, or not | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, so this is only worth it if intraday comes with it. |
+| Item                                       | Stage  | The decision                                                                                                                                                                                                                                                                                                             |
+| ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Buy consolidated US equity data, or not    | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, and [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) now covers intraday from 2018 at near-zero cost, which removes most of the reason to buy.                                                            |
+| Replace Marketstack with EODHD, or keep it | 00     | EODHD is roughly $30/month against Marketstack's $49.99 for strictly more: 30+ years of EOD, corporate actions, and delisted securities. Not adoptable until it passes the same coherence probe that caught Marketstack's fake intraday. **Cancel nothing first** - only Marketstack reaches the 2005-2018 daily series. |
 
 **Resolved 2026-09-02:** the two items that needed a live session are settled - realtime
 quotes are still not entitled, and the sibling-subscription stall does not reproduce. Both
@@ -267,18 +269,24 @@ not expressible on the daily-bar replay, so the premise runs at both bounds that
 **only a `next_close` activation may spend a holdout**). The entry-timing resolution
 un-gates the holdout spend; the bracket verdict is under stage 02 below.
 
-| Item                                 | Stage | Notes                                                                                                                                                                  |
-| ------------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities. |
+| Item                                 | Stage | Notes                                                                                                                                                                                                                                                                                      |
+| ------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities, which [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) prices at Norgate Platinum, USD 630/year. |
 
 ### Waiting on spend (2)
 
 No code closes these.
 
-| Item                         | Stage | Notes                                                                                                                                  |
-| ---------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------- |
-| US equity history through IB | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                |
-| Intraday history             | 00    | Marketstack EOD cannot support anything acting within a session. Databento was preferred and deferred until the system earns its cost. |
+| Item                           | Stage | Notes                                                                                                                                                                                                                                                                                |
+| ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
+| Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
+
+### Ready to build (1)
+
+| Item                                             | Stage | Notes                                                                                                                                                                                                                                                                                        |
+| ------------------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit 2018-2025 of the catalog against Databento | 00    | The first independent check available on seven of the catalog's twenty years, and the reason [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) calls Databento an audit instrument as well as a feed. Run `--survey` and `--cost`, both free, before anything that spends. |
 
 ### Deferred by decision (2)
 

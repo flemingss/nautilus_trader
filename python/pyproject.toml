@@ -373,6 +373,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: report output is the product, and each connection knob is independent
 "copilot/data/backfill.py" = ["T201"]
+"copilot/data/databento.py" = [
+  "ANN401",
+  "T201",
+] # Operator CLI printing its verdict; decoded JSON is genuinely dynamic
 "copilot/data/marketstack.py" = [
   "PLR0913",
 ] # Endpoint, paging and retry policy as explicit keyword args

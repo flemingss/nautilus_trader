@@ -250,6 +250,29 @@ directory was an API key.
    set -a; . ~/.config/copilot/secrets.env; set +a
    ```
 
+   **Back the catalog up; "rebuild it" is not a durable second copy.**
+   [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) established that
+   no surveyed vendor reaches the 2005-2018 daily series except the one currently
+   subscribed - Databento's US equities history begins around 2018-05 and it sells no
+   corporate actions. So the rebuild path holds only while that subscription is live,
+   and the moment it lapses the catalog stops being a cache and becomes **the only copy
+   of thirteen irreplaceable years**. Archive it off the WSL filesystem, with a per-file
+   manifest, and verify by extracting rather than by trusting the write:
+
+   ```bash
+   DEST=/mnt/c/Users/<user>/nautilus-copilot-backups
+   STAMP=$(date -u +%Y%m%dT%H%M%SZ)
+   mkdir -p "$DEST"
+   ( cd ~/.nautilus_copilot && find catalog -type f -print0 | sort -z | xargs -0 sha256sum ) \
+     > "$DEST/catalog_${STAMP}.sha256"
+   tar -czf "$DEST/catalog_${STAMP}.tar.gz" -C ~/.nautilus_copilot catalog
+   TMP=$(mktemp -d) && tar -xzf "$DEST/catalog_${STAMP}.tar.gz" -C "$TMP" \
+     && ( cd "$TMP" && sha256sum -c "$DEST/catalog_${STAMP}.sha256" --quiet ) && rm -rf "$TMP"
+   ```
+
+   Done 2026-09-03: 40 files, 6.3 MB, all hashes matched on extract. It is deliberately
+   **not** committed - this repository is public and the bars are licensed vendor data.
+
    **Rebuild to 2025-12-31, not to today.** This is the trap, and the guard catches it
    rather than the operator:
 
