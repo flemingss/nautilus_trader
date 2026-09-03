@@ -4067,14 +4067,36 @@ impl ExecutionEngine {
         let open_position_details =
             Self::position_details(positions_open.iter().map(|position| &**position));
 
-        log::error!(
-            "Cannot open {oms_type} position {position_id} from reduce-only fill {} for {}; \
-             matching_reduce_positions=[{}], open_positions=[{}]",
-            fill.trade_id,
-            fill.instrument_id,
-            matching_position_details,
-            open_position_details
-        );
+        // A reduce-only fill that cannot find a position is two different events
+        // depending on where it came from. Live, it is a real defect: something tried to
+        // reduce a position that is not there. Replayed from the venue during startup
+        // reconciliation, it is the ordinary shape of a lookback that holds a completed
+        // round trip - the exit fill is reported, its position was closed long ago and
+        // is not in the cache, and there is nothing wrong. Logging both at ERROR made
+        // every startup carrying a finished trade look like a failure, which is exactly
+        // the noise `shutdown_on_error` would turn into a restart loop. The rejection
+        // itself is unchanged in both cases.
+        if fill.reconciliation {
+            log::warn!(
+                "Skipped {oms_type} position {position_id} for historical reduce-only fill {} \
+                 for {} during reconciliation; no open position to reduce, which is expected \
+                 when the lookback holds a completed round trip; \
+                 matching_reduce_positions=[{}], open_positions=[{}]",
+                fill.trade_id,
+                fill.instrument_id,
+                matching_position_details,
+                open_position_details
+            );
+        } else {
+            log::error!(
+                "Cannot open {oms_type} position {position_id} from reduce-only fill {} for {}; \
+                 matching_reduce_positions=[{}], open_positions=[{}]",
+                fill.trade_id,
+                fill.instrument_id,
+                matching_position_details,
+                open_position_details
+            );
+        }
 
         true
     }

@@ -2,6 +2,30 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-03 (the startup errors that were not errors)
+
+### Fixed
+
+- **A reduce-only fill with no position to reduce is now classified by where it came
+  from** (`crates/execution/src/engine/mod.rs`). Every startup whose reconciliation
+  lookback held a completed round trip logged `ERROR Cannot open NETTING position ...
+  from reduce-only fill` - a historical exit fill whose position closed long ago and is
+  not in the cache. Nothing was wrong, and it is exactly the class of noise
+  `shutdown_on_error=true` would have turned into a restart loop. The reconciliation case
+  now logs `WARN` and says the condition is expected; the live case, where something
+  really did try to reduce a position that is not there, stays `ERROR`. Reconciliation
+  fills already carry `reconciliation: true` at all four constructors, so the two are
+  distinguishable without inference, and **the rejection itself is unchanged** - a
+  reduce-only fill still never opens a position.
+
+### Testing
+
+- One test in `exec_engine.rs` captures the engine's own log records and drives an orphan
+  reduce-only fill twice, live and reconciled, asserting the level split, the "expected"
+  wording, and that neither opened a position. **Verified to fail on the unfixed engine.**
+  1,153 tests in `nautilus-execution` pass under nextest; clippy clean. Registered in the
+  delta.
+
 ## 2026-09-03 (the adapter can route an order it did not place)
 
 ### Fixed
