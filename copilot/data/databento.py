@@ -49,9 +49,21 @@ knowable before it is paid for. ``--probe`` spends, which is why it refuses to r
 without ``--spend``.
 
 A caution that belongs next to the code rather than in a portal: because billing
-follows bytes returned, a careless full-depth query is the entire risk surface. Set a
-monthly historical spend limit in the Databento portal as well as passing ``--spend``
-here.
+follows bytes returned, a careless full-depth query is the entire risk surface, and
+that is not hypothetical. Priced on 2026-09-03 for the same 20 symbols:
+
+===============================================  ==========
+Query                                            Cost
+===============================================  ==========
+``ohlcv-1d``, EQUS.SUMMARY, 18 months            $0.01
+``ohlcv-1m``, EQUS.MINI, 2023-03 to 2025-12      $3.74
+``ohlcv-1m``, single venue, 2018-05 to 2025-12   $12.62
+``statistics``, EQUS.SUMMARY, 18 months          **$1,246.00**
+===============================================  ==========
+
+The last one is ten times the signup credit, and differs from the first only by the
+schema name. Set a monthly historical spend limit in the portal as well as passing
+``--spend`` here, and price every new query shape with ``--cost`` first.
 
 """
 
@@ -81,10 +93,26 @@ DATASET_ENV = "DATABENTO_DATASET"
 
 DEFAULT_BASE_URL = "https://hist.databento.com/v0"
 
-# Databento's own consolidated US equities dataset. Chosen over XNAS.BASIC because the
-# strategy trades a consolidated tape rather than one venue's view of it, and over the
-# deprecated DBEQ.BASIC, which was folded into the US equities service in January 2025.
-DEFAULT_DATASET = "EQUS.SUMMARY"
+# Measured 2026-09-03 with --survey, because the documentation does not carry these and
+# the choice turns entirely on them:
+#
+#   ARCX.PILLAR   2018-05-01   one venue     ohlcv-1m
+#   XNAS.ITCH     2018-05-01   one venue     ohlcv-1m   ~38% of consolidated volume
+#   XNYS.PILLAR   2018-05-01   one venue     ohlcv-1m
+#   DBEQ.BASIC    2023-03-28   multi-venue   ohlcv-1m   one row per venue per day
+#   EQUS.MINI     2023-03-28   composite     ohlcv-1m   ~3% of consolidated volume
+#   EQUS.SUMMARY  2024-07-01   consolidated  NO ohlcv-1m; ohlcv-1d, statistics only
+#
+# EQUS.MINI is the default because it is the deepest dataset that serves one-minute
+# bars on a composite rather than a single venue. Its prices track the tape closely and
+# **its volume does not**: it is a fraction of consolidated volume, so a premise with a
+# volume filter wants XNAS.ITCH's honest single-venue count instead, which also reaches
+# back to 2018.
+DEFAULT_DATASET = "EQUS.MINI"
+
+# The consolidated daily series. Closes matched the catalog to the cent on every day
+# tested, which makes it the audit instrument - but only from 2024-07-01.
+DAILY_DATASET = "EQUS.SUMMARY"
 
 USER_AGENT = "NautilusCopilot/1.0"
 TIMEOUT_SECONDS = 60
