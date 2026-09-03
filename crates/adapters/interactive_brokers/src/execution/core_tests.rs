@@ -3405,3 +3405,55 @@ fn test_a_failed_cancel_is_reported_as_a_rejection() {
         event => panic!("Expected OrderCancelRejected, was {event:?}"),
     }
 }
+
+#[rstest]
+fn test_optional_actor_ids_distinguishes_an_external_order_from_a_broken_route() {
+    // TWS pushes every working order on the account at connect, including ones this
+    // client never placed. Those have no route, which is normal - not the same thing as
+    // a route that should exist and does not.
+    let order_id = 832_000_003; // The IB ID from the 2026-09-03 strand recovery.
+    let trader_id_map = Arc::new(Mutex::new(AHashMap::new()));
+    let strategy_id_map = Arc::new(Mutex::new(AHashMap::new()));
+
+    let unrouted = InteractiveBrokersExecutionClient::get_optional_order_actor_ids(
+        order_id,
+        &trader_id_map,
+        &strategy_id_map,
+    )
+    .unwrap();
+    assert!(
+        unrouted.is_none(),
+        "an order this client never placed must report no route, not an error"
+    );
+
+    // A half-built route is also no route: both halves are needed to attribute an event.
+    trader_id_map
+        .lock()
+        .unwrap()
+        .insert(order_id, TraderId::from("TRADER-001"));
+    let half = InteractiveBrokersExecutionClient::get_optional_order_actor_ids(
+        order_id,
+        &trader_id_map,
+        &strategy_id_map,
+    )
+    .unwrap();
+    assert!(half.is_none(), "a half-built route must not be usable");
+
+    strategy_id_map
+        .lock()
+        .unwrap()
+        .insert(order_id, StrategyId::from("STRATEGY-001"));
+    let routed = InteractiveBrokersExecutionClient::get_optional_order_actor_ids(
+        order_id,
+        &trader_id_map,
+        &strategy_id_map,
+    )
+    .unwrap();
+    assert_eq!(
+        routed,
+        Some((
+            TraderId::from("TRADER-001"),
+            StrategyId::from("STRATEGY-001")
+        ))
+    );
+}

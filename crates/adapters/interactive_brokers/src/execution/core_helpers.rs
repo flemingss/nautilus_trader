@@ -88,6 +88,33 @@ impl InteractiveBrokersExecutionClient {
         Ok(map.get(&order_id).copied())
     }
 
+    /// Return the actor identity for an IB order, or `None` when this client has no
+    /// route to it.
+    ///
+    /// Distinct from [`Self::get_required_order_actor_ids`]: an order this client never
+    /// placed legitimately has no route, and callers reached by unsolicited venue traffic
+    /// need to tell that apart from a genuinely broken lookup.
+    pub(super) fn get_optional_order_actor_ids(
+        order_id: i32,
+        trader_id_map: &Arc<Mutex<AHashMap<i32, TraderId>>>,
+        strategy_id_map: &Arc<Mutex<AHashMap<i32, StrategyId>>>,
+    ) -> anyhow::Result<Option<(TraderId, StrategyId)>> {
+        let trader_id = {
+            let map = trader_id_map
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Failed to lock trader ID map"))?;
+            map.get(&order_id).copied()
+        };
+        let strategy_id = {
+            let map = strategy_id_map
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Failed to lock strategy ID map"))?;
+            map.get(&order_id).copied()
+        };
+
+        Ok(trader_id.zip(strategy_id))
+    }
+
     pub(super) fn get_required_order_actor_ids(
         order_id: i32,
         trader_id_map: &Arc<Mutex<AHashMap<i32, TraderId>>>,
