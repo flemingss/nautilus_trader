@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twelve items. Grouped by blocking condition rather than by component, because that is
+Thirteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -282,11 +282,12 @@ No code closes these.
 | US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (1)
+### Ready to build (2)
 
-| Item                                             | Stage | Notes                                                                                                                                                                                                                                                                                        |
-| ------------------------------------------------ | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Audit 2018-2025 of the catalog against Databento | 00    | The first independent check available on seven of the catalog's twenty years, and the reason [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) calls Databento an audit instrument as well as a feed. Run `--survey` and `--cost`, both free, before anything that spends. |
+| Item                                                 | Stage | Notes                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Audit the catalog against Databento, 2024-07 forward | 00    | Surveyed and priced 2026-09-03: `EQUS.SUMMARY` daily closes matched the catalog **to the cent** on every day tested, so the instrument works, but its history starts 2024-07-01 - about one of the catalog's twenty years, not the seven first claimed ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). The full audit window costs $0.06. |
+| Pull intraday, and report the window honestly        | 00    | Consolidated one-minute bars start 2023-03-28 ($3.74 for 20 symbols); single-venue reaches 2018-05 ($12.62). Neither covers the development window, so the [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md) revisit is a recent-regime test only.                                                                                            |
 
 ### Deferred by decision (2)
 
