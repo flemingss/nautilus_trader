@@ -81,12 +81,25 @@ backtest the day's closing price at 09:31.
   previous vendor - distinct values per price field, volume monotonicity, summed volume
   against the daily total, and OHLC coherence - run as `--probe` and are covered by
   tests that replay the exact failing payload.
-- **Databento is the audit instrument, and it has already earned the name.**
-  `EQUS.SUMMARY` daily closes matched the catalog **exactly, to the cent, on every day
-  tested** (AAPL, 2024-08-01 to 08-07), with volume within 0.2-7%. That is the first
-  independent confirmation that Marketstack's raw close series is sound - but the
-  window is 2024-07 forward, not 2018, so it audits about one year of the catalog's
-  twenty rather than seven.
+- **Databento is the audit instrument, and the audit has already been run.** Executed
+  2026-09-03 for $0.09 total, against each listing venue's **official closing auction
+  print** (`statistics`, stat type 11) rather than a trade-derived bar, because the
+  venue that lists a security runs the auction that sets its official close.
+  **38,523 symbol-days compared, 2018-05-01 to 2025-12-31.**
+
+  | Disagreement                          | Days   | Share       |
+  | ------------------------------------- | ------ | ----------- |
+  | Split adjustment (AAPL 4:1, expected) | 588    | 1.53%       |
+  | Under 1 bps, representation only      | 166    | 0.43%       |
+  | 1-10 bps                              | 20     | 0.05%       |
+  | **Over 10 bps, materially wrong**     | **17** | **0.044%**  |
+
+  So **Marketstack's closes are right 99.96% of the time** on material terms, which is
+  the first independent evidence the catalog can carry a verdict at all. The 17 bad
+  closes are real: PEP 2024-12-05 reads 159.1350 against an official 160.49, and an
+  independent third source confirms **160.49 to the cent**. Three of the worst carry
+  sub-penny values (19.7050, 177.9450, 159.1350) that no closing auction print can
+  have, which is a cheap detector for the class.
 - **`ohlcv-1d` is not the official close.** It is trade-derived; the `statistics`
   schema carries official daily values. This matters directly, because [ADR-0013]
   restricts a holdout spend to a `next_close` activation.
@@ -111,6 +124,24 @@ irreplaceable years. It is backed up off the WSL filesystem with a per-file SHA-
 manifest, verified by extracting the archive and comparing hashes rather than by
 trusting the write. It is **not** committed: this repository is public and the bars are
 licensed vendor data.
+
+## What the audit found that nothing else would have
+
+**Four symbols carry an unadjusted split as fact.** The catalog's own bars move
+**AMZN -94.9%** (2022-06-06), **GOOGL -95.1%** (2022-07-18), **WMT -66.1%**
+(2024-02-26) and **KO -50.1%** (2012-08-13) in a single day. `marketstack.py` asserted
+in its module docstring that this "does not exist in the raw series", generalising from
+AAPL, which *is* adjusted. That claim is now corrected in place.
+
+A gap strategy reads a -95% day as the largest gap in its history, so **any verdict
+over those four names would have been invalid**. The three names with filed verdicts -
+AAPL, MSFT, SPY - are unaffected, which is luck rather than design: the defect sits in
+the catalog waiting for the universe expansion that [ADR-0009]'s sweep and the
+survivor-bias correction both require. Repair is tracked as its own work; the vendor's
+`/splits` endpoint carries the factors and `split_factor` is already stored per row.
+
+This is the argument for the audit in one line: **$0.09 of metered data found a defect
+that would have silently corrupted every verdict on a widened universe.**
 
 ## Consequences
 

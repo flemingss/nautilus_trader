@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Thirteen items. Grouped by blocking condition rather than by component, because that is
+Fifteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -282,12 +282,14 @@ No code closes these.
 | US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (2)
+### Ready to build (4)
 
-| Item                                                 | Stage | Notes                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Audit the catalog against Databento, 2024-07 forward | 00    | Surveyed and priced 2026-09-03: `EQUS.SUMMARY` daily closes matched the catalog **to the cent** on every day tested, so the instrument works, but its history starts 2024-07-01 - about one of the catalog's twenty years, not the seven first claimed ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). The full audit window costs $0.06. |
-| Pull intraday, and report the window honestly        | 00    | Consolidated one-minute bars start 2023-03-28 ($3.74 for 20 symbols); single-venue reaches 2018-05 ($12.62). Neither covers the development window, so the [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md) revisit is a recent-regime test only.                                                                                            |
+| Item                                                        | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ----------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ~~Audit the catalog against Databento~~ **Done 2026-09-03** | 00    | Ran for $0.09 against official closing auction prints, 38,523 symbol-days, 2018-05 to 2025-12. Marketstack's closes are materially right **99.96%** of the time; 17 are wrong by more than 10 bps. Findings in [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md).                                                                                                                       |
+| **Repair four unadjusted splits in the catalog**            | 00    | The bars move AMZN -94.9%, GOOGL -95.1%, WMT -66.1% and KO -50.1% in a single day: the splits are in the series as fact, not adjusted away. A gap strategy reads that as its largest gap ever, so **any verdict over those four names is invalid**. AAPL, MSFT and SPY are unaffected. Blocks widening the universe. The vendor's `/splits` data is already fetched and `split_factor` is stored per row. |
+| **Reject a bar whose close is not penny-aligned**           | 00    | Three of the worst wrong closes carry sub-penny values (19.7050, 177.9450, 159.1350) that no closing auction print can have. A cheap gate for the class, once split-adjusted history is excluded from the rule.                                                                                                                                                                                           |
+| Pull intraday, and report the window honestly               | 00    | Consolidated one-minute bars start 2023-03-28 ($3.74 for 20 symbols); single-venue reaches 2018-05 ($12.62). Neither covers the development window, so the [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md) revisit is a recent-regime test only.                                                                                                                                     |
 
 ### Deferred by decision (2)
 

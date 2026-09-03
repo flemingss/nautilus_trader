@@ -35,15 +35,31 @@ carried from a different source than the intraday range. The rate is 0.011% agai
 way; the point is that the coherence check earns its keep on both sets rather than
 being a formality on one.
 
-What makes the choice safe is that the raw set is *already split-adjusted* by the
-vendor: AAPL's close on
-2020-08-28 is reported as 124.8075, which is the pre-split 499.23 divided by the 4:1
-split that settled on the 31st. So the catastrophic discontinuity, a split reading as
-a -75% day, does not exist in the raw series either.
+**The raw set is split-adjusted for some symbols and not others, and an earlier
+version of this note got that badly wrong.** It said the catastrophic discontinuity, a
+split reading as a large negative day, "does not exist in the raw series either". That
+generalised from a single example. AAPL is indeed adjusted - its close on 2020-08-28 is
+reported as 124.8075, the pre-split 499.23 divided by the 4:1 split that settled on the
+31st - but measured across the whole catalog on 2026-09-03, **four symbols carry the
+discontinuity as fact**:
 
-What the raw set lacks is dividend adjustment. That understates total return by the
-yield and does **not** manufacture a discontinuity that a strategy could mistake for a
-signal, which is the failure mode that matters here. ``dividend`` and ``split_factor``
+=========  ============  ==========================
+Symbol     Split date    Single-day move in the bars
+=========  ============  ==========================
+AMZN       2022-06-06    -94.9%
+GOOGL      2022-07-18    -95.1%
+WMT        2024-02-26    -66.1%
+KO         2012-08-13    -50.1%
+=========  ============  ==========================
+
+A gap strategy reads a -95% day as the largest gap in its history. Any verdict over
+those four names is invalid until the series is repaired; AAPL, MSFT and SPY, which
+are the only names with filed verdicts, are unaffected. The vendor's ``/splits``
+endpoint carries the factors needed to repair it, and ``split_factor`` is already
+carried per row.
+
+What the raw set also lacks is dividend adjustment. That understates total return by
+the yield and does not manufacture a discontinuity of this kind. ``dividend`` and ``split_factor``
 are carried through per row, so a dividend-adjusted series can be derived later from a
 coherent base rather than inherited from an incoherent one.
 
