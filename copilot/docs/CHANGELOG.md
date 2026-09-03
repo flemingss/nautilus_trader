@@ -2,6 +2,46 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-03 (both adapter fixes watched working at the broker)
+
+### Measured
+
+- **The adopted-order cancel fix is confirmed against IB.** `live/strand_recovery.py`
+  re-run twice on a rebuilt extension: the stranded order is adopted through
+  reconciliation (`Created external order ... (PERM-868822148) [SUBMITTED]`), and the
+  failure this fix was written for - `Instrument ID not found for pending cancel order` -
+  **does not appear**. The adopted order now reaches `PENDING_CANCEL`, so the identity
+  routed and `OrderPendingCancel` emitted. Evidence:
+  `live/out/strand_recovery_20260903T08{2058,2836}Z.json`.
+- **Off-hours turned out to be the stricter test.** IB reports a resting order as
+  `PreSubmitted`, which the adapter maps to Nautilus `Submitted` - exactly the status the
+  2026-09-01 adoption fix handles. During RTH the same order reports as IB `Submitted`
+  and maps to `Accepted`, a path that already worked. The 2026-09-02 run tested the
+  easier case.
+- **A cancel takes effect from the originating client id, not a foreign one.** From
+  client id 832 (which placed the order) the order left the broker; from 821/822 and
+  841/842 it did not, within the probe's settle window. The acknowledgement never arrived
+  inside that window either time, which is why the probe still records FAIL while the
+  broker ends up clean - the sweep verifies by event, and IB does not send one to a
+  client that did not place the order. **A recovery sweep should use the originating
+  client id when it is known.** Broker confirmed empty afterwards by a third client id
+  reporting no working orders.
+
+### Fixed
+
+- **An open-order update for an order this client never placed no longer logs at ERROR**
+  (`execution/core_updates.rs`). Surfaced by the verification run itself: every connect
+  logged `Trader ID not found for Interactive Brokers order 832000003` **before**
+  reconciliation had run. TWS pushes `openOrder` for every working order on the account
+  at connect, including a previous run's; those have no route and nothing to attribute an
+  update to, and reconciliation adopts them moments later with identity it builds itself.
+  A startup race reported as a failure, and the same `shutdown_on_error` landmine as the
+  reduce-only noise. New `get_optional_order_actor_ids` distinguishes "no route,
+  legitimately" from "route should exist", treating a half-built route as no route.
+  One test; 420/420 in the crate; registered in the delta.
+- **Confirmed by re-run: the rebuilt extension logs zero ERROR lines** across a full
+  strand, recover and sweep cycle.
+
 ## 2026-09-03 (the startup errors that were not errors)
 
 ### Fixed

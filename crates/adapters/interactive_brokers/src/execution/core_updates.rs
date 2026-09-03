@@ -399,11 +399,27 @@ impl InteractiveBrokersExecutionClient {
             return Ok(());
         }
 
-        let (trader_id, strategy_id) = Self::get_required_order_actor_ids(
+        // TWS pushes `openOrder` for every working order on the account as soon as the
+        // client connects, including orders this client never placed - a previous run's,
+        // or another client id's. Those have no entry in the ID maps and no local trader
+        // or strategy to attribute an update to; reconciliation owns adopting them from
+        // the mass-status snapshot moments later, with the identity it builds itself.
+        // Treating the missing route as an error made every connect that saw a foreign
+        // working order log at ERROR before reconciliation had run - a startup race,
+        // reported as a failure. There is nothing to emit here, so skip quietly.
+        let Some((trader_id, strategy_id)) = Self::get_optional_order_actor_ids(
             order_data.order_id,
             trader_id_map,
             strategy_id_map,
-        )?;
+        )?
+        else {
+            tracing::debug!(
+                "Skipping update for unrouted open order {}: not placed by this client, \
+                 reconciliation adopts it",
+                order_data.order_id
+            );
+            return Ok(());
+        };
         let price_magnifier = instrument_provider.get_price_magnifier(&instrument_id) as f64;
         let (price, trigger_price) = Self::open_order_price_fields(
             order_data,

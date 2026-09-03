@@ -201,6 +201,30 @@ groups below inherit their block, which is why they sit first.
 | **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
 | **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
 
+**Fixed and verified live 2026-09-03: the adopted-order cancel path.** The two cancel
+paths had diverged - single-order cancel routed an order's identity into the adapter's ID
+maps before emitting, cancel-all did not - so an order adopted from the venue had no
+route and the emission died with "Instrument ID not found for pending cancel order".
+Cancel-all now carries the identity out of the cache and routes it before the cancel, and
+reports a failed cancel as `OrderCancelRejected`. Confirmed against IB by re-running
+`live/strand_recovery.py` on a rebuilt extension: that error is gone and the adopted order
+reaches `PENDING_CANCEL`. Two things were learned that no unit test could decide. **A
+cancel takes effect from the originating client id and not from a foreign one**, and IB
+sends no acknowledgement to a client that did not place the order - so the probe records
+FAIL by its event-based test while the broker ends up clean, and a recovery sweep should
+use the originating client id when it is known. The re-run also surfaced a third defect of
+the same family, on the open-order update path, closed below. Evidence:
+`live/out/strand_recovery_20260903T08{2058,2836}Z.json`.
+
+**Fixed 2026-09-03: an open-order update for an order this client never placed.** TWS
+pushes `openOrder` for every working order on the account at connect, before
+reconciliation runs, so a previous run's order logged `Trader ID not found` at ERROR every
+time - a startup race reported as a failure, and the same `shutdown_on_error` landmine as
+the reduce-only noise. Those orders have no route and nothing to attribute an update to;
+reconciliation adopts them moments later with identity it builds itself, so the update is
+now skipped at debug. The rebuilt extension logs **zero ERROR lines** across a full
+strand, recover and sweep cycle.
+
 **Fixed 2026-09-03: the reduce-only startup errors are reclassified, not muted.**
 A reduce-only fill with no position to reduce is two different events. Live, it is a real
 defect and stays `ERROR`. Replayed from the venue during startup reconciliation it is the
