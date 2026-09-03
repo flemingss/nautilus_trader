@@ -52,11 +52,12 @@ WMT        2024-02-26    -66.1%
 KO         2012-08-13    -50.1%
 =========  ============  ==========================
 
-A gap strategy reads a -95% day as the largest gap in its history. Any verdict over
-those four names is invalid until the series is repaired; AAPL, MSFT and SPY, which
-are the only names with filed verdicts, are unaffected. The vendor's ``/splits``
-endpoint carries the factors needed to repair it, and ``split_factor`` is already
-carried per row.
+A gap strategy reads a -95% day as the largest gap in its history. **Repaired on read
+rather than in the file** ([ADR-0016]): the stored series stays as-traded so it can
+still be checked against a venue's official closing auction print, and
+:mod:`copilot.data.corporate_actions` applies the adjustment when bars are read. The
+full count is nine actions across seven symbols - a threshold scan finds only the four
+above, and never T's spinoff at -18.7% or MRK's at -2.7%.
 
 What the raw set also lacks is dividend adjustment. That understates total return by
 the yield and does not manufacture a discontinuity of this kind. ``dividend`` and ``split_factor``

@@ -344,7 +344,10 @@ class DatabentoClient:
         dataset: str | None = None,
     ) -> dict[str, dict[date, tuple[Decimal, int]]]:
         """
-        Fetch daily closes and volumes per symbol. **Spends**; price it with ``cost``.
+        Fetch daily closes and volumes per symbol.
+
+        **Spends**; price it with ``cost``.
+
         """
         rows = self._get(
             "timeseries.get_range",
@@ -643,7 +646,9 @@ def catalog_series(
         symbol, _, rest = entry.name.partition(".")
         venue = rest.split("-", 1)[0]
         instrument = equity_for(symbol, venue)
-        bars = read_daily_bars(catalog, bar_type_for(instrument.id))
+        # Raw, deliberately: the audit compares against as-traded official prints,
+        # and a back-adjusted series cannot be checked against one.
+        bars = read_daily_bars(catalog, bar_type_for(instrument.id), adjust=False)
         held[symbol] = (venue, {b.closed_at.date(): (b.close, b.volume) for b in bars})
     return held
 
@@ -691,8 +696,8 @@ def _audit_deep(client: DatabentoClient, catalog_path: str, start: str, end: str
     """
     Check the catalog against each listing venue's official closing auction print.
 
-    Routed per venue because the auction that sets a security's official close is run
-    by the venue it is listed on, and those datasets reach 2018-05-01 rather than the
+    Routed per venue because the auction that sets a security's official close is run by
+    the venue it is listed on, and those datasets reach 2018-05-01 rather than the
     consolidated summary's 2024-07-01.
 
     """

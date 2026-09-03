@@ -37,6 +37,9 @@ from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from copilot.data.corporate_actions import SPLIT
+from copilot.data.corporate_actions import cumulative_factor
+from copilot.data.corporate_actions import pending_for
 from copilot.validation.types import DailyBar
 from nautilus_trader.model import Bar
 from nautilus_trader.model import BarType
@@ -221,13 +224,28 @@ def read_daily_bars(
     *,
     start: datetime | None = None,
     end: datetime | None = None,
+    adjust: bool = True,
 ) -> tuple[DailyBar, ...]:
     """
-    Read a stored series back as the gate's ``DailyBar``.
+    Read a stored series back as the gate's ``DailyBar``, corporate actions applied.
 
     Prices come back through ``str`` into ``Decimal`` rather than through ``float``:
     the whole point of storing at a fixed precision is that the value is exact, and a
     float round trip would give that away on the last step.
+
+    **Adjustment happens here rather than in the stored file.** The vendor's series is
+    as-traded for every symbol but AAPL, so a split sits in it as a real discontinuity -
+    GOOGL moves -95% on 2022-07-18 - which a gap strategy reads as its largest gap ever.
+    Correcting that by rewriting the catalog would have destroyed the only property that
+    let it be found: as-traded prices can be checked against a venue's official closing
+    auction print, and back-adjusted ones cannot. So the file stays faithful to the
+    vendor, the correction is a versioned table in
+    :mod:`copilot.data.corporate_actions`, and ``adjust=False`` reads the raw series
+    back for that audit.
+
+    Volume is scaled by the share-count factor so the day's traded notional, price times
+    volume, is unchanged by the adjustment. A distribution does not change the share
+    count and so does not touch volume.
 
     """
     symbol = bar_type.instrument_id.symbol.value
@@ -236,18 +254,26 @@ def read_daily_bars(
         start=_to_ns(start) if start else None,
         end=_to_ns(end) if end else None,
     )
-    return tuple(
-        DailyBar(
-            symbol=symbol,
-            closed_at=datetime.fromtimestamp(bar.ts_event / 1e9, tz=UTC),
-            open=Decimal(str(bar.open)),
-            high=Decimal(str(bar.high)),
-            low=Decimal(str(bar.low)),
-            close=Decimal(str(bar.close)),
-            volume=int(Decimal(str(bar.volume))),
+    pending = pending_for(symbol) if adjust else ()
+    shares = tuple(a for a in pending if a.kind is SPLIT)
+
+    bars = []
+    for bar in stored:
+        closed_at = datetime.fromtimestamp(bar.ts_event / 1e9, tz=UTC)
+        price_factor = cumulative_factor(pending, closed_at)
+        share_factor = cumulative_factor(shares, closed_at)
+        bars.append(
+            DailyBar(
+                symbol=symbol,
+                closed_at=closed_at,
+                open=Decimal(str(bar.open)) / price_factor,
+                high=Decimal(str(bar.high)) / price_factor,
+                low=Decimal(str(bar.low)) / price_factor,
+                close=Decimal(str(bar.close)) / price_factor,
+                volume=int(Decimal(str(bar.volume)) * share_factor),
+            ),
         )
-        for bar in stored
-    )
+    return tuple(bars)
 
 
 def venues_from_rows(rows: Iterable[dict[str, object]]) -> dict[str, str]:

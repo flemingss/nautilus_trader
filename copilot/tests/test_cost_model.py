@@ -21,6 +21,8 @@ from copilot.calibration.cost_model import UncalibratedSymbolError
 from copilot.calibration.cost_model import commission
 from copilot.calibration.cost_model import round_trip_cost_r
 from copilot.calibration.cost_model import split_factor
+from copilot.data.corporate_actions import ACTIONS
+from copilot.data.corporate_actions import SPLIT
 from copilot.validation.types import BacktestRunResult
 from copilot.validation.types import ClosedTrade
 from copilot.validation.types import Direction
@@ -160,3 +162,47 @@ def test_the_record_names_its_exact_basis() -> None:
     assert record["percentile"] == "p95"
     assert Decimal(record["bps_per_side"]) == Decimal("0.5238")
     assert "1.00" in record["commission"]
+
+
+def test_split_factor_now_covers_the_symbols_it_used_to_miss() -> None:
+    """
+    The table this reads used to live here and listed AAPL alone.
+
+    It was right only by
+    luck: the symbols whose splits were missing were the same ones whose prices were
+    never adjusted, so a recorded quantity happened to be the real one. Adjusting the
+    prices makes that luck run out, so the factors have to arrive together.
+
+    """
+    assert split_factor("GOOGL", datetime(2013, 1, 3, tzinfo=UTC)) == Decimal(40)
+    assert split_factor("GOOGL", datetime(2015, 1, 3, tzinfo=UTC)) == Decimal(20)
+    assert split_factor("AMZN", datetime(2020, 1, 3, tzinfo=UTC)) == Decimal(20)
+    assert split_factor("WMT", datetime(2023, 1, 3, tzinfo=UTC)) == Decimal(3)
+    assert split_factor("KO", datetime(2010, 1, 4, tzinfo=UTC)) == Decimal(2)
+
+
+def test_a_spinoff_never_divides_the_share_count() -> None:
+    """
+    MRK's Organon, T's Warner Bros Discovery and VZ's three moved the price without
+    issuing a share.
+
+    Treating one as a split would understate commission on every trade before it.
+
+    """
+    for symbol in ("MRK", "T", "VZ"):
+        assert split_factor(symbol, datetime(2006, 1, 3, tzinfo=UTC)) == Decimal(1)
+
+
+def test_every_price_adjustment_that_changes_shares_has_a_matching_factor() -> None:
+    """
+    The invariant the two-table arrangement could not state: a symbol whose stored
+    prices get divided on read must have its share count divided by exactly the
+    share-count part of the same events.
+    """
+    for symbol, actions in ACTIONS.items():
+        expected = Decimal(1)
+        for action in actions:
+            if action.kind is SPLIT:
+                expected *= action.factor
+        earliest = datetime(2005, 1, 3, tzinfo=UTC)
+        assert split_factor(symbol, earliest) == expected, symbol

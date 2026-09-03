@@ -25,11 +25,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from copilot.data.corporate_actions import cumulative_factor
+from copilot.data.corporate_actions import split_actions
 
 
 if TYPE_CHECKING:
@@ -52,30 +54,17 @@ belongs in a commit touching this line.
 """
 
 PERCENTILE = "p95"
-"""The coefficient chosen in [ADR-0011]. ``full_spread_bps`` key in the snapshot."""
+"""
+The coefficient chosen in [ADR-0011].
+
+``full_spread_bps`` key in the snapshot.
+
+"""
 
 # IB Pro, fixed tier, US equities.
 COMMISSION_PER_SHARE = Decimal("0.005")
 COMMISSION_MIN = Decimal("1.00")
 COMMISSION_MAX_PCT = Decimal("0.01")
-
-SPLITS: dict[str, list[tuple[datetime, Decimal]]] = {
-    "AAPL": [
-        (datetime(2005, 2, 28, tzinfo=UTC), Decimal(2)),
-        (datetime(2014, 6, 9, tzinfo=UTC), Decimal(7)),
-        (datetime(2020, 8, 31, tzinfo=UTC), Decimal(4)),
-    ],
-}
-"""
-Splits inside the catalog window, from the backfill's corporate-action report.
-
-Catalog prices are back-adjusted, so an early trade is recorded in today's share count.
-Charging per-share commission on the adjusted count overstates early commission by the
-cumulative split factor - 56x for 2006 AAPL. Only symbols that split need an entry; a
-symbol absent here is charged on the recorded count, which is the actual one when no
-split intervened.
-
-"""
 
 
 class UncalibratedSymbolError(KeyError):
@@ -98,12 +87,27 @@ class UncalibratedSymbolError(KeyError):
 def split_factor(symbol: str, when: datetime) -> Decimal:
     """
     Return the cumulative split factor after ``when``: adjusted shares over real shares.
+
+    Catalog prices are back-adjusted - by the vendor for AAPL, on read for everyone else
+    ([ADR-0015]) - so an early trade is recorded in today's share count. Charging
+    per-share commission on that count overstates early commission by the cumulative
+    factor: 28x for 2006 AAPL, 40x for 2013 GOOGL.
+
+    **The factors come from :mod:`copilot.data.corporate_actions` rather than a table
+    kept here, and that is the repair, not a tidy-up.** The price adjustment and the
+    share-count correction describe the same events. While they lived in two places this
+    module listed AAPL alone and was right only by luck: the four symbols whose splits
+    were missing were also the four whose prices were never adjusted, so a recorded
+    quantity happened to be the real one. Repairing the prices without repairing this
+    would have made that luck run out silently - a real price charged an invented
+    commission.
+
+    Only share-count events count. A spinoff - MRK's Organon, T's Warner Bros Discovery,
+    VZ's three - moves the price without issuing a share, so it adjusts the series and
+    leaves the count alone. :func:`split_actions` filters those out.
+
     """
-    factor = Decimal(1)
-    for date, multiple in SPLITS.get(symbol, []):
-        if when < date:
-            factor *= multiple
-    return factor
+    return cumulative_factor(split_actions(symbol), when)
 
 
 def commission(real_shares: Decimal, notional: Decimal) -> Decimal:
