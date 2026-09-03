@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Fourteen items. Grouped by blocking condition rather than by component, because that is
+Eighteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -283,7 +283,7 @@ No code closes these.
 | US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (2)
+### Ready to build (6)
 
 | Item                                                                                                                         | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -294,6 +294,11 @@ No code closes these.
 | ~~Reject a bar whose close is not penny-aligned~~ **Done 2026-09-03**                                                        | 00    | The ingestion gate now refuses a close that is not a whole cent, which no US closing auction prints above a dollar. Two exemptions, both real: securities under a dollar, and AAPL, the one symbol the vendor delivers already back-adjusted.                                                                                                                                                                                   |
 | ~~Record the bulk quote store as machine state~~ **Done 2026-09-03**                                                         | 00    | In [`MAINTENANCE.md`](MAINTENANCE.md) with the commands that reproduce it, and the warning that data files copied without their symbology sidecars cannot be attributed at all - 525 instrument ids in the XNAS pull are shared between symbols.                                                                                                                                                                                |
 | ~~Pull intraday, and verify the daily bars against it~~ **Done 2026-09-03**                                                  | 00    | $19.54 bought 7.6 years of per-minute bars and quotes. 38,539 sessions checked: **99.91% of daily bars contain the listing venue's own range within 20 bps**. The 33 that do not concentrate on 2023-01-24, the NYSE opening-auction failure, where the venue printed trades that were later busted and the consolidated bar correctly excludes.                                                                                |
+
+| **Give the live path a source of today's bar** | 08 | The strategy warms indicators from the catalog, and the catalog is **frozen at 2025-12-31**: extending it pushes the holdout past the charter's 20% band and every `validate` run raises `HoldoutCarveError` ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)). Research needs the freeze and execution needs freshness, and today one catalog serves both. `supervised_session` already works around it by pricing from a live quote, which is fine for a plumbing check and not for a signal. **Nothing decides this yet.** |
+| **Build an alerting path** | 08 | The playbook makes alerting a gate for unattended paper and a required limb of the kill switch - *preserve state and alert*, *acknowledge critical alerts within the deadline*. **No code sends an alert anywhere.** `failure_injection` proves the system notices, not that anyone is told. An operator asleep in Japan while the US session runs is the whole reason this matters. |
+| **Compare live decisions against offline replay** | 08 | The playbook's After checklist requires it and no tool does it. Without it, a live session that silently decided differently from the backtest looks identical to one that agreed. |
+| **Size from settled cash, not headline equity** | 06 | The charter requires it for a cash account and no code reads a settled figure. The paper account is MARGIN with USD 1M, so it **cannot** surface the bug ([paper fidelity limits](PAPER_CAMPAIGN.md)). Pairs with the settlement-rules item under the account group. |
 
 ### Deferred by decision (2)
 

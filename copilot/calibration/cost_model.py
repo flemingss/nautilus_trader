@@ -22,9 +22,19 @@ of historical top-of-book - roughly 750,000 samples per symbol against this snap
 Against the closing window this snapshot overcharges by 1.5x (SPY) to 2.5x (AAPL),
 which is the direction it intended. Against the **opening** window it undercharges by
 up to 4x, because the open is where the spread actually lives: it runs 1.7x the closing
-spread on SPY and **23x on PEP**. Nothing charges the open today - the entry bracket
-([ADR-0013]) runs at the signal close and the next close - so this snapshot stays pinned
+spread on SPY and **23x on PEP**. Nothing charges the first five minutes today - the entry
+bracket ([ADR-0013]) runs at the signal close and the next close - and the charter's
+actual execution window, the **first one to two hours**, was measured on 2026-09-03 and
+is far milder than its first five minutes: p95 of **2.455 bps on AAPL, 2.958 on MSFT and
+0.785 on SPY**, against the 3.981, 3.593 and 1.048 this snapshot charges. **So the pinned
+snapshot is conservative against the window the charter says an order will actually go
+into**, which is the question that matters and had never been asked. It stays pinned
 until repinning is decided deliberately, a change that moves every filed verdict.
+
+The same measurement carries a warning about widening the universe. This snapshot covers
+three symbols; the other seventeen raise :class:`UncalibratedSymbolError`, which is the
+right failure. Their execution-window spreads are not small - GOOGL 10.1 bps, CVX 9.2,
+AMZN 8.0 - so a wider universe needs its own calibration before it needs anything else.
 
 Costs are charged on the trades **as replayed** - the research sizing. Whether the
 premise survives at the target account size is a separate judgment owned by
