@@ -2,6 +2,37 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-03 (the adapter can route an order it did not place)
+
+### Fixed
+
+- **Cancel-all now routes an adopted order's identity before it cancels**
+  (`crates/adapters/interactive_brokers/src/execution/`). The two cancel paths had
+  diverged: single-order cancel called `cache_cancel_order_tracking` to put the order's
+  instrument, trader and strategy into the adapter's ID maps before emitting, while
+  cancel-all went straight from resolve to cancel to emit. Those maps are populated only
+  when *this* client submits an order, so an order adopted from the venue by
+  reconciliation - present in the cache, placed by an earlier run - had no route, and
+  the emission died with "Instrument ID not found for pending cancel order". Cancel-all
+  now carries each order's identity out of the cache (where an adopted order does exist)
+  and routes it through a shared `cache_order_identity`, extracted behaviour-preservingly
+  from the single-order helper.
+- **A failed cancel is reported as `OrderCancelRejected` rather than only logged.** The
+  swallowed failure is what left the strand recovery's sweep waiting on an event that
+  was never coming.
+
+### Testing
+
+- Three tests in `core_tests.rs`: an adopted order routes and emits (carrying its own
+  negative control - the unrouted emit is asserted to fail exactly as it did against the
+  broker, with the real IB order ID from the 2026-09-02 run); a mapped IB order ID cannot
+  be re-pointed to another client order; a failed cancel reports a rejection. 419/419 in
+  the crate under nextest, clippy clean. Registered in `UPSTREAM_DELTA.md`, three rows.
+- **Not yet verified against the broker.** A `live/strand_recovery.py` re-run is the
+  confirmation, and needs TWS. The second half of the original finding - that IB may
+  refuse a cancel for an order in another client ID's partition - is a broker rule this
+  fix does not change; what changes is that the refusal now arrives as an event.
+
 ## 2026-09-03 (AI assistance is attributed, and the day is closed)
 
 ### Changed

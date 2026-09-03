@@ -234,6 +234,41 @@ impl InteractiveBrokersExecutionClient {
         trader_id_map: &Arc<Mutex<AHashMap<i32, TraderId>>>,
         strategy_id_map: &Arc<Mutex<AHashMap<i32, StrategyId>>>,
     ) -> anyhow::Result<()> {
+        Self::cache_order_identity(
+            ib_order_id,
+            cmd.client_order_id,
+            target_order.instrument_id(),
+            target_order.trader_id(),
+            target_order.strategy_id(),
+            order_id_map,
+            venue_order_id_map,
+            instrument_id_map,
+            trader_id_map,
+            strategy_id_map,
+        )
+    }
+
+    /// Route an IB order ID to the identity every order event needs.
+    ///
+    /// The adapter's maps are populated when *this* client submits an order, so an order
+    /// adopted from the venue by reconciliation - placed by an earlier run, under another
+    /// client ID - has a cache entry and no route. Any event the adapter then tries to
+    /// emit for it dies looking up an instrument that was never mapped. Callers that hold
+    /// the order's identity (from the cache, say) use this to establish the route before
+    /// emitting.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn cache_order_identity(
+        ib_order_id: i32,
+        client_order_id: ClientOrderId,
+        instrument_id: InstrumentId,
+        trader_id: TraderId,
+        strategy_id: StrategyId,
+        order_id_map: &Arc<Mutex<AHashMap<ClientOrderId, i32>>>,
+        venue_order_id_map: &Arc<Mutex<AHashMap<i32, ClientOrderId>>>,
+        instrument_id_map: &Arc<Mutex<AHashMap<i32, InstrumentId>>>,
+        trader_id_map: &Arc<Mutex<AHashMap<i32, TraderId>>>,
+        strategy_id_map: &Arc<Mutex<AHashMap<i32, StrategyId>>>,
+    ) -> anyhow::Result<()> {
         // Order-status callbacks first map the IB order ID to a client order ID, then read
         // its instrument, trader, and strategy IDs. Hold this lock while updating all maps
         // so a callback sees either the complete identity or no route at all.
@@ -242,7 +277,7 @@ impl InteractiveBrokersExecutionClient {
             .map_err(|_| anyhow::anyhow!("Failed to lock venue order ID map"))?;
         if let Some(existing_client_order_id) = venue_map.get(&ib_order_id) {
             anyhow::ensure!(
-                *existing_client_order_id == cmd.client_order_id,
+                *existing_client_order_id == client_order_id,
                 "IB order ID {ib_order_id} is already mapped to client order {existing_client_order_id}"
             );
         }
@@ -251,20 +286,20 @@ impl InteractiveBrokersExecutionClient {
         order_id_map
             .lock()
             .map_err(|_| anyhow::anyhow!("Failed to lock order ID map"))?
-            .insert(cmd.client_order_id, ib_order_id);
+            .insert(client_order_id, ib_order_id);
         instrument_id_map
             .lock()
             .map_err(|_| anyhow::anyhow!("Failed to lock instrument ID map"))?
-            .insert(ib_order_id, target_order.instrument_id());
+            .insert(ib_order_id, instrument_id);
         trader_id_map
             .lock()
             .map_err(|_| anyhow::anyhow!("Failed to lock trader ID map"))?
-            .insert(ib_order_id, target_order.trader_id());
+            .insert(ib_order_id, trader_id);
         strategy_id_map
             .lock()
             .map_err(|_| anyhow::anyhow!("Failed to lock strategy ID map"))?
-            .insert(ib_order_id, target_order.strategy_id());
-        venue_map.insert(ib_order_id, cmd.client_order_id);
+            .insert(ib_order_id, strategy_id);
+        venue_map.insert(ib_order_id, client_order_id);
 
         Ok(())
     }
