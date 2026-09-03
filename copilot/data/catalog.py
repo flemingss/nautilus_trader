@@ -247,6 +247,13 @@ def read_daily_bars(
     volume, is unchanged by the adjustment. A distribution does not change the share
     count and so does not touch volume.
 
+    Adjusted prices are quantized back to ``PRICE_PRECISION``. Dividing by a
+    distribution's factor does not terminate - MRK's 1.05 turns 76.78 into
+    73.1219047619... - and carrying twenty-eight significant digits into a replay that
+    builds a four-decimal ``Price`` from them only defers the rounding to a place where
+    it is invisible. Rounding here is the same value the replay would have used, stated
+    once.
+
     """
     symbol = bar_type.instrument_id.symbol.value
     stored = catalog.query_bars(
@@ -256,6 +263,7 @@ def read_daily_bars(
     )
     pending = pending_for(symbol) if adjust else ()
     shares = tuple(a for a in pending if a.kind is SPLIT)
+    quantum = Decimal(1).scaleb(-PRICE_PRECISION)
 
     bars = []
     for bar in stored:
@@ -266,10 +274,10 @@ def read_daily_bars(
             DailyBar(
                 symbol=symbol,
                 closed_at=closed_at,
-                open=Decimal(str(bar.open)) / price_factor,
-                high=Decimal(str(bar.high)) / price_factor,
-                low=Decimal(str(bar.low)) / price_factor,
-                close=Decimal(str(bar.close)) / price_factor,
+                open=(Decimal(str(bar.open)) / price_factor).quantize(quantum),
+                high=(Decimal(str(bar.high)) / price_factor).quantize(quantum),
+                low=(Decimal(str(bar.low)) / price_factor).quantize(quantum),
+                close=(Decimal(str(bar.close)) / price_factor).quantize(quantum),
                 volume=int(Decimal(str(bar.volume)) * share_factor),
             ),
         )

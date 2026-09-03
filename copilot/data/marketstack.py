@@ -29,11 +29,18 @@ Feeding that to a backtest yields fills at prices the bar says never traded.
 **The raw set is not perfectly clean either, and an earlier version of this note said
 it was.** Over 15,851 rows it had zero failures; over 105,414 it has twelve. Every one
 is the *open* sitting a few cents outside the day's high or low - GOOGL 2025-12-29
-opens at 314.52 against a high of 314.02 - which reads like an official opening print
-carried from a different source than the intraday range. The rate is 0.011% against
-22% for the adjusted set, so the choice is unchanged and the gate rejects them either
-way; the point is that the coherence check earns its keep on both sets rather than
-being a formality on one.
+opens at 314.52 against a high of 314.02. An earlier version of this note guessed that
+these read like an official opening print carried from a different source than the
+intraday range.
+
+**Settled 2026-09-03 against the venue's own minute bars, and the guess was wrong.**
+GOOGL never traded at 314.52 that day: the listing venue's regular session ran
+311.47 / 314.01 / 310.65 / 313.56, and its pre-market high was 312.52. There is no
+session, regular or extended, in which that open was a print. The vendor's high of
+314.02 matches the venue's 314.01 to the cent, so the range was right and the open
+alone was invented. The rate is 0.011% against 22% for the adjusted set, so the choice
+is unchanged and the gate rejects them either way; the point is that the coherence
+check is what stands between an invented price and a backtest.
 
 **The raw set is split-adjusted for some symbols and not others, and an earlier
 version of this note got that badly wrong.** It said the catastrophic discontinuity, a
