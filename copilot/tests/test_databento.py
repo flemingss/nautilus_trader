@@ -15,6 +15,7 @@ it was written for.
 from __future__ import annotations
 
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
@@ -24,6 +25,8 @@ from copilot.data.databento import API_KEY_ENV
 from copilot.data.databento import DatabentoClient
 from copilot.data.databento import DatabentoError
 from copilot.data.databento import Minute
+from copilot.data.databento import _symbol_for
+from copilot.data.databento import audit_symbol
 from copilot.data.databento import measure
 from copilot.data.databento import normalize_minute
 
@@ -212,3 +215,124 @@ def test_the_report_names_the_verdict() -> None:
 
     assert "real bars" in good
     assert "NOT USABLE" in bad
+
+
+def series(
+    closes: dict[str, str],
+    volumes: dict[str, int] | None = None,
+) -> dict[date, tuple[Decimal, int]]:
+    """
+    Build one source's daily closes, keyed by date.
+    """
+    volumes = volumes or {}
+    return {
+        date.fromisoformat(day): (Decimal(close), volumes.get(day, 1_000_000))
+        for day, close in closes.items()
+    }
+
+
+def test_an_exact_match_audits_clean() -> None:
+    held = series({"2024-08-01": "218.36", "2024-08-02": "219.86"})
+    vendor = series({"2024-08-01": "218.36", "2024-08-02": "219.86"})
+
+    result = audit_symbol("AAPL", vendor, held)
+
+    assert result.clean
+    assert result.days_compared == 2
+    assert result.max_deviation_bps == Decimal("0.00")
+
+
+def test_trailing_zeros_do_not_count_as_a_mismatch() -> None:
+    """
+    The catalog stores 218.3600 and the vendor sends 218.36. Same price.
+    """
+    result = audit_symbol(
+        "AAPL", series({"2024-08-01": "218.36"}), series({"2024-08-01": "218.3600"})
+    )
+
+    assert result.clean
+
+
+def test_a_cent_of_disagreement_is_reported_in_basis_points() -> None:
+    held = series({"2024-08-01": "100.00"})
+    vendor = series({"2024-08-01": "100.05"})
+
+    result = audit_symbol("AAPL", vendor, held)
+
+    assert not result.clean
+    assert result.exact_closes == 0
+    assert result.max_deviation_bps == Decimal("5.00")
+    assert result.worst_day == "2024-08-01"
+
+
+def test_only_overlapping_days_are_compared() -> None:
+    """
+    A vendor window shorter than the catalog narrows the audit; it does not fail it.
+    """
+    held = series({"2024-08-01": "100.00", "2024-08-02": "101.00", "2024-08-05": "102.00"})
+    vendor = series({"2024-08-02": "101.00"})
+
+    result = audit_symbol("AAPL", vendor, held)
+
+    assert result.days_compared == 1
+    assert result.clean
+
+
+def test_no_overlap_is_never_clean() -> None:
+    """
+    Comparing nothing must not read as agreement.
+    """
+    result = audit_symbol(
+        "AAPL", series({"2023-01-03": "100.00"}), series({"2024-08-01": "100.00"})
+    )
+
+    assert result.days_compared == 0
+    assert not result.clean
+
+
+def test_volume_ratio_is_reported_because_prices_can_agree_while_volume_does_not() -> None:
+    """
+    EQUS.MINI matched prices closely and carried ~3% of the tape's volume.
+    """
+    held = series(
+        {"2024-08-01": "100.00", "2024-08-02": "100.00"}, {"2024-08-01": 100, "2024-08-02": 100}
+    )
+    vendor = series(
+        {"2024-08-01": "100.00", "2024-08-02": "100.00"}, {"2024-08-01": 3, "2024-08-02": 3}
+    )
+
+    result = audit_symbol("AAPL", vendor, held)
+
+    assert result.clean
+    assert result.median_volume_ratio == Decimal("0.030")
+
+
+def test_an_instrument_id_resolves_to_the_symbol_it_stood_for() -> None:
+    """
+    Rows carry a numeric id and no symbol, so a wrong mapping silently attributes one
+    company's prices to another. That is the worst failure this module can have.
+    """
+    intervals = [
+        ("AAPL", 38, date(2024, 7, 1), date(2025, 12, 31)),
+        ("MSFT", 10888, date(2024, 7, 1), date(2025, 12, 31)),
+    ]
+
+    assert _symbol_for(intervals, 38, date(2024, 8, 1)) == "AAPL"
+    assert _symbol_for(intervals, 10888, date(2024, 8, 1)) == "MSFT"
+
+
+def test_an_id_reassigned_between_symbols_resolves_by_date() -> None:
+    intervals = [
+        ("OLDCO", 500, date(2020, 1, 1), date(2021, 12, 31)),
+        ("NEWCO", 500, date(2022, 1, 1), date(2025, 12, 31)),
+    ]
+
+    assert _symbol_for(intervals, 500, date(2021, 6, 1)) == "OLDCO"
+    assert _symbol_for(intervals, 500, date(2023, 6, 1)) == "NEWCO"
+
+
+def test_an_unmapped_id_resolves_to_nothing_rather_than_a_guess() -> None:
+    intervals = [("AAPL", 38, date(2024, 7, 1), date(2025, 12, 31))]
+
+    assert _symbol_for(intervals, 999, date(2024, 8, 1)) == ""
+    assert _symbol_for(intervals, 38, date(2019, 1, 1)) == ""

@@ -62,8 +62,13 @@ Query                                            Cost
 ===============================================  ==========
 
 The last one is ten times the signup credit, and differs from the first only by the
-schema name. Set a monthly historical spend limit in the portal as well as passing
-``--spend`` here, and price every new query shape with ``--cost`` first.
+schema name. Price every new query shape with ``--cost`` first.
+
+**The portal cap is set to USD 100 per month, warning at 90%** (2026-09-03). It is a
+backstop against a runaway query, not a budget: the whole planned programme is roughly
+$16 against $125 of credits, so tapping the cap means something is wrong rather than
+that the work grew. If it is ever reached, find the query shape that did it before
+raising the number.
 
 """
 
@@ -77,9 +82,11 @@ import sys
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from itertools import pairwise
+from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
 from urllib.error import URLError
@@ -109,6 +116,22 @@ DEFAULT_BASE_URL = "https://hist.databento.com/v0"
 # volume filter wants XNAS.ITCH's honest single-venue count instead, which also reaches
 # back to 2018.
 DEFAULT_DATASET = "EQUS.MINI"
+
+DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
+
+# The venue datasets reach 2018-05-01, six years deeper than the consolidated summary,
+# and their `statistics` schema carries the **official closing auction print** rather
+# than a trade-derived bar. For a listed security the listing venue runs that auction,
+# so its print is the official close - which is why the audit routes each symbol to the
+# dataset for the venue the catalog says it is listed on.
+LISTING_DATASETS = {
+    "XNAS": "XNAS.ITCH",
+    "XNYS": "XNYS.PILLAR",
+    "ARCX": "ARCX.PILLAR",
+}
+
+# Databento's statistic type for the official closing price.
+STAT_CLOSING_PRICE = 11
 
 # The consolidated daily series. Closes matched the catalog to the cent on every day
 # tested, which makes it the audit instrument - but only from 2024-07-01.
@@ -313,6 +336,122 @@ class DatabentoClient:
         )
         return [normalize_minute(row) for row in rows]
 
+    def fetch_daily(
+        self,
+        symbols: list[str],
+        start: str,
+        end: str,
+        dataset: str | None = None,
+    ) -> dict[str, dict[date, tuple[Decimal, int]]]:
+        """
+        Fetch daily closes and volumes per symbol. **Spends**; price it with ``cost``.
+        """
+        rows = self._get(
+            "timeseries.get_range",
+            {
+                "dataset": dataset or DAILY_DATASET,
+                "symbols": ",".join(symbols),
+                "schema": "ohlcv-1d",
+                "start": start,
+                "end": end,
+                "stype_in": "raw_symbol",
+                "encoding": "json",
+            },
+        )
+        scale = Decimal(10) ** 9
+        intervals = self.resolve_symbols(symbols, start, end, dataset)
+        out: dict[str, dict[date, tuple[Decimal, int]]] = {s: {} for s in symbols}
+        for row in rows:
+            header = row.get("hd", row)
+            stamp = int(row.get("ts_event") or header["ts_event"])
+            day = datetime.fromtimestamp(stamp / 1e9, tz=UTC).date()
+            name = _symbol_for(intervals, int(header["instrument_id"]), day)
+            if name not in out:
+                continue
+            out[name][day] = (Decimal(str(row["close"])) / scale, int(row["volume"]))
+        return out
+
+    def fetch_official_closes(
+        self,
+        symbols: list[str],
+        dataset: str,
+        start: str,
+        end: str,
+    ) -> dict[str, dict[date, Decimal]]:
+        """
+        Fetch official closing auction prices from a listing venue; this spends.
+
+        Unlike ``ohlcv-1d``, which is derived from trades and can differ from the
+        official print, this reads the venue's own closing statistic.
+
+        """
+        rows = self._get(
+            "timeseries.get_range",
+            {
+                "dataset": dataset,
+                "symbols": ",".join(symbols),
+                "schema": "statistics",
+                "start": start,
+                "end": end,
+                "stype_in": "raw_symbol",
+                "encoding": "json",
+            },
+        )
+        scale = Decimal(10) ** 9
+        intervals = self.resolve_symbols(symbols, start, end, dataset)
+        out: dict[str, dict[date, Decimal]] = {s: {} for s in symbols}
+        for row in rows:
+            if int(row.get("stat_type", -1)) != STAT_CLOSING_PRICE:
+                continue
+            header = row.get("hd", row)
+            day = datetime.fromtimestamp(int(header["ts_event"]) / 1e9, tz=UTC).date()
+            name = _symbol_for(intervals, int(header["instrument_id"]), day)
+            if name in out:
+                out[name][day] = Decimal(str(row["price"])) / scale
+        return out
+
+    def resolve_symbols(
+        self,
+        symbols: list[str],
+        start: str,
+        end: str,
+        dataset: str | None = None,
+    ) -> list[tuple[str, int, date, date]]:
+        """
+        Map ticker to instrument id over a window. Free.
+
+        Data rows identify their instrument by **numeric id only** - there is no symbol
+        field on the wire - so a multi-symbol pull cannot be attributed without this.
+        The mapping is date-ranged because an id may be reassigned, so it is returned as
+        intervals rather than a flat dictionary.
+
+        """
+        raw = self._get(
+            "symbology.resolve",
+            {
+                "dataset": dataset or DAILY_DATASET,
+                "symbols": ",".join(symbols),
+                "stype_in": "raw_symbol",
+                "stype_out": "instrument_id",
+                "start_date": start,
+                "end_date": end,
+            },
+        )
+        resolved = [
+            (
+                symbol.upper(),
+                int(span["s"]),
+                date.fromisoformat(span["d0"]),
+                date.fromisoformat(span["d1"]),
+            )
+            for symbol, spans in (raw.get("result") or {}).items()
+            for span in spans
+        ]
+        missing = list(raw.get("not_found") or [])
+        if missing:
+            raise DatabentoError(f"symbols not found on {dataset or DAILY_DATASET}: {missing}")
+        return resolved
+
     def cost(
         self,
         symbols: list[str],
@@ -341,6 +480,20 @@ class DatabentoClient:
         )
         # The endpoint answers with a bare number.
         return Decimal(str(raw))
+
+
+def _symbol_for(
+    intervals: list[tuple[str, int, date, date]],
+    instrument_id: int,
+    day: date,
+) -> str:
+    """
+    Return the ticker an instrument id stood for on a given day, or "" if none did.
+    """
+    for symbol, resolved_id, first, last in intervals:
+        if resolved_id == instrument_id and first <= day <= last:
+            return symbol
+    return ""
 
 
 def normalize_minute(raw: dict[str, Any]) -> Minute:
@@ -393,10 +546,223 @@ def measure(symbol: str, dataset: str, minutes: list[Minute]) -> ProbeFinding:
     )
 
 
+@dataclass(frozen=True)
+class SymbolAudit:
+    """
+    One symbol's catalog checked against an independent daily series.
+    """
+
+    symbol: str
+    days_compared: int
+    exact_closes: int
+    max_deviation_bps: Decimal
+    worst_day: str
+    median_volume_ratio: Decimal
+
+    @property
+    def clean(self) -> bool:
+        """
+        Return whether every overlapping close matched to the cent.
+        """
+        return self.days_compared > 0 and self.exact_closes == self.days_compared
+
+    def row(self) -> str:
+        """
+        Return one fixed-width line for the audit table.
+        """
+        share = f"{self.exact_closes}/{self.days_compared}"
+        return (
+            f"  {self.symbol:<7}{share:>10}{self.max_deviation_bps:>12}"
+            f"{self.worst_day:>13}{self.median_volume_ratio:>10}  "
+            f"{'ok' if self.clean else 'MISMATCH'}"
+        )
+
+
+def audit_symbol(
+    symbol: str,
+    vendor: dict[date, tuple[Decimal, int]],
+    catalog: dict[date, tuple[Decimal, int]],
+) -> SymbolAudit:
+    """
+    Compare one symbol's closes and volumes over the days both sources carry.
+
+    Only overlapping days are compared, so a shorter vendor window narrows the audit
+    rather than reporting the missing days as failures. The catalog holds vendor prices
+    that are already split-adjusted while Databento reports them as traded, so a split
+    inside the window would surface here as a large deviation - which is a finding, not
+    a bug in this function.
+
+    """
+    shared = sorted(set(vendor) & set(catalog))
+    exact = 0
+    worst = Decimal(0)
+    worst_day = "-"
+    ratios = []
+    for day in shared:
+        vendor_close, vendor_volume = vendor[day]
+        catalog_close, catalog_volume = catalog[day]
+        if vendor_close == catalog_close:
+            exact += 1
+        deviation = abs(catalog_close - vendor_close) / catalog_close * 10000
+        if deviation > worst:
+            worst, worst_day = deviation, day.isoformat()
+        if catalog_volume:
+            ratios.append(Decimal(vendor_volume) / Decimal(catalog_volume))
+
+    ratios.sort()
+    median = ratios[len(ratios) // 2] if ratios else Decimal(0)
+    return SymbolAudit(
+        symbol=symbol,
+        days_compared=len(shared),
+        exact_closes=exact,
+        max_deviation_bps=worst.quantize(Decimal("0.01")),
+        worst_day=worst_day,
+        median_volume_ratio=median.quantize(Decimal("0.001")),
+    )
+
+
+def catalog_series(
+    catalog_path: str,
+) -> dict[str, tuple[str, dict[date, tuple[Decimal, int]]]]:
+    """
+    Read every symbol the catalog holds, as venue plus closes and volumes by day.
+
+    Imported here rather than at module scope so the survey and cost paths, which are
+    the ones an operator runs first, do not need the Nautilus extension present.
+
+    """
+    from copilot.data.catalog import bar_type_for  # noqa: PLC0415
+    from copilot.data.catalog import equity_for  # noqa: PLC0415
+    from copilot.data.catalog import open_catalog  # noqa: PLC0415
+    from copilot.data.catalog import read_daily_bars  # noqa: PLC0415
+
+    root = Path(catalog_path).expanduser() / "data" / "bars"
+    catalog = open_catalog(catalog_path)
+    held: dict[str, tuple[str, dict[date, tuple[Decimal, int]]]] = {}
+    for entry in sorted(root.iterdir()):
+        symbol, _, rest = entry.name.partition(".")
+        venue = rest.split("-", 1)[0]
+        instrument = equity_for(symbol, venue)
+        bars = read_daily_bars(catalog, bar_type_for(instrument.id))
+        held[symbol] = (venue, {b.closed_at.date(): (b.close, b.volume) for b in bars})
+    return held
+
+
+def catalog_closes(catalog_path: str) -> dict[str, dict[date, tuple[Decimal, int]]]:
+    """
+    Read the catalog, discarding the venue.
+    """
+    return {symbol: series for symbol, (_, series) in catalog_series(catalog_path).items()}
+
+
 def _client(args: argparse.Namespace) -> DatabentoClient:
     key = os.environ.get(API_KEY_ENV, "")
     dataset = args.dataset or os.environ.get(DATASET_ENV) or DEFAULT_DATASET
     return DatabentoClient(api_key=key, dataset=dataset)
+
+
+def _survey(client: DatabentoClient) -> None:
+    """
+    Print every equities dataset the key reaches, and the window each covers.
+    """
+    datasets = client.list_datasets()
+    print(f"{len(datasets)} datasets reachable with this key.\n")
+    equities = [d for d in datasets if d.startswith(("EQUS", "XNAS", "XNYS", "DBEQ", "ARCX"))]
+    for name in sorted(equities):
+        try:
+            window = client.dataset_range(name)
+            print(f"  {name:<20} {window.start}  ->  {window.end}")
+        except DatabentoError as e:
+            print(f"  {name:<20} range unavailable: {e}")
+    print(f"\n  ({len(datasets) - len(equities)} non-equities datasets not listed)")
+
+
+def _cost(client: DatabentoClient, symbols: list[str], start: str, end: str) -> None:
+    """
+    Print what a one-minute pull would cost, without making it.
+    """
+    price = client.cost(symbols, "ohlcv-1m", start, end)
+    print(
+        f"\nohlcv-1m, {len(symbols)} symbols, {start} to {end}: ${price} on {client.dataset}",
+    )
+
+
+def _audit_deep(client: DatabentoClient, catalog_path: str, start: str, end: str) -> int:
+    """
+    Check the catalog against each listing venue's official closing auction print.
+
+    Routed per venue because the auction that sets a security's official close is run
+    by the venue it is listed on, and those datasets reach 2018-05-01 rather than the
+    consolidated summary's 2024-07-01.
+
+    """
+    held = catalog_series(catalog_path)
+    by_venue: dict[str, list[str]] = {}
+    for symbol, (venue, _) in held.items():
+        by_venue.setdefault(venue, []).append(symbol)
+
+    audits = []
+    for venue, symbols in sorted(by_venue.items()):
+        dataset = LISTING_DATASETS.get(venue)
+        if dataset is None:
+            print(f"  no listing dataset for venue {venue}; skipped {sorted(symbols)}")
+            continue
+        official = client.fetch_official_closes(sorted(symbols), dataset, start, end)
+        for symbol in sorted(symbols):
+            series = {day: (price, 0) for day, price in official.get(symbol, {}).items()}
+            audits.append(audit_symbol(symbol, series, held[symbol][1]))
+
+    print(f"\nCatalog audited against official closing auction prints, {start} to {end}")
+    print(f"  {'symbol':<7}{'exact':>12}{'worst bps':>12}{'worst day':>13}")
+    for entry in sorted(audits, key=lambda a: a.symbol):
+        share = f"{entry.exact_closes}/{entry.days_compared}"
+        flag = "ok" if entry.clean else "MISMATCH"
+        print(
+            f"  {entry.symbol:<7}{share:>12}{entry.max_deviation_bps:>12}"
+            f"{entry.worst_day:>13}  {flag}",
+        )
+    clean = sum(1 for a in audits if a.clean)
+    compared = sum(a.days_compared for a in audits)
+    disagreed = sum(a.days_compared - a.exact_closes for a in audits)
+    print(f"\n  {clean}/{len(audits)} symbols exact across {compared:,} days")
+    print(f"  {disagreed} disagreements ({disagreed / compared * 100:.3f}%)")
+    return 0
+
+
+def _audit(client: DatabentoClient, catalog_path: str, start: str, end: str) -> int:
+    """
+    Check the catalog's closes against an independent daily series.
+    """
+    held = catalog_closes(catalog_path)
+    vendor = client.fetch_daily(sorted(held), start, end, DAILY_DATASET)
+    audits = [audit_symbol(s, vendor.get(s, {}), held[s]) for s in sorted(held)]
+    print(f"\nCatalog audited against {DAILY_DATASET}, {start} to {end}")
+    print(
+        f"  {'symbol':<7}{'exact':>10}{'worst bps':>12}{'worst day':>13}{'vol ratio':>10}",
+    )
+    for entry in audits:
+        print(entry.row())
+    clean = sum(1 for a in audits if a.clean)
+    compared = sum(a.days_compared for a in audits)
+    print(f"\n  {clean}/{len(audits)} symbols matched exactly across {compared} days")
+    if clean != len(audits):
+        return 1
+
+    return 0
+
+
+def _probe(client: DatabentoClient, symbol: str, start: str, end: str) -> int:
+    """
+    Measure whether a feed's one-minute rows are bars at all.
+    """
+    minutes = client.fetch_minutes(symbol, start, end)
+    finding = measure(symbol, client.dataset, minutes)
+    print()
+    print(finding.report())
+    if not finding.looks_like_real_bars:
+        return 1
+
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -414,6 +780,17 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--survey", action="store_true", help="List datasets and ranges (free)")
     parser.add_argument("--cost", action="store_true", help="Price a one-minute pull (free)")
     parser.add_argument("--probe", metavar="SYMBOL", help="Measure intraday fidelity (spends)")
+    parser.add_argument(
+        "--audit",
+        action="store_true",
+        help="Check the catalog's closes against the daily series (spends)",
+    )
+    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    parser.add_argument(
+        "--deep",
+        action="store_true",
+        help="Audit against official auction prints, back to 2018 (spends)",
+    )
     parser.add_argument("--spend", action="store_true", help="Permit the probe to incur cost")
     parser.add_argument("--dataset", help=f"Dataset override (default {DEFAULT_DATASET})")
     parser.add_argument("--symbols", default="AAPL,MSFT,SPY", help="Comma-separated symbols")
@@ -421,44 +798,36 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--to", dest="end", default="2024-01-03", help="End date")
     args = parser.parse_args(argv)
 
-    if not (args.survey or args.cost or args.probe):
-        parser.error("choose --survey, --cost, or --probe SYMBOL")
+    if not (args.survey or args.cost or args.probe or args.audit):
+        parser.error("choose --survey, --cost, --probe SYMBOL, or --audit")
 
     client = _client(args)
     symbols = [s.strip().upper() for s in args.symbols.split(",") if s.strip()]
 
     if args.survey:
-        datasets = client.list_datasets()
-        print(f"{len(datasets)} datasets reachable with this key.\n")
-        equities = [d for d in datasets if d.startswith(("EQUS", "XNAS", "XNYS", "DBEQ", "ARCX"))]
-        for name in sorted(equities):
-            try:
-                window = client.dataset_range(name)
-                print(f"  {name:<20} {window.start}  ->  {window.end}")
-            except DatabentoError as e:
-                print(f"  {name:<20} range unavailable: {e}")
-        print(f"\n  ({len(datasets) - len(equities)} non-equities datasets not listed)")
+        _survey(client)
 
     if args.cost:
-        price = client.cost(symbols, "ohlcv-1m", args.start, args.end)
+        _cost(client, symbols, args.start, args.end)
+
+    if (args.audit or args.probe) and not args.spend:
         print(
-            f"\nohlcv-1m, {len(symbols)} symbols, {args.start} to {args.end}: "
-            f"${price} on {client.dataset}",
+            "\n--audit and --probe spend credit. Price the shape with --cost first, "
+            "then pass --spend.",
+            file=sys.stderr,
         )
+        return 2
+
+    if args.audit:
+        step = _audit_deep if args.deep else _audit
+        failed = step(client, args.catalog, args.start, args.end)
+        if failed:
+            return failed
 
     if args.probe:
-        if not args.spend:
-            print(
-                "\n--probe spends credit. Price it with --cost first, then pass --spend.",
-                file=sys.stderr,
-            )
-            return 2
-        minutes = client.fetch_minutes(args.probe.upper(), args.start, args.end)
-        finding = measure(args.probe.upper(), client.dataset, minutes)
-        print()
-        print(finding.report())
-        if not finding.looks_like_real_bars:
-            return 1
+        failed = _probe(client, args.probe.upper(), args.start, args.end)
+        if failed:
+            return failed
 
     return 0
 

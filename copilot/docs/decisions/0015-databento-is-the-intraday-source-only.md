@@ -69,10 +69,14 @@ backtest the day's closing price at 09:31.
   **$1,246** - ten times the signup credit, differing from a $0.01 query only by the
   schema name. The same schema on `XNAS.ITCH` over 7.6 years costs $0.03. Price every
   new query shape with `--cost` before running it.
-- **A monthly historical spend limit is set in the vendor portal**, because billing
-  follows bytes returned and a single careless full-depth query is the entire risk
-  surface. `copilot/data/databento.py` reinforces this: metadata calls are free and
-  the pull that spends refuses to run without `--spend`.
+- **The vendor portal cap is USD 100 per month, warning at 90%** (set 2026-09-03),
+  because billing follows bytes returned and a single careless full-depth query is the
+  entire risk surface. It is a backstop, not a budget: the planned programme is roughly
+  $16 against $125 of credits, so **reaching the cap is a defect signal, not a sign the
+  work grew**, and the query shape that caused it is found before the number is raised.
+  `copilot/data/databento.py` reinforces the same discipline in code: metadata calls
+  are free, `--cost` prices any shape before it runs, and the pull that spends refuses
+  to run without `--spend`.
 - **No intraday feed is trusted before it is measured.** The checks that caught the
   previous vendor - distinct values per price field, volume monotonicity, summed volume
   against the daily total, and OHLC coherence - run as `--probe` and are covered by
