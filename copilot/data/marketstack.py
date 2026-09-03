@@ -112,6 +112,7 @@ from urllib.request import Request
 from urllib.request import urlopen
 
 from copilot.data.calendar import is_trading_day
+from copilot.data.corporate_actions import PRE_ADJUSTED
 from copilot.validation.types import DailyBar
 
 
@@ -261,6 +262,44 @@ class MarketstackClient:
         self._timeout_seconds = timeout_seconds
         self._sleep = sleep
 
+    def fetch_splits(
+        self,
+        symbols: Sequence[str],
+        start: date,
+        end: date,
+    ) -> dict[str, tuple[tuple[date, Decimal], ...]]:
+        """
+        Fetch every split and distribution in ``[start, end]``, per symbol.
+
+        The vendor reports a spinoff under the same ``split_factor`` name as a share
+        split, so what comes back is corporate actions rather than splits alone;
+        :func:`copilot.data.corporate_actions.classify` separates them.
+
+        This is the first step in widening the universe. An action nobody looked up is
+        a price discontinuity nobody adjusted, and the ones that matter are not the
+        obvious ones - T's 2022 spinoff moved the price 18.7% and MRK's moved it 2.7%,
+        both of which read as ordinary days.
+
+        """
+        out: dict[str, tuple[tuple[date, Decimal], ...]] = {}
+        for symbol in symbols:
+            payload = self._get(
+                "splits",
+                {
+                    "symbols": symbol,
+                    "date_from": start.isoformat(),
+                    "date_to": end.isoformat(),
+                    "limit": self._page_limit,
+                },
+            )
+            rows = payload.get("data") or []
+            actions = sorted(
+                (date.fromisoformat(str(r["date"])[:10]), Decimal(str(r["split_factor"])))
+                for r in rows
+            )
+            out[symbol] = tuple(actions)
+        return out
+
     def fetch_eod(
         self,
         symbols: Sequence[str],
@@ -347,6 +386,26 @@ class MarketstackClient:
         if last_error is None:  # pragma: no cover - max_attempts >= 1 always
             raise RuntimeError("retry loop exited without an attempt")
         raise last_error
+
+    def _get(self, endpoint: str, params: dict[str, object]) -> Mapping[str, object]:
+        """
+        Issue one request against an endpoint and return the decoded payload.
+
+        Unpaged, deliberately. It exists for the small reference endpoints - corporate
+        actions run to single digits per symbol over twenty years - and a caller that
+        needs pagination should use the EOD path, which has it.
+
+        """
+        query = urlencode({"access_key": self._access_key, **params})
+        request = Request(  # noqa: S310 - fixed https scheme from DEFAULT_BASE_URL
+            f"{self._base_url}/{endpoint}?{query}",
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urlopen(request, timeout=self._timeout_seconds) as response:  # noqa: S310
+            payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(payload, Mapping):
+            raise TypeError(f"Marketstack {endpoint} response must be an object")
+        return payload
 
     def _fetch_page_once(
         self,
@@ -473,6 +532,33 @@ def _apply_series_gates(bars: Sequence[DailyBar]) -> IngestionResult:
     return IngestionResult(bars=tuple(accepted), rejected=tuple(rejected))
 
 
+# US equity closing auctions print at whole cents above a dollar; sub-penny increments
+# are reserved for sub-dollar securities. A close carrying a half cent therefore did not
+# come from an auction, and three of the seventeen closes the 2026-09-03 audit found
+# materially wrong looked exactly like that - INTC at 19.7050, PEP at 177.9450 and
+# 159.1350. It is a cheap detector for a class the coherence check cannot see, because a
+# wrong close still sits inside its own high and low.
+PENNY = Decimal("0.01")
+SUB_DOLLAR = Decimal(1)
+
+
+def _require_penny_aligned(symbol: str, close: Decimal) -> None:
+    """
+    Refuse a close that no closing auction could have printed.
+
+    Two exemptions, and both are real rather than convenient. A security under a dollar
+    genuinely quotes in sub-penny increments. And the vendor delivers **AAPL already
+    back-adjusted** ([ADR-0016]), so dividing by a 28x cumulative split leaves values
+    like 1.1302 that are correct and could never be penny-aligned; every other symbol
+    arrives as-traded.
+
+    """
+    if symbol in PRE_ADJUSTED or close < SUB_DOLLAR:
+        return
+    if close % PENNY != 0:
+        raise ValueError(f"close {close} is not a whole cent; no auction prints that")
+
+
 def _parse(raw: Mapping[str, object]) -> tuple[DailyBar, CorporateAction | None]:
     """
     Build one bar, raising rather than guessing at anything malformed.
@@ -491,6 +577,7 @@ def _parse(raw: Mapping[str, object]) -> tuple[DailyBar, CorporateAction | None]
     # than assuming the good one stays good.
     if not (low <= min(open_, close) and max(open_, close) <= high):
         raise ValueError(f"incoherent OHLC: o={open_} h={high} l={low} c={close}")
+    _require_penny_aligned(symbol, close)
 
     bar = DailyBar(
         symbol=symbol,

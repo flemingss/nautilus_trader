@@ -273,6 +273,34 @@ directory was an API key.
    Done 2026-09-03: 40 files, 6.3 MB, all hashes matched on extract. It is deliberately
    **not** committed - this repository is public and the bars are licensed vendor data.
 
+   **The bulk quote store is machine state too, and is deliberately not backed up.**
+   `~/.nautilus_copilot/databento` holds roughly 1.2 GB of per-minute bars and quotes
+   bought on 2026-09-03 ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)).
+   Unlike the catalog it is **replaceable**: the same pull costs USD 19.54, or nothing
+   against the signup credit, and the tooling reproduces it from a commit:
+
+   ```bash
+   python -m copilot.data.databento --pull --schema bbo-1m  --from 2018-05-01 --to 2025-12-31 --spend
+   python -m copilot.data.databento --pull --schema ohlcv-1m --from 2018-05-01 --to 2025-12-31 --spend
+   ```
+
+   Every pull prices each leg and refuses one above `--budget` before spending, and
+   writes a symbology sidecar beside each file. **Do not copy the data files without
+   their sidecars**: the rows carry a numeric instrument id and no symbol, and 525 of
+   the ids in the XNAS pull are shared between symbols, so an unmapped file cannot be
+   attributed at all.
+
+   **Widening the universe starts with corporate actions, not with a backfill.**
+
+   ```bash
+   python -m copilot.data.corporate_actions NVDA,AVGO --from 2005-01-01 --to 2025-12-31
+   ```
+
+   It exits non-zero while any action is missing from the adjustment table. The ones
+   that matter do not look dangerous: T's 2022 spinoff moved the price 18.7% and MRK's
+   moved it 2.7%, and no threshold scan finds either
+   ([ADR-0016](decisions/0016-corporate-actions-are-applied-on-read.md)).
+
    **Rebuild to 2025-12-31, not to today.** This is the trap, and the guard catches it
    rather than the operator:
 

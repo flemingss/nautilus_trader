@@ -387,3 +387,53 @@ def test_an_empty_fetch_has_no_rejection_ratio():
     An empty window is a holiday, not a mass rejection; it must not divide by zero.
     """
     assert normalize([], received_at=NOW).rejection_ratio == Decimal(0)
+
+
+def test_a_close_that_is_not_a_whole_cent_is_rejected() -> None:
+    """
+    Three of the seventeen closes the 2026-09-03 audit found materially wrong looked
+    exactly like this - INTC 19.7050, PEP 177.9450 and 159.1350. A wrong close still
+    sits inside its own high and low, so the coherence check cannot see it.
+    """
+    result = normalize(
+        [row(symbol="INTC", open_=19.70, high=19.90, low=19.60, close=19.7050)],
+        received_at=NOW,
+    )
+
+    assert result.bars == ()
+    assert "whole cent" in result.rejected[0].reason
+
+
+def test_a_penny_aligned_close_passes() -> None:
+    result = normalize(
+        [row(symbol="INTC", open_=19.70, high=19.90, low=19.60, close=19.83)],
+        received_at=NOW,
+    )
+
+    assert len(result.bars) == 1
+
+
+def test_a_sub_dollar_security_may_quote_below_a_penny() -> None:
+    """
+    Sub-penny increments are genuinely available under a dollar, so the rule would be
+    wrong there rather than merely inconvenient.
+    """
+    result = normalize(
+        [row(symbol="CSCO", open_=0.50, high=0.60, low=0.40, close=0.5512)],
+        received_at=NOW,
+    )
+
+    assert len(result.bars) == 1
+
+
+def test_the_one_symbol_the_vendor_pre_adjusts_is_exempt() -> None:
+    """
+    AAPL arrives back-adjusted, so dividing by a 28x cumulative split leaves values like
+    1.1302 that are correct and could never be whole cents.
+    """
+    result = normalize(
+        [row(symbol="AAPL", open_=1.12, high=1.15, low=1.11, close=1.1302)],
+        received_at=NOW,
+    )
+
+    assert len(result.bars) == 1

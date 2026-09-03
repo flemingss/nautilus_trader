@@ -373,6 +373,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: report output is the product, and each connection knob is independent
 "copilot/data/backfill.py" = ["T201"]
+"copilot/data/corporate_actions.py" = [
+  "T201",
+] # Operator CLI: the action table it prints is the product
 "copilot/data/intraday_check.py" = [
   "T201",
 ] # Operator CLI: the violation table it prints is the product

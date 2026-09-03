@@ -47,11 +47,16 @@ distribution, which is the reading that leaves the share count alone.
 
 from __future__ import annotations
 
+import argparse
+import os
+import sys
 from dataclasses import dataclass
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 
@@ -268,3 +273,94 @@ def split_actions(symbol: str) -> tuple[Action, ...]:
 
     """
     return tuple(a for a in ACTIONS.get(symbol, ()) if a.kind is SPLIT)
+
+
+def _report(catalog_path: str, symbols: Sequence[str], start: date, end: date) -> int:
+    """
+    Compare a symbol's vendor corporate actions against what this module already knows.
+
+    Returns a process exit code, non-zero when an action is in the stored prices and not
+    in :data:`ACTIONS` - which is the state that puts a discontinuity in front of a gap
+    strategy.
+
+    """
+    # Deferred, and not for convenience: `catalog` imports this module to adjust on
+    # read, so importing it at module scope is a cycle. The table has to be importable
+    # without the reader.
+    from copilot.data.catalog import bar_type_for  # noqa: PLC0415
+    from copilot.data.catalog import equity_for  # noqa: PLC0415
+    from copilot.data.catalog import open_catalog  # noqa: PLC0415
+    from copilot.data.catalog import read_daily_bars  # noqa: PLC0415
+    from copilot.data.marketstack import MarketstackClient  # noqa: PLC0415
+
+    key = os.environ.get("MARKETSTACK_API_KEY", "")
+    vendor = MarketstackClient(access_key=key).fetch_splits(symbols, start, end)
+
+    catalog = open_catalog(catalog_path)
+    root = Path(catalog_path).expanduser() / "data" / "bars"
+    venues = {
+        e.name.partition(".")[0]: e.name.partition(".")[2].split("-", 1)[0] for e in root.iterdir()
+    }
+
+    print(f"  {'symbol':<7}{'effective':<13}{'factor':>8}{'kind':>14}   status")
+    missing = 0
+    for symbol in symbols:
+        actions = vendor.get(symbol, ())
+        if not actions:
+            print(f"  {symbol:<7}{'-':<13}{'-':>8}{'-':>14}   no corporate actions in window")
+            continue
+        venue = venues.get(symbol)
+        closes: list[tuple[datetime, Decimal]] = []
+        if venue is not None:
+            bar_type = bar_type_for(equity_for(symbol, venue).id)
+            bars = read_daily_bars(catalog, bar_type, adjust=False)
+            closes = [(b.closed_at, b.close) for b in bars]
+
+        known = {(a.effective.date(), a.factor) for a in ACTIONS.get(symbol, ())}
+        for when, factor in actions:
+            action = Action(symbol, datetime(when.year, when.month, when.day, tzinfo=UTC), factor)
+            if (when, factor) in known:
+                status = "in ACTIONS"
+            elif not closes:
+                status = "NOT IN ACTIONS (no stored bars to test)"
+                missing += 1
+            elif unadjusted_actions(closes, [action]):
+                status = "NOT IN ACTIONS and sitting in the prices"
+                missing += 1
+            else:
+                status = "not in ACTIONS; prices look already adjusted"
+            print(f"  {symbol:<7}{when!s:<13}{factor:>8}{action.kind.value:>14}   {status}")
+
+    print(f"\n  {missing} action(s) need an ACTIONS entry before these symbols are used")
+    return 1 if missing else 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    """
+    Check a symbol's corporate actions against this module's table.
+
+    Run this **before** adding a symbol to the catalog, not after. An action nobody
+    looked up is a discontinuity nobody adjusted, and the dangerous ones do not look
+    dangerous: T's 2022 spinoff moved the price 18.7% and MRK's moved it 2.7%.
+
+    """
+    parser = argparse.ArgumentParser(
+        prog="python -m copilot.data.corporate_actions",
+        description="Check vendor corporate actions against the adjustment table.",
+    )
+    parser.add_argument("symbols", help="Comma-separated symbols")
+    parser.add_argument("--catalog", default="~/.nautilus_copilot/catalog")
+    parser.add_argument("--from", dest="start", default="2005-01-01")
+    parser.add_argument("--to", dest="end", default="2025-12-31")
+    args = parser.parse_args(argv)
+
+    return _report(
+        args.catalog,
+        [s.strip().upper() for s in args.symbols.split(",") if s.strip()],
+        date.fromisoformat(args.start),
+        date.fromisoformat(args.end),
+    )
+
+
+if __name__ == "__main__":
+    sys.exit(main())
