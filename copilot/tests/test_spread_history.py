@@ -13,10 +13,12 @@ from __future__ import annotations
 
 from array import array
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 
 from copilot.calibration.spread_history import UNDEFINED
 from copilot.calibration.spread_history import bucket_for
+from copilot.calibration.spread_history import resolve
 from copilot.calibration.spread_history import summarise
 
 
@@ -107,3 +109,61 @@ def test_the_sentinel_is_the_value_that_must_never_be_priced() -> None:
     """
     assert UNDEFINED == 9223372036854775807
     assert (UNDEFINED - 200_000_000_000) / 200_000_000_000 * 10000 > 100_000_000
+
+
+def symbology(entries: list[tuple[int, str, str, str]]) -> dict:
+    """
+    Build a symbology map from (id, symbol, from, to) tuples.
+    """
+    out: dict = {}
+    for instrument_id, symbol, first, last in entries:
+        out.setdefault(instrument_id, []).append(
+            (date.fromisoformat(first), date.fromisoformat(last), symbol),
+        )
+    for spans in out.values():
+        spans.sort()
+    return out
+
+
+def test_an_id_shared_by_two_symbols_resolves_by_date() -> None:
+    """
+    Measured on the stored XNAS pull: 525 instrument ids are used by more than one of
+    eight symbols, GOOGL and INTC among them. Flattening the map to id -> symbol files
+    one company's quotes under the other's name, and the spread still looks plausible.
+    """
+    mapping = symbology(
+        [
+            (4065, "GOOGL", "2019-01-02", "2019-06-01"),
+            (4065, "INTC", "2019-06-01", "2020-01-01"),
+        ],
+    )
+
+    assert resolve(mapping, 4065, date(2019, 3, 1)) == "GOOGL"
+    assert resolve(mapping, 4065, date(2019, 9, 1)) == "INTC"
+
+
+def test_the_handover_date_belongs_to_the_incoming_symbol() -> None:
+    """
+    The vendor's ranges abut, so an inclusive upper bound matches both on that day.
+    """
+    mapping = symbology(
+        [
+            (13, "AAPL", "2018-05-01", "2018-08-15"),
+            (14, "AAPL", "2018-08-15", "2019-10-07"),
+        ],
+    )
+
+    assert resolve(mapping, 13, date(2018, 8, 14)) == "AAPL"
+    assert resolve(mapping, 13, date(2018, 8, 15)) is None
+    assert resolve(mapping, 14, date(2018, 8, 15)) == "AAPL"
+
+
+def test_an_id_outside_every_range_resolves_to_nothing() -> None:
+    """
+    A pull covers the symbols asked for; every other id on the venue must be dropped,
+    not guessed at.
+    """
+    mapping = symbology([(13, "AAPL", "2018-05-01", "2018-08-15")])
+
+    assert resolve(mapping, 13, date(2020, 1, 2)) is None
+    assert resolve(mapping, 9999, date(2018, 6, 1)) is None

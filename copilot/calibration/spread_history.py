@@ -44,6 +44,7 @@ from array import array
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -143,7 +144,7 @@ def bucket_for(moment: datetime) -> str | None:
     return "session"
 
 
-def read_quotes(path: Path, symbols: dict[int, str]) -> dict[tuple[str, str], array[float]]:
+def read_quotes(path: Path, symbols: Symbology) -> dict[tuple[str, str], array[float]]:
     """
     Stream one stored quote file, returning spreads in bps per symbol and window.
 
@@ -162,30 +163,65 @@ def read_quotes(path: Path, symbols: dict[int, str]) -> dict[tuple[str, str], ar
             ask = int(row["ask_px_00"])
             if UNDEFINED in (bid, ask) or bid <= 0 or ask <= bid:
                 continue
-            symbol = symbols.get(int(row["instrument_id"]))
-            if symbol is None:
-                continue
-            stamp = int(row["ts_recv"])
-            window = bucket_for(datetime.fromtimestamp(stamp * PRICE_SCALE, tz=UTC))
+            moment = datetime.fromtimestamp(int(row["ts_recv"]) * PRICE_SCALE, tz=UTC)
+            window = bucket_for(moment)
             if window is None:
+                continue
+            symbol = resolve(symbols, int(row["instrument_id"]), moment.date())
+            if symbol is None:
                 continue
             mid = (bid + ask) / 2
             out[(symbol, window)].append((ask - bid) / mid * 10000)
     return out
 
 
-def symbology_for(path: Path) -> dict[int, str]:
+Symbology = dict[int, list[tuple[date, date, str]]]
+
+
+def symbology_for(path: Path) -> Symbology:
     """
-    Load the instrument-id map a pull wrote beside itself.
+    Load the instrument-id map a pull wrote beside itself, keeping the date ranges.
 
     The rows carry a numeric id and no symbol, so this file is not optional metadata:
     without it the quotes cannot be attributed and the pull is worthless.
+
+    **The dates are not decoration.** A venue reassigns instrument ids, and measured on
+    the stored XNAS pull, **525 ids are used by more than one of eight symbols** -
+    GOOGL and INTC share dozens. Flattening this to ``id -> symbol`` silently files one
+    company's quotes under another's name, and the resulting spread would look
+    perfectly plausible.
 
     """
     sidecar = path.with_suffix(".symbology.json")
     if not sidecar.exists():
         raise FileNotFoundError(f"no symbology beside {path.name}; re-run the pull")
-    return {int(e["instrument_id"]): e["symbol"] for e in json.loads(sidecar.read_text())}
+
+    mapping: Symbology = defaultdict(list)
+    for entry in json.loads(sidecar.read_text()):
+        mapping[int(entry["instrument_id"])].append(
+            (
+                date.fromisoformat(entry["from"]),
+                date.fromisoformat(entry["to"]),
+                entry["symbol"],
+            ),
+        )
+    for spans in mapping.values():
+        spans.sort()
+    return dict(mapping)
+
+
+def resolve(symbology: Symbology, instrument_id: int, day: date) -> str | None:
+    """
+    Return the symbol an id stood for on a day, or None if it stood for nothing.
+
+    The upper bound is exclusive: the vendor's ranges abut, so treating it as inclusive
+    would make two symbols match on every handover date.
+
+    """
+    for first, last, symbol in symbology.get(instrument_id, ()):
+        if first <= day < last:
+            return symbol
+    return None
 
 
 def measure(store: str, schema: str = "bbo-1m") -> dict[str, dict[str, Distribution]]:

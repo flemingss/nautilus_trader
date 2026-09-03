@@ -15,6 +15,17 @@ measurement sessions, so any central estimate from one session inherits that ses
 2026 spreads are applied to trades from 2006 onward. Conservatism here is nearly free, so
 it is bought.
 
+**Measured 2026-09-03, and the conservatism is real but not uniform.**
+:mod:`copilot.calibration.spread_history` now measures the same quantity from 7.6 years
+of historical top-of-book - roughly 750,000 samples per symbol against this snapshot's
+248 to 301, from real quotes rather than delayed ones, and separable by time of day.
+Against the closing window this snapshot overcharges by 1.5x (SPY) to 2.5x (AAPL),
+which is the direction it intended. Against the **opening** window it undercharges by
+up to 4x, because the open is where the spread actually lives: it runs 1.7x the closing
+spread on SPY and **23x on PEP**. Nothing charges the open today - the entry bracket
+([ADR-0013]) runs at the signal close and the next close - so this snapshot stays pinned
+until repinning is decided deliberately, a change that moves every filed verdict.
+
 Costs are charged on the trades **as replayed** - the research sizing. Whether the
 premise survives at the target account size is a separate judgment owned by
 [ADR-0009], where the per-order minimum dominates everything this module measures.

@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Fifteen items. Grouped by blocking condition rather than by component, because that is
+Sixteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -236,14 +236,15 @@ distinguishable without guessing, and the rejection itself is unchanged. `shutdo
 is no longer blocked by this class of noise. One test drives an orphan fill both ways and
 was verified to fail on the unfixed engine; registered in the delta.
 
-### Waiting on a decision (2)
+### Waiting on a decision (3)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
-| Item                                       | Stage  | The decision                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Buy consolidated US equity data, or not    | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, and [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) now covers intraday from 2018 at near-zero cost, which removes most of the reason to buy.                                                            |
-| Replace Marketstack with EODHD, or keep it | 00     | EODHD is roughly $30/month against Marketstack's $49.99 for strictly more: 30+ years of EOD, corporate actions, and delisted securities. Not adoptable until it passes the same coherence probe that caught Marketstack's fake intraday. **Cancel nothing first** - only Marketstack reaches the 2005-2018 daily series. |
+| Item                                                             | Stage  | The decision                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Buy consolidated US equity data, or not                          | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, and [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) now covers intraday from 2018 at near-zero cost, which removes most of the reason to buy.                                                                                                                                                      |
+| Replace Marketstack with EODHD, or keep it                       | 00     | EODHD is roughly $30/month against Marketstack's $49.99 for strictly more: 30+ years of EOD, corporate actions, and delisted securities. Not adoptable until it passes the same coherence probe that caught Marketstack's fake intraday. **Cancel nothing first** - only Marketstack reaches the 2005-2018 daily series.                                                                                           |
+| Repin the spread basis to measured history, or keep the snapshot | 00     | `spread_history` measures p95 spread from 7.6 years of real top-of-book, ~750,000 samples per symbol against the pinned snapshot's 248-301 delayed ones. The snapshot overcharges the closing window by 1.5-2.5x, which is the direction [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) intended. **Repinning moves every filed verdict**, so it is a decision rather than an edit. |
 
 **Resolved 2026-09-02:** the two items that needed a live session are settled - realtime
 quotes are still not entitled, and the sibling-subscription stall does not reproduce. Both
