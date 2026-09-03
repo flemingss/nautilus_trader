@@ -18454,3 +18454,170 @@ fn test_external_order_reported_as_submitted_is_adopted() {
     );
     assert!(matches!(events[0], OrderEventAny::Accepted(_)));
 }
+
+/// Captures the engine's own log records so a reclassification is testable.
+///
+/// One logger per process; nextest gives each test its own, which is why the repository
+/// runs Rust tests through it rather than bare `cargo test`.
+struct ReduceOnlyLogCapture {
+    records: std::sync::Mutex<Vec<(log::Level, String)>>,
+}
+
+static REDUCE_ONLY_LOG_CAPTURE: ReduceOnlyLogCapture = ReduceOnlyLogCapture {
+    records: std::sync::Mutex::new(Vec::new()),
+};
+
+impl log::Log for ReduceOnlyLogCapture {
+    fn enabled(&self, metadata: &log::Metadata<'_>) -> bool {
+        metadata.target().starts_with("nautilus_execution::engine")
+    }
+
+    fn log(&self, record: &log::Record<'_>) {
+        if self.enabled(record.metadata()) {
+            self.records
+                .lock()
+                .unwrap()
+                .push((record.level(), record.args().to_string()));
+        }
+    }
+
+    fn flush(&self) {}
+}
+
+fn orphan_reduce_only_fill(
+    execution_engine: &mut ExecutionEngine,
+    instrument: &CurrencyPair,
+    client_order_id: &str,
+    trade_id: &str,
+    reconciliation: bool,
+) {
+    let order = OrderTestBuilder::new(OrderType::Market)
+        .trader_id(TraderId::test_default())
+        .strategy_id(StrategyId::test_default())
+        .instrument_id(instrument.id)
+        .client_order_id(ClientOrderId::from(client_order_id))
+        .side(OrderSide::Sell)
+        .quantity(Quantity::from(100_000))
+        .reduce_only(true)
+        .build();
+
+    execution_engine
+        .cache()
+        .borrow_mut()
+        .add_order(order.clone(), None, Some(ClientId::from("STUB")), true)
+        .unwrap();
+
+    let venue_order_id = VenueOrderId::from(format!("V-{client_order_id}").as_str());
+    execution_engine.process(&TestOrderEventStubs::submitted(
+        &order,
+        AccountId::test_default(),
+    ));
+    execution_engine.process(&TestOrderEventStubs::accepted(
+        &order,
+        AccountId::test_default(),
+        venue_order_id,
+    ));
+
+    let order = cached_order_or(execution_engine, &order);
+    let fill = OrderFilled::new(
+        order.trader_id(),
+        order.strategy_id(),
+        order.instrument_id(),
+        order.client_order_id(),
+        venue_order_id,
+        AccountId::test_default(),
+        TradeId::new(trade_id),
+        order.order_side(),
+        order.order_type(),
+        Quantity::from(100_000),
+        Price::from("1.00000"),
+        instrument.quote_currency,
+        LiquiditySide::Taker,
+        UUID4::new(),
+        UnixNanos::from(3_000_000),
+        UnixNanos::from(3_000_000),
+        reconciliation,
+        // No position to reduce: the cache holds none for this instrument.
+        None,
+        None,
+        None,
+    );
+
+    execution_engine.process(&OrderEventAny::Filled(fill));
+}
+
+#[rstest]
+fn test_reduce_only_orphan_fill_is_an_error_live_and_a_warning_on_reconciliation() {
+    // A reduce-only fill with no position to reduce is two different events depending on
+    // where it came from. Live it is a real defect. Replayed from the venue at startup it
+    // is the ordinary shape of a lookback holding a completed round trip - the exit fill
+    // is reported and its position closed long ago - and logging it at ERROR made every
+    // such startup look like a failure. That is exactly the noise `shutdown_on_error`
+    // would turn into a restart loop, which is why it had to be reclassified before that
+    // flag can be considered. The rejection itself must not change.
+    log::set_logger(&REDUCE_ONLY_LOG_CAPTURE).expect("test logger already installed");
+    log::set_max_level(log::LevelFilter::Warn);
+
+    let clock = Rc::new(RefCell::new(TestClock::new()));
+    let cache = Rc::new(RefCell::new(Cache::default()));
+    let mut execution_engine = ExecutionEngine::new(clock, cache, None);
+    let instrument = audusd_sim();
+    setup_netting_snapshot_engine(&mut execution_engine, &instrument);
+
+    orphan_reduce_only_fill(
+        &mut execution_engine,
+        &instrument,
+        "O-ORPHAN-LIVE",
+        "T-ORPHAN-LIVE",
+        false,
+    );
+    orphan_reduce_only_fill(
+        &mut execution_engine,
+        &instrument,
+        "O-ORPHAN-RECONCILED",
+        "T-ORPHAN-RECONCILED",
+        true,
+    );
+
+    let records = REDUCE_ONLY_LOG_CAPTURE.records.lock().unwrap();
+    let live: Vec<_> = records
+        .iter()
+        .filter(|(_, message)| message.contains("T-ORPHAN-LIVE"))
+        .collect();
+    let reconciled: Vec<_> = records
+        .iter()
+        .filter(|(_, message)| message.contains("T-ORPHAN-RECONCILED"))
+        .collect();
+
+    assert_eq!(live.len(), 1, "the live orphan must be reported once");
+    assert_eq!(
+        live[0].0,
+        log::Level::Error,
+        "a live reduce-only fill with no position is still an error"
+    );
+
+    assert_eq!(
+        reconciled.len(),
+        1,
+        "the reconciled orphan must be reported once"
+    );
+    assert_eq!(
+        reconciled[0].0,
+        log::Level::Warn,
+        "a historical reduce-only fill replayed at startup must not be an ERROR"
+    );
+    assert!(
+        reconciled[0].1.contains("expected"),
+        "the reconciliation message must say the condition is expected, was {}",
+        reconciled[0].1
+    );
+
+    // The guard itself is unchanged: neither fill opened a position.
+    let cache = execution_engine.cache().borrow();
+    assert!(
+        cache
+            .positions_open(None, Some(&instrument.id), None, None, None)
+            .is_empty(),
+        "a reduce-only fill must never open a position, however it is logged"
+    );
+}
