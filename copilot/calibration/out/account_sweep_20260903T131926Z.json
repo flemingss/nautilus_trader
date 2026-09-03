@@ -1,0 +1,1821 @@
+{
+  "run_at": "2026-09-03T13:16:33.072671+00:00",
+  "cost_model": {
+    "snapshot": "spread_snapshot_20260901T154744Z.json",
+    "percentile": "p95"
+  },
+  "activations": {
+    "aapl-gap-fade-long-next-close": {
+      "symbol": "AAPL",
+      "scored_trades": 525,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "25000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 419,
+              "trades_unsized": 106,
+              "gross_r": "0.121237",
+              "spread_r": "0.012874",
+              "commission_r": "0.416830",
+              "net_r": "-0.308467",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 499,
+              "trades_unsized": 26,
+              "gross_r": "0.098603",
+              "spread_r": "0.012585",
+              "commission_r": "0.284797",
+              "net_r": "-0.198780",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 516,
+              "trades_unsized": 9,
+              "gross_r": "0.094062",
+              "spread_r": "0.012437",
+              "commission_r": "0.228134",
+              "net_r": "-0.146509",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 523,
+              "trades_unsized": 2,
+              "gross_r": "0.099177",
+              "spread_r": "0.012366",
+              "commission_r": "0.147472",
+              "net_r": "-0.060661",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 524,
+              "trades_unsized": 1,
+              "gross_r": "0.100260",
+              "spread_r": "0.012351",
+              "commission_r": "0.107831",
+              "net_r": "-0.019923",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.084405",
+              "net_r": "0.004598",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.059352",
+              "net_r": "0.029651",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.041041",
+              "net_r": "0.047963",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.027084",
+              "net_r": "0.061919",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.020238",
+              "net_r": "0.068765",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.013429",
+              "net_r": "0.075574",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.008040",
+              "net_r": "0.080964",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.004041",
+              "net_r": "0.084963",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "10000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 522,
+              "trades_unsized": 3,
+              "gross_r": "0.101283",
+              "spread_r": "0.012379",
+              "commission_r": "0.178905",
+              "net_r": "-0.090001",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 524,
+              "trades_unsized": 1,
+              "gross_r": "0.100260",
+              "spread_r": "0.012351",
+              "commission_r": "0.107831",
+              "net_r": "-0.019923",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.084405",
+              "net_r": "0.004598",
+              "viable": true
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.055161",
+              "net_r": "0.033842",
+              "viable": true
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.041041",
+              "net_r": "0.047963",
+              "viable": true
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.032598",
+              "net_r": "0.056406",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.023162",
+              "net_r": "0.065842",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.016154",
+              "net_r": "0.072850",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.010735",
+              "net_r": "0.078269",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.008040",
+              "net_r": "0.080964",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.005354",
+              "net_r": "0.083650",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.003300",
+              "net_r": "0.085703",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 525,
+              "trades_unsized": 0,
+              "gross_r": "0.101339",
+              "spread_r": "0.012335",
+              "commission_r": "0.002117",
+              "net_r": "0.086886",
+              "viable": true
+            }
+          ]
+        }
+      }
+    },
+    "aapl-gap-fade-long": {
+      "symbol": "AAPL",
+      "scored_trades": 612,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "75000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 502,
+              "trades_unsized": 110,
+              "gross_r": "0.063039",
+              "spread_r": "0.012688",
+              "commission_r": "0.415923",
+              "net_r": "-0.365572",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 581,
+              "trades_unsized": 31,
+              "gross_r": "0.053563",
+              "spread_r": "0.012523",
+              "commission_r": "0.284988",
+              "net_r": "-0.243947",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 601,
+              "trades_unsized": 11,
+              "gross_r": "0.044287",
+              "spread_r": "0.012367",
+              "commission_r": "0.226517",
+              "net_r": "-0.194598",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 610,
+              "trades_unsized": 2,
+              "gross_r": "0.048493",
+              "spread_r": "0.012295",
+              "commission_r": "0.147039",
+              "net_r": "-0.110841",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 611,
+              "trades_unsized": 1,
+              "gross_r": "0.049505",
+              "spread_r": "0.012282",
+              "commission_r": "0.107319",
+              "net_r": "-0.070097",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.083856",
+              "net_r": "-0.045611",
+              "viable": false
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.059259",
+              "net_r": "-0.021013",
+              "viable": false
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.040954",
+              "net_r": "-0.002709",
+              "viable": false
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.027052",
+              "net_r": "0.011193",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.020232",
+              "net_r": "0.018014",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.013425",
+              "net_r": "0.024820",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.008038",
+              "net_r": "0.030208",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.004041",
+              "net_r": "0.034204",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "25000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 610,
+              "trades_unsized": 2,
+              "gross_r": "0.048493",
+              "spread_r": "0.012295",
+              "commission_r": "0.177863",
+              "net_r": "-0.141665",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 611,
+              "trades_unsized": 1,
+              "gross_r": "0.049505",
+              "spread_r": "0.012282",
+              "commission_r": "0.107319",
+              "net_r": "-0.070097",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.083856",
+              "net_r": "-0.045611",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.055084",
+              "net_r": "-0.016839",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.040954",
+              "net_r": "-0.002709",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.032585",
+              "net_r": "0.005660",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.023145",
+              "net_r": "0.015100",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.016144",
+              "net_r": "0.022102",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.010732",
+              "net_r": "0.027514",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.008038",
+              "net_r": "0.030208",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.005353",
+              "net_r": "0.032893",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.003300",
+              "net_r": "0.034945",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 612,
+              "trades_unsized": 0,
+              "gross_r": "0.050514",
+              "spread_r": "0.012268",
+              "commission_r": "0.002134",
+              "net_r": "0.036111",
+              "viable": true
+            }
+          ]
+        }
+      }
+    },
+    "msft-gap-fade-long-next-close": {
+      "symbol": "MSFT",
+      "scored_trades": 499,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "50000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 336,
+              "trades_unsized": 163,
+              "gross_r": "0.090394",
+              "spread_r": "0.012945",
+              "commission_r": "0.447295",
+              "net_r": "-0.369846",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 368,
+              "trades_unsized": 131,
+              "gross_r": "0.063216",
+              "spread_r": "0.012915",
+              "commission_r": "0.278953",
+              "net_r": "-0.228652",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 407,
+              "trades_unsized": 92,
+              "gross_r": "0.079628",
+              "spread_r": "0.012810",
+              "commission_r": "0.223310",
+              "net_r": "-0.156492",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 484,
+              "trades_unsized": 15,
+              "gross_r": "0.053684",
+              "spread_r": "0.012386",
+              "commission_r": "0.154094",
+              "net_r": "-0.112797",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 497,
+              "trades_unsized": 2,
+              "gross_r": "0.055856",
+              "spread_r": "0.012235",
+              "commission_r": "0.116908",
+              "net_r": "-0.073287",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.089830",
+              "net_r": "-0.047392",
+              "viable": false
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.061788",
+              "net_r": "-0.019350",
+              "viable": false
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.042147",
+              "net_r": "0.000291",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.027456",
+              "net_r": "0.014983",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.020484",
+              "net_r": "0.021955",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.013875",
+              "net_r": "0.028564",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.009808",
+              "net_r": "0.032631",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.007761",
+              "net_r": "0.034678",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "20000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 460,
+              "trades_unsized": 39,
+              "gross_r": "0.078530",
+              "spread_r": "0.012548",
+              "commission_r": "0.181089",
+              "net_r": "-0.115106",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 497,
+              "trades_unsized": 2,
+              "gross_r": "0.055856",
+              "spread_r": "0.012235",
+              "commission_r": "0.116908",
+              "net_r": "-0.073287",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.089830",
+              "net_r": "-0.047392",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.056915",
+              "net_r": "-0.014477",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.042147",
+              "net_r": "0.000291",
+              "viable": true
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.033223",
+              "net_r": "0.009216",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.023515",
+              "net_r": "0.018924",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.016386",
+              "net_r": "0.026052",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.011676",
+              "net_r": "0.030763",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.009808",
+              "net_r": "0.032631",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.008355",
+              "net_r": "0.034084",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.007441",
+              "net_r": "0.034998",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 499,
+              "trades_unsized": 0,
+              "gross_r": "0.054649",
+              "spread_r": "0.012210",
+              "commission_r": "0.006884",
+              "net_r": "0.035554",
+              "viable": true
+            }
+          ]
+        }
+      }
+    },
+    "msft-gap-fade-long": {
+      "symbol": "MSFT",
+      "scored_trades": 571,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "35000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 400,
+              "trades_unsized": 171,
+              "gross_r": "0.107236",
+              "spread_r": "0.013218",
+              "commission_r": "0.448552",
+              "net_r": "-0.354534",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 440,
+              "trades_unsized": 131,
+              "gross_r": "0.089584",
+              "spread_r": "0.013151",
+              "commission_r": "0.277632",
+              "net_r": "-0.201199",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 481,
+              "trades_unsized": 90,
+              "gross_r": "0.092020",
+              "spread_r": "0.013052",
+              "commission_r": "0.222955",
+              "net_r": "-0.143988",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 555,
+              "trades_unsized": 16,
+              "gross_r": "0.064768",
+              "spread_r": "0.012671",
+              "commission_r": "0.153141",
+              "net_r": "-0.101045",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 569,
+              "trades_unsized": 2,
+              "gross_r": "0.077234",
+              "spread_r": "0.012533",
+              "commission_r": "0.115262",
+              "net_r": "-0.050562",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.088741",
+              "net_r": "-0.024288",
+              "viable": false
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.061366",
+              "net_r": "0.003087",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.041973",
+              "net_r": "0.022481",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.027391",
+              "net_r": "0.037063",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.020455",
+              "net_r": "0.043999",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.014011",
+              "net_r": "0.050443",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.010196",
+              "net_r": "0.054258",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.008323",
+              "net_r": "0.056131",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "15000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 535,
+              "trades_unsized": 36,
+              "gross_r": "0.082639",
+              "spread_r": "0.012807",
+              "commission_r": "0.181047",
+              "net_r": "-0.111215",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 569,
+              "trades_unsized": 2,
+              "gross_r": "0.077234",
+              "spread_r": "0.012533",
+              "commission_r": "0.115262",
+              "net_r": "-0.050562",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.088741",
+              "net_r": "-0.024288",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.056603",
+              "net_r": "0.007850",
+              "viable": true
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.041973",
+              "net_r": "0.022481",
+              "viable": true
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.033138",
+              "net_r": "0.031316",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.023462",
+              "net_r": "0.040991",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.016433",
+              "net_r": "0.048021",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.011922",
+              "net_r": "0.052532",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.010196",
+              "net_r": "0.054258",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.008876",
+              "net_r": "0.055578",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.008028",
+              "net_r": "0.056426",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 571,
+              "trades_unsized": 0,
+              "gross_r": "0.076963",
+              "spread_r": "0.012509",
+              "commission_r": "0.007516",
+              "net_r": "0.056938",
+              "viable": true
+            }
+          ]
+        }
+      }
+    },
+    "spy-gap-fade-long-next-close": {
+      "symbol": "SPY",
+      "scored_trades": 556,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "50000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 352,
+              "trades_unsized": 204,
+              "gross_r": "0.051465",
+              "spread_r": "0.007231",
+              "commission_r": "0.542436",
+              "net_r": "-0.498202",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 460,
+              "trades_unsized": 96,
+              "gross_r": "0.075639",
+              "spread_r": "0.006880",
+              "commission_r": "0.314820",
+              "net_r": "-0.246062",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 494,
+              "trades_unsized": 62,
+              "gross_r": "0.070044",
+              "spread_r": "0.006715",
+              "commission_r": "0.249136",
+              "net_r": "-0.185807",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 538,
+              "trades_unsized": 18,
+              "gross_r": "0.074453",
+              "spread_r": "0.006476",
+              "commission_r": "0.159788",
+              "net_r": "-0.091812",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 550,
+              "trades_unsized": 6,
+              "gross_r": "0.064283",
+              "spread_r": "0.006396",
+              "commission_r": "0.116138",
+              "net_r": "-0.058251",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 553,
+              "trades_unsized": 3,
+              "gross_r": "0.067551",
+              "spread_r": "0.006373",
+              "commission_r": "0.090000",
+              "net_r": "-0.028823",
+              "viable": false
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.062027",
+              "net_r": "-0.000586",
+              "viable": false
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.042314",
+              "net_r": "0.019127",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.027685",
+              "net_r": "0.033756",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.020532",
+              "net_r": "0.040909",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.013575",
+              "net_r": "0.047865",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.008083",
+              "net_r": "0.053357",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.004350",
+              "net_r": "0.057091",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "15000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 524,
+              "trades_unsized": 32,
+              "gross_r": "0.074038",
+              "spread_r": "0.006556",
+              "commission_r": "0.194707",
+              "net_r": "-0.127225",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 550,
+              "trades_unsized": 6,
+              "gross_r": "0.064283",
+              "spread_r": "0.006396",
+              "commission_r": "0.116138",
+              "net_r": "-0.058251",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 553,
+              "trades_unsized": 3,
+              "gross_r": "0.067551",
+              "spread_r": "0.006373",
+              "commission_r": "0.090000",
+              "net_r": "-0.028823",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.057394",
+              "net_r": "0.004046",
+              "viable": true
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.042314",
+              "net_r": "0.019127",
+              "viable": true
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.033473",
+              "net_r": "0.027967",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.023535",
+              "net_r": "0.037906",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.016348",
+              "net_r": "0.045093",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.010813",
+              "net_r": "0.050628",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.008083",
+              "net_r": "0.053357",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.005446",
+              "net_r": "0.055995",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.003836",
+              "net_r": "0.057605",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 556,
+              "trades_unsized": 0,
+              "gross_r": "0.067786",
+              "spread_r": "0.006345",
+              "commission_r": "0.003142",
+              "net_r": "0.058299",
+              "viable": true
+            }
+          ]
+        }
+      }
+    },
+    "spy-gap-fade-long": {
+      "symbol": "SPY",
+      "scored_trades": 609,
+      "by_risk": {
+        "0.10%": {
+          "crossing_equity": "50000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "5.0000",
+              "trades_taken": 397,
+              "trades_unsized": 212,
+              "gross_r": "0.006261",
+              "spread_r": "0.007044",
+              "commission_r": "0.547451",
+              "net_r": "-0.548233",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "8.0000",
+              "trades_taken": 516,
+              "trades_unsized": 93,
+              "gross_r": "0.047643",
+              "spread_r": "0.006804",
+              "commission_r": "0.317395",
+              "net_r": "-0.276556",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "10.0000",
+              "trades_taken": 558,
+              "trades_unsized": 51,
+              "gross_r": "0.045420",
+              "spread_r": "0.006639",
+              "commission_r": "0.249257",
+              "net_r": "-0.210477",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "15.0000",
+              "trades_taken": 593,
+              "trades_unsized": 16,
+              "gross_r": "0.054379",
+              "spread_r": "0.006465",
+              "commission_r": "0.159713",
+              "net_r": "-0.111798",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "20.0000",
+              "trades_taken": 604,
+              "trades_unsized": 5,
+              "gross_r": "0.051667",
+              "spread_r": "0.006400",
+              "commission_r": "0.115482",
+              "net_r": "-0.070215",
+              "viable": false
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "25.0000",
+              "trades_taken": 606,
+              "trades_unsized": 3,
+              "gross_r": "0.054797",
+              "spread_r": "0.006385",
+              "commission_r": "0.089827",
+              "net_r": "-0.041415",
+              "viable": false
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "35.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.061883",
+              "net_r": "-0.012074",
+              "viable": false
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "50.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.042267",
+              "net_r": "0.007541",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "75.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.027607",
+              "net_r": "0.022201",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "100.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.020509",
+              "net_r": "0.029300",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "150.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.013565",
+              "net_r": "0.036243",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "250.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.008079",
+              "net_r": "0.041729",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "500.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.004326",
+              "net_r": "0.045482",
+              "viable": true
+            }
+          ]
+        },
+        "0.25%": {
+          "crossing_equity": "20000",
+          "rows": [
+            {
+              "equity": "5000",
+              "risk_budget": "12.5000",
+              "trades_taken": 581,
+              "trades_unsized": 28,
+              "gross_r": "0.058538",
+              "spread_r": "0.006526",
+              "commission_r": "0.195990",
+              "net_r": "-0.143977",
+              "viable": false
+            },
+            {
+              "equity": "8000",
+              "risk_budget": "20.0000",
+              "trades_taken": 604,
+              "trades_unsized": 5,
+              "gross_r": "0.051667",
+              "spread_r": "0.006400",
+              "commission_r": "0.115482",
+              "net_r": "-0.070215",
+              "viable": false
+            },
+            {
+              "equity": "10000",
+              "risk_budget": "25.0000",
+              "trades_taken": 606,
+              "trades_unsized": 3,
+              "gross_r": "0.054797",
+              "spread_r": "0.006385",
+              "commission_r": "0.089827",
+              "net_r": "-0.041415",
+              "viable": false
+            },
+            {
+              "equity": "15000",
+              "risk_budget": "37.5000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.057068",
+              "net_r": "-0.007259",
+              "viable": false
+            },
+            {
+              "equity": "20000",
+              "risk_budget": "50.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.042267",
+              "net_r": "0.007541",
+              "viable": true
+            },
+            {
+              "equity": "25000",
+              "risk_budget": "62.5000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.033419",
+              "net_r": "0.016389",
+              "viable": true
+            },
+            {
+              "equity": "35000",
+              "risk_budget": "87.5000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.023547",
+              "net_r": "0.026261",
+              "viable": true
+            },
+            {
+              "equity": "50000",
+              "risk_budget": "125.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.016338",
+              "net_r": "0.033471",
+              "viable": true
+            },
+            {
+              "equity": "75000",
+              "risk_budget": "187.5000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.010809",
+              "net_r": "0.038999",
+              "viable": true
+            },
+            {
+              "equity": "100000",
+              "risk_budget": "250.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.008079",
+              "net_r": "0.041729",
+              "viable": true
+            },
+            {
+              "equity": "150000",
+              "risk_budget": "375.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.005434",
+              "net_r": "0.044374",
+              "viable": true
+            },
+            {
+              "equity": "250000",
+              "risk_budget": "625.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.003808",
+              "net_r": "0.046001",
+              "viable": true
+            },
+            {
+              "equity": "500000",
+              "risk_budget": "1250.0000",
+              "trades_taken": 609,
+              "trades_unsized": 0,
+              "gross_r": "0.056169",
+              "spread_r": "0.006361",
+              "commission_r": "0.003129",
+              "net_r": "0.046679",
+              "viable": true
+            }
+          ]
+        }
+      }
+    }
+  }
+}

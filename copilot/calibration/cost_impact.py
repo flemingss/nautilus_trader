@@ -32,6 +32,14 @@ twenty years - from 0.0863 R in 2006 to 0.0020 R in 2025 - tracking nothing but 
 split-adjusted price rising. Spread cost is unaffected, because quantity cancels there.
 
 MSFT and SPY have no splits in the window, so their figures were right either way.
+
+As of [ADR-0016] AAPL is no longer the only symbol this applies to. Seven more are
+back-adjusted on read, so ``split_factor`` now covers AMZN, GOOGL, KO and WMT as well -
+and deliberately does **not** cover MRK, T or VZ, whose corporate actions moved the
+price without issuing a share. Both this module and the read path take those factors
+from one table, so the recorded quantity and the commission charged on it cannot
+disagree.
+
 """
 
 from __future__ import annotations
@@ -66,6 +74,7 @@ def measured_spreads(path: Path) -> dict[str, dict[str, Decimal]]:
 
     Per side is half the full quoted spread: a round trip crosses half on the way in and
     half on the way out.
+
     """
     data = json.loads(path.read_text())
     out: dict[str, dict[str, Decimal]] = {}
@@ -80,7 +89,9 @@ def measured_spreads(path: Path) -> dict[str, dict[str, Decimal]]:
 
 
 def cost_in_r(trades: list[Any], symbol: str, bps_per_side: Decimal) -> tuple[Decimal, Decimal]:
-    """Mean spread cost and mean commission cost per round trip, in R."""
+    """
+    Mean spread cost and mean commission cost per round trip, in R.
+    """
     spread = commission_total = Decimal(0)
     for trade in trades:
         quantity = Decimal(trade.quantity)
@@ -93,7 +104,9 @@ def cost_in_r(trades: list[Any], symbol: str, bps_per_side: Decimal) -> tuple[De
 
 
 def scored_trades(activation: object, catalog_path: str) -> tuple[list[Any], Decimal]:
-    """Every trade the gate scored for one activation, and its gross expectancy."""
+    """
+    Every trade the gate scored for one activation, and its gross expectancy.
+    """
     catalog = open_catalog(catalog_path)
     instrument = equity_for(activation.symbol, activation.venue)
     bar_type = bar_type_for(instrument.id)
@@ -126,6 +139,7 @@ def concentration(trades: list[Any]) -> dict[str, Any]:
     A mean is only a summary if the series behind it is not dominated by a couple of
     observations. This reports whether it is, because a fold-level pass rate cannot show
     it - a fold passes on its mean too.
+
     """
     by_year: dict[int, Decimal] = defaultdict(Decimal)
     for trade in trades:
@@ -144,7 +158,9 @@ def concentration(trades: list[Any]) -> dict[str, Any]:
 
 
 def build_report(calibration: Path, catalog_path: str) -> dict[str, Any]:
-    """Run every activation and price it at each candidate coefficient."""
+    """
+    Run every activation and price it at each candidate coefficient.
+    """
     spreads = measured_spreads(calibration)
     symbols: dict[str, Any] = {}
 
@@ -206,7 +222,12 @@ def build_report(calibration: Path, catalog_path: str) -> dict[str, Any]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Print the cost impact table. Returns a process exit code."""
+    """
+    Print the cost impact table.
+
+    Returns a process exit code.
+
+    """
     parser = argparse.ArgumentParser(
         prog="python -m copilot.calibration.cost_impact",
         description="Price the gate's scored trades at each candidate spread coefficient.",
