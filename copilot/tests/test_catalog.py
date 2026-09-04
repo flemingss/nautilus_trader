@@ -233,3 +233,105 @@ def test_bar_type_is_daily_and_externally_sourced():
     bars the engine aggregated from ticks.
     """
     assert str(bar_type_for(equity_for("AAPL", "XNAS").id)) == "AAPL.XNAS-1-DAY-LAST-EXTERNAL"
+
+
+def test_a_stored_split_is_adjusted_away_on_read(catalog) -> None:
+    """
+    GOOGL's real closes across its 20:1.
+
+    Stored as-traded they are a -95% day; read back they are an ordinary one. This is
+    the defect the audit found, corrected at the point where every consumer sees it.
+
+    """
+    bars = (
+        daily("GOOGL", (2022, 7, 15), open_="2240", high="2250", low="2230", close="2235.55"),
+        daily("GOOGL", (2022, 7, 18), open_="111", high="112", low="108", close="109.03"),
+    )
+    write_ingestion(catalog, IngestionResult(bars=bars, fetched=2), venues={"GOOGL": "XNAS"})
+
+    read = read_daily_bars(catalog, bar_type_for(equity_for("GOOGL", "XNAS").id))
+
+    assert read[0].close == Decimal("111.7775")
+    assert read[1].close == Decimal("109.03")
+    move = (read[1].close - read[0].close) / read[0].close * 100
+    assert -5 < move < 0
+
+
+def test_the_raw_series_is_still_reachable(catalog) -> None:
+    """
+    The audit compares against as-traded official prints, so it has to read back exactly
+    what the vendor sent.
+
+    Losing this would make the defect undetectable.
+
+    """
+    bars = (daily("GOOGL", (2022, 7, 15), open_="2240", high="2250", low="2230", close="2235.55"),)
+    write_ingestion(catalog, IngestionResult(bars=bars, fetched=1), venues={"GOOGL": "XNAS"})
+
+    read = read_daily_bars(catalog, bar_type_for(equity_for("GOOGL", "XNAS").id), adjust=False)
+
+    assert read[0].close == Decimal("2235.55")
+
+
+def test_a_symbol_the_vendor_already_adjusted_is_left_alone(catalog) -> None:
+    """
+    AAPL arrives back-adjusted.
+
+    Adjusting it again would divide by four twice.
+
+    """
+    bars = (daily("AAPL", (2020, 8, 28), open_="126", high="127", low="124", close="124.8075"),)
+    write_ingestion(catalog, IngestionResult(bars=bars, fetched=1), venues={"AAPL": "XNAS"})
+
+    read = read_daily_bars(catalog, bar_type_for(equity_for("AAPL", "XNAS").id))
+
+    assert read[0].close == Decimal("124.8075")
+
+
+def test_adjustment_keeps_the_day_s_traded_notional(catalog) -> None:
+    """
+    Price falls by the factor and volume rises by it, so the dollars that actually
+    changed hands survive the adjustment.
+    """
+    bars = (
+        daily(
+            "WMT",
+            (2024, 2, 23),
+            open_="176",
+            high="177",
+            low="175",
+            close="175.56",
+            volume=1_000_000,
+        ),
+    )
+    write_ingestion(catalog, IngestionResult(bars=bars, fetched=1), venues={"WMT": "XNYS"})
+
+    read = read_daily_bars(catalog, bar_type_for(equity_for("WMT", "XNYS").id))
+
+    assert read[0].close == Decimal("58.52")
+    assert read[0].volume == 3_000_000
+    assert read[0].close * read[0].volume == Decimal("175.56") * 1_000_000
+
+
+def test_a_spinoff_adjusts_the_price_and_leaves_volume_alone(catalog) -> None:
+    """
+    T's Warner Bros Discovery spinoff handed out value without issuing a share, so the
+    price moves and the count does not.
+    """
+    bars = (
+        daily(
+            "T",
+            (2022, 4, 8),
+            open_="24",
+            high="24.5",
+            low="23.9",
+            close="24.14",
+            volume=1_000_000,
+        ),
+    )
+    write_ingestion(catalog, IngestionResult(bars=bars, fetched=1), venues={"T": "XNYS"})
+
+    read = read_daily_bars(catalog, bar_type_for(equity_for("T", "XNYS").id))
+
+    assert read[0].volume == 1_000_000
+    assert read[0].close < Decimal("24.14")

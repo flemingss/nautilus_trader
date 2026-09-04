@@ -119,6 +119,11 @@ def _observed(day: date) -> date:
     return day
 
 
+SESSION_OPEN_MINUTES = 9 * 60 + 30
+REGULAR_CLOSE_MINUTES = 16 * 60
+EARLY_CLOSE_MINUTES = 13 * 60
+
+
 def market_holidays(year: int) -> frozenset[date]:
     """
     Every scheduled full-day US equity market closure in ``year``.
@@ -159,6 +164,39 @@ def is_trading_day(day: date) -> bool:
     return day not in market_holidays(day.year)
 
 
+def early_closes(year: int) -> frozenset[date]:
+    """
+    Every scheduled 13:00 Eastern close in ``year``.
+
+    The session opens normally and ends three hours early, so these are trading days -
+    :func:`is_trading_day` already says so - but anything that reduces a session has to
+    know where it ends. Reading 13:00 to 16:00 on one of these days as regular trading
+    picks up extended-hours prints and reports them as part of the session.
+
+    The three are stable NYSE practice: the day after Thanksgiving, Christmas Eve, and
+    the day before Independence Day. Each is only an early close if it is itself a
+    trading day, which is what keeps 3 July off the list in a year when Independence
+    Day falls on a Saturday and the holiday is observed on the 3rd.
+
+    """
+    candidates = {
+        _nth_weekday(year, 11, 3, 4) + timedelta(days=1),  # the Friday after Thanksgiving
+        date(year, 12, 24),
+        date(year, 7, 3),
+    }
+    return frozenset(day for day in candidates if is_trading_day(day))
+
+
+def session_end_minutes(day: date) -> int:
+    """
+    Return the minute of the Eastern day a session ends, exclusive.
+
+    16:00 normally, 13:00 on a scheduled early close.
+
+    """
+    return EARLY_CLOSE_MINUTES if day in early_closes(day.year) else REGULAR_CLOSE_MINUTES
+
+
 def trading_days(start: date, end: date) -> tuple[date, ...]:
     """
     Every trading day in ``[start, end]``, inclusive and in order.
@@ -173,10 +211,15 @@ def trading_days(start: date, end: date) -> tuple[date, ...]:
 
 
 __all__ = [
+    "EARLY_CLOSE_MINUTES",
     "JUNETEENTH_FIRST_OBSERVED",
+    "REGULAR_CLOSE_MINUTES",
+    "SESSION_OPEN_MINUTES",
     "UNSCHEDULED_CLOSURES",
+    "early_closes",
     "easter_sunday",
     "is_trading_day",
     "market_holidays",
+    "session_end_minutes",
     "trading_days",
 ]

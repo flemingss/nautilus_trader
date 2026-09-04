@@ -15,6 +15,27 @@ measurement sessions, so any central estimate from one session inherits that ses
 2026 spreads are applied to trades from 2006 onward. Conservatism here is nearly free, so
 it is bought.
 
+**Measured 2026-09-03, and the conservatism is real but not uniform.**
+:mod:`copilot.calibration.spread_history` now measures the same quantity from 7.6 years
+of historical top-of-book - roughly 750,000 samples per symbol against this snapshot's
+248 to 301, from real quotes rather than delayed ones, and separable by time of day.
+Against the closing window this snapshot overcharges by 1.5x (SPY) to 2.5x (AAPL),
+which is the direction it intended. Against the **opening** window it undercharges by
+up to 4x, because the open is where the spread actually lives: it runs 1.7x the closing
+spread on SPY and **23x on PEP**. Nothing charges the first five minutes today - the entry
+bracket ([ADR-0013]) runs at the signal close and the next close - and the charter's
+actual execution window, the **first one to two hours**, was measured on 2026-09-03 and
+is far milder than its first five minutes: p95 of **2.455 bps on AAPL, 2.958 on MSFT and
+0.785 on SPY**, against the 3.981, 3.593 and 1.048 this snapshot charges. **So the pinned
+snapshot is conservative against the window the charter says an order will actually go
+into**, which is the question that matters and had never been asked. It stays pinned
+until repinning is decided deliberately, a change that moves every filed verdict.
+
+The same measurement carries a warning about widening the universe. This snapshot covers
+three symbols; the other seventeen raise :class:`UncalibratedSymbolError`, which is the
+right failure. Their execution-window spreads are not small - GOOGL 10.1 bps, CVX 9.2,
+AMZN 8.0 - so a wider universe needs its own calibration before it needs anything else.
+
 Costs are charged on the trades **as replayed** - the research sizing. Whether the
 premise survives at the target account size is a separate judgment owned by
 [ADR-0009], where the per-order minimum dominates everything this module measures.
@@ -25,11 +46,13 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from copilot.data.corporate_actions import cumulative_factor
+from copilot.data.corporate_actions import split_actions
 
 
 if TYPE_CHECKING:
@@ -52,30 +75,17 @@ belongs in a commit touching this line.
 """
 
 PERCENTILE = "p95"
-"""The coefficient chosen in [ADR-0011]. ``full_spread_bps`` key in the snapshot."""
+"""
+The coefficient chosen in [ADR-0011].
+
+``full_spread_bps`` key in the snapshot.
+
+"""
 
 # IB Pro, fixed tier, US equities.
 COMMISSION_PER_SHARE = Decimal("0.005")
 COMMISSION_MIN = Decimal("1.00")
 COMMISSION_MAX_PCT = Decimal("0.01")
-
-SPLITS: dict[str, list[tuple[datetime, Decimal]]] = {
-    "AAPL": [
-        (datetime(2005, 2, 28, tzinfo=UTC), Decimal(2)),
-        (datetime(2014, 6, 9, tzinfo=UTC), Decimal(7)),
-        (datetime(2020, 8, 31, tzinfo=UTC), Decimal(4)),
-    ],
-}
-"""
-Splits inside the catalog window, from the backfill's corporate-action report.
-
-Catalog prices are back-adjusted, so an early trade is recorded in today's share count.
-Charging per-share commission on the adjusted count overstates early commission by the
-cumulative split factor - 56x for 2006 AAPL. Only symbols that split need an entry; a
-symbol absent here is charged on the recorded count, which is the actual one when no
-split intervened.
-
-"""
 
 
 class UncalibratedSymbolError(KeyError):
@@ -98,12 +108,27 @@ class UncalibratedSymbolError(KeyError):
 def split_factor(symbol: str, when: datetime) -> Decimal:
     """
     Return the cumulative split factor after ``when``: adjusted shares over real shares.
+
+    Catalog prices are back-adjusted - by the vendor for AAPL, on read for everyone else
+    ([ADR-0015]) - so an early trade is recorded in today's share count. Charging
+    per-share commission on that count overstates early commission by the cumulative
+    factor: 28x for 2006 AAPL, 40x for 2013 GOOGL.
+
+    **The factors come from :mod:`copilot.data.corporate_actions` rather than a table
+    kept here, and that is the repair, not a tidy-up.** The price adjustment and the
+    share-count correction describe the same events. While they lived in two places this
+    module listed AAPL alone and was right only by luck: the four symbols whose splits
+    were missing were also the four whose prices were never adjusted, so a recorded
+    quantity happened to be the real one. Repairing the prices without repairing this
+    would have made that luck run out silently - a real price charged an invented
+    commission.
+
+    Only share-count events count. A spinoff - MRK's Organon, T's Warner Bros Discovery,
+    VZ's three - moves the price without issuing a share, so it adjusts the series and
+    leaves the count alone. :func:`split_actions` filters those out.
+
     """
-    factor = Decimal(1)
-    for date, multiple in SPLITS.get(symbol, []):
-        if when < date:
-            factor *= multiple
-    return factor
+    return cumulative_factor(split_actions(symbol), when)
 
 
 def commission(real_shares: Decimal, notional: Decimal) -> Decimal:

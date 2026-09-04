@@ -29,21 +29,45 @@ Feeding that to a backtest yields fills at prices the bar says never traded.
 **The raw set is not perfectly clean either, and an earlier version of this note said
 it was.** Over 15,851 rows it had zero failures; over 105,414 it has twelve. Every one
 is the *open* sitting a few cents outside the day's high or low - GOOGL 2025-12-29
-opens at 314.52 against a high of 314.02 - which reads like an official opening print
-carried from a different source than the intraday range. The rate is 0.011% against
-22% for the adjusted set, so the choice is unchanged and the gate rejects them either
-way; the point is that the coherence check earns its keep on both sets rather than
-being a formality on one.
+opens at 314.52 against a high of 314.02. An earlier version of this note guessed that
+these read like an official opening print carried from a different source than the
+intraday range.
 
-What makes the choice safe is that the raw set is *already split-adjusted* by the
-vendor: AAPL's close on
-2020-08-28 is reported as 124.8075, which is the pre-split 499.23 divided by the 4:1
-split that settled on the 31st. So the catastrophic discontinuity, a split reading as
-a -75% day, does not exist in the raw series either.
+**Settled 2026-09-03 against the venue's own minute bars, and the guess was wrong.**
+GOOGL never traded at 314.52 that day: the listing venue's regular session ran
+311.47 / 314.01 / 310.65 / 313.56, and its pre-market high was 312.52. There is no
+session, regular or extended, in which that open was a print. The vendor's high of
+314.02 matches the venue's 314.01 to the cent, so the range was right and the open
+alone was invented. The rate is 0.011% against 22% for the adjusted set, so the choice
+is unchanged and the gate rejects them either way; the point is that the coherence
+check is what stands between an invented price and a backtest.
 
-What the raw set lacks is dividend adjustment. That understates total return by the
-yield and does **not** manufacture a discontinuity that a strategy could mistake for a
-signal, which is the failure mode that matters here. ``dividend`` and ``split_factor``
+**The raw set is split-adjusted for some symbols and not others, and an earlier
+version of this note got that badly wrong.** It said the catastrophic discontinuity, a
+split reading as a large negative day, "does not exist in the raw series either". That
+generalised from a single example. AAPL is indeed adjusted - its close on 2020-08-28 is
+reported as 124.8075, the pre-split 499.23 divided by the 4:1 split that settled on the
+31st - but measured across the whole catalog on 2026-09-03, **four symbols carry the
+discontinuity as fact**:
+
+=========  ============  ==========================
+Symbol     Split date    Single-day move in the bars
+=========  ============  ==========================
+AMZN       2022-06-06    -94.9%
+GOOGL      2022-07-18    -95.1%
+WMT        2024-02-26    -66.1%
+KO         2012-08-13    -50.1%
+=========  ============  ==========================
+
+A gap strategy reads a -95% day as the largest gap in its history. **Repaired on read
+rather than in the file** ([ADR-0016]): the stored series stays as-traded so it can
+still be checked against a venue's official closing auction print, and
+:mod:`copilot.data.corporate_actions` applies the adjustment when bars are read. The
+full count is nine actions across seven symbols - a threshold scan finds only the four
+above, and never T's spinoff at -18.7% or MRK's at -2.7%.
+
+What the raw set also lacks is dividend adjustment. That understates total return by
+the yield and does not manufacture a discontinuity of this kind. ``dividend`` and ``split_factor``
 are carried through per row, so a dividend-adjusted series can be derived later from a
 coherent base rather than inherited from an incoherent one.
 
@@ -88,6 +112,7 @@ from urllib.request import Request
 from urllib.request import urlopen
 
 from copilot.data.calendar import is_trading_day
+from copilot.data.corporate_actions import PRE_ADJUSTED
 from copilot.validation.types import DailyBar
 
 
@@ -237,6 +262,44 @@ class MarketstackClient:
         self._timeout_seconds = timeout_seconds
         self._sleep = sleep
 
+    def fetch_splits(
+        self,
+        symbols: Sequence[str],
+        start: date,
+        end: date,
+    ) -> dict[str, tuple[tuple[date, Decimal], ...]]:
+        """
+        Fetch every split and distribution in ``[start, end]``, per symbol.
+
+        The vendor reports a spinoff under the same ``split_factor`` name as a share
+        split, so what comes back is corporate actions rather than splits alone;
+        :func:`copilot.data.corporate_actions.classify` separates them.
+
+        This is the first step in widening the universe. An action nobody looked up is
+        a price discontinuity nobody adjusted, and the ones that matter are not the
+        obvious ones - T's 2022 spinoff moved the price 18.7% and MRK's moved it 2.7%,
+        both of which read as ordinary days.
+
+        """
+        out: dict[str, tuple[tuple[date, Decimal], ...]] = {}
+        for symbol in symbols:
+            payload = self._get(
+                "splits",
+                {
+                    "symbols": symbol,
+                    "date_from": start.isoformat(),
+                    "date_to": end.isoformat(),
+                    "limit": self._page_limit,
+                },
+            )
+            rows = payload.get("data") or []
+            actions = sorted(
+                (date.fromisoformat(str(r["date"])[:10]), Decimal(str(r["split_factor"])))
+                for r in rows
+            )
+            out[symbol] = tuple(actions)
+        return out
+
     def fetch_eod(
         self,
         symbols: Sequence[str],
@@ -323,6 +386,26 @@ class MarketstackClient:
         if last_error is None:  # pragma: no cover - max_attempts >= 1 always
             raise RuntimeError("retry loop exited without an attempt")
         raise last_error
+
+    def _get(self, endpoint: str, params: dict[str, object]) -> Mapping[str, object]:
+        """
+        Issue one request against an endpoint and return the decoded payload.
+
+        Unpaged, deliberately. It exists for the small reference endpoints - corporate
+        actions run to single digits per symbol over twenty years - and a caller that
+        needs pagination should use the EOD path, which has it.
+
+        """
+        query = urlencode({"access_key": self._access_key, **params})
+        request = Request(  # noqa: S310 - fixed https scheme from DEFAULT_BASE_URL
+            f"{self._base_url}/{endpoint}?{query}",
+            headers={"User-Agent": USER_AGENT},
+        )
+        with urlopen(request, timeout=self._timeout_seconds) as response:  # noqa: S310
+            payload = json.loads(response.read().decode("utf-8"))
+        if not isinstance(payload, Mapping):
+            raise TypeError(f"Marketstack {endpoint} response must be an object")
+        return payload
 
     def _fetch_page_once(
         self,
@@ -449,6 +532,33 @@ def _apply_series_gates(bars: Sequence[DailyBar]) -> IngestionResult:
     return IngestionResult(bars=tuple(accepted), rejected=tuple(rejected))
 
 
+# US equity closing auctions print at whole cents above a dollar; sub-penny increments
+# are reserved for sub-dollar securities. A close carrying a half cent therefore did not
+# come from an auction, and three of the seventeen closes the 2026-09-03 audit found
+# materially wrong looked exactly like that - INTC at 19.7050, PEP at 177.9450 and
+# 159.1350. It is a cheap detector for a class the coherence check cannot see, because a
+# wrong close still sits inside its own high and low.
+PENNY = Decimal("0.01")
+SUB_DOLLAR = Decimal(1)
+
+
+def _require_penny_aligned(symbol: str, close: Decimal) -> None:
+    """
+    Refuse a close that no closing auction could have printed.
+
+    Two exemptions, and both are real rather than convenient. A security under a dollar
+    genuinely quotes in sub-penny increments. And the vendor delivers **AAPL already
+    back-adjusted** ([ADR-0016]), so dividing by a 28x cumulative split leaves values
+    like 1.1302 that are correct and could never be penny-aligned; every other symbol
+    arrives as-traded.
+
+    """
+    if symbol in PRE_ADJUSTED or close < SUB_DOLLAR:
+        return
+    if close % PENNY != 0:
+        raise ValueError(f"close {close} is not a whole cent; no auction prints that")
+
+
 def _parse(raw: Mapping[str, object]) -> tuple[DailyBar, CorporateAction | None]:
     """
     Build one bar, raising rather than guessing at anything malformed.
@@ -467,6 +577,7 @@ def _parse(raw: Mapping[str, object]) -> tuple[DailyBar, CorporateAction | None]
     # than assuming the good one stays good.
     if not (low <= min(open_, close) and max(open_, close) <= high):
         raise ValueError(f"incoherent OHLC: o={open_} h={high} l={low} c={close}")
+    _require_penny_aligned(symbol, close)
 
     bar = DailyBar(
         symbol=symbol,

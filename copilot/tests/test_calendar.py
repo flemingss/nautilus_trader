@@ -18,9 +18,11 @@ from pathlib import Path
 
 import pytest
 
+from copilot.data.calendar import early_closes
 from copilot.data.calendar import easter_sunday
 from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import market_holidays
+from copilot.data.calendar import session_end_minutes
 from copilot.data.calendar import trading_days
 
 
@@ -139,3 +141,36 @@ def test_trading_days_is_inclusive_and_ordered():
         date(2024, 4, 1),
     )
     assert list(days) == sorted(days)
+
+
+def test_the_three_scheduled_early_closes() -> None:
+    """
+    Reading 13:00 to 16:00 on one of these as regular trading collects three hours of
+    extended-hours prints and reports them as session range.
+    """
+    assert early_closes(2025) == frozenset(
+        {date(2025, 7, 3), date(2025, 11, 28), date(2025, 12, 24)},
+    )
+
+
+def test_an_early_close_that_is_not_a_trading_day_is_not_listed() -> None:
+    """
+    In 2021 the 4th of July fell on a Sunday, so the holiday was observed on Monday the
+    5th and the 3rd was a Saturday; Christmas Eve was the observed Christmas holiday.
+
+    Only the day after Thanksgiving survives.
+
+    """
+    assert early_closes(2021) == frozenset({date(2021, 11, 26)})
+
+
+def test_an_early_close_is_still_a_trading_day() -> None:
+    """
+    The session opened, so an order could be placed.
+    """
+    assert is_trading_day(date(2025, 11, 28))
+
+
+def test_the_session_ends_three_hours_early_on_those_days() -> None:
+    assert session_end_minutes(date(2025, 11, 28)) == 13 * 60
+    assert session_end_minutes(date(2025, 12, 1)) == 16 * 60
