@@ -43,10 +43,30 @@ from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import TradingState
 from nautilus_trader.model import Venue
 
+from copilot.live.symbology import broker_instrument_id
+from copilot.strategies.activations import load_activations
+
 
 OUT_DIR = Path(__file__).parent / "out"
 
-DEFAULT_INSTRUMENTS = ("AAPL=STK.SMART", "MSFT=STK.SMART", "SPY=STK.SMART")
+def registered_instruments() -> tuple[str, ...]:
+    """
+    Return the broker id of every instrument a registered activation names.
+
+    Derived rather than listed. The literal three this replaced were written when the
+    universe was three, and onboarding six ETFs on 2026-09-04 did not extend them: the
+    check reported ``instruments_resolved PASS 3`` over a registry holding eight
+    instruments, so six of them reached the evening unverified behind a green line.
+
+    A pre-open check whose coverage does not follow the thing it checks is worse than no
+    check, because it is read as one.
+
+    """
+    return tuple(
+        dict.fromkeys(
+            str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()
+        ),
+    )
 """
 Broker-side ids, in the ``SymbologyMethod.RAW`` form the IB adapter resolves.
 
@@ -255,7 +275,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--data-client-id", type=int, default=801)
     parser.add_argument("--exec-client-id", type=int, default=802)
     parser.add_argument("--settle-secs", type=int, default=DEFAULT_SETTLE_SECS)
-    parser.add_argument("--instruments", default=",".join(DEFAULT_INSTRUMENTS))
+    parser.add_argument(
+        "--instruments",
+        default=",".join(registered_instruments()),
+        help="Broker ids to resolve (default: every registered activation's)",
+    )
     parser.add_argument("--market-data-type", default="DELAYED")
     args = parser.parse_args(argv)
 

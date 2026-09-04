@@ -415,6 +415,12 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/preflight.py" = [
   "T201",
 ] # Operator CLI: the check table it prints is the product
+"copilot/live/run_activation.py" = [
+  "PLR0913",
+  "SLF001",
+  "T201",
+] # Operator CLI printing the decision; the runner reads its own strategy's indicator
+# state for the record, and a session names host, port, account and both client ids
 "copilot/live/warmup.py" = [
   "T201",
 ] # Operator CLI: the readiness table it prints is the product
