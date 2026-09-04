@@ -1,0 +1,675 @@
+{
+  "run_at": "2026-09-04T16:00:51.196919+00:00",
+  "session": "2026-09-04",
+  "orders_enabled": false,
+  "basket": [
+    "aapl-gap-fade-long-next-close",
+    "eem-gap-fade-long-next-close",
+    "gldm-gap-fade-long-next-close",
+    "hyg-gap-fade-long-next-close",
+    "msft-gap-fade-long-next-close",
+    "schx-gap-fade-long-next-close",
+    "spy-gap-fade-long-next-close",
+    "tlt-gap-fade-long-next-close",
+    "xlf-gap-fade-long-next-close"
+  ],
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "broker_instrument": "AAPL=STK.SMART",
+      "research_instrument": "AAPL.XNAS",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "aapl-gap-fade-long-next-close_20260904T155743Z.json",
+        "inputs": {
+          "data": "c8d523a6e536a70bd4d5c9a877e5cf07579cc81c192d33cfc4e1c90e741f5e7d",
+          "identity": "375f8e2ea40e0f2ac80c5247210c02beafce8dc332a3254d217f49a24d9f1310",
+          "cost": "8ae5ce1bc9b55194fbf9e35ab1cf7dba7b42ae57da916c89915a111638ee4c75",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "f714832be3f47fa74dfd8e4ee2da46a1721d343ce404cedad1cd9e229181dc08"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "6.976428571428572",
+      "previous_close": "328.21",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 1,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "broker_instrument": "EEM=STK.SMART",
+      "research_instrument": "EEM.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "eem-gap-fade-long-next-close_20260904T155815Z.json",
+        "inputs": {
+          "data": "024556e0acad4fdd6c2f13d619493d21ba3daf4b1243a06067d367c34df3201f",
+          "identity": "450a225ae3e91fdd89aa62de630a87fcb4e6a8a882dd57a311e38cb37dbf2700",
+          "cost": "5a59a45d173fcb05f9ba01b1e9f6a3a408a95b39fbc2cabaa53c5154e50c8a96",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "c2ebfdd5354f8240a4434a21224ff943520ebb12674abbe9337c959fb0043177"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "0.9599999999999999",
+      "previous_close": "67.47",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 2,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "broker_instrument": "GLDM=STK.SMART",
+      "research_instrument": "GLDM.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "gldm-gap-fade-long-next-close_20260904T155823Z.json",
+        "inputs": {
+          "data": "886fe3d0829287f5aec3baa0b1cf1853fc39b123b54c1e92a42e5b460af80114",
+          "identity": "eb92a0fba23e6e9168e6dac53389237508dce4382e0d3d8430970faf3906c877",
+          "cost": "d3d16a5ffb28086585a28083911df8a20dcec08b88523d9635f59cfc21048add",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "1be3e7811a25806c245e2a11881843b5b70d953c8d6a3ffd6873c3f6e37235bd"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "1.8242857142857136",
+      "previous_close": "88.52",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 3,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "broker_instrument": "HYG=STK.SMART",
+      "research_instrument": "HYG.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "hyg-gap-fade-long-next-close_20260904T155832Z.json",
+        "inputs": {
+          "data": "44a3f6a6dc01d5231884cd5c5ecaf0e5c2e9628fadf686bf35089a8562b1a509",
+          "identity": "d85c9c152b0a6122f7f1d474c9ee322a3eabdee476373312c4a895dae94696a0",
+          "cost": "8a499c59e9bab51ee46f2fa25fbbcca92d0de779dc1b51d3b570d1b5649a7242",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "379777a0da1f3b6201e66f3cd796b2459c2f1ac852c9ae96bab88d2d18f5a730"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "0.21499999999999936",
+      "previous_close": "79.21",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 4,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "broker_instrument": "MSFT=STK.SMART",
+      "research_instrument": "MSFT.XNAS",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "msft-gap-fade-long-next-close_20260904T155852Z.json",
+        "inputs": {
+          "data": "7fb472a9616869364e753cc6c10454ec163965e8e11338c58ff7e8a95b151318",
+          "identity": "05efaec5467076cd5c2e8ab9be8ae2195adcd4255e1ff7a48a6dda4e3009a9d7",
+          "cost": "952601aba8b6b140aa7fdfc0530c678e556d07f2d5bb1ab236f119686553c4b7",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "a9b5f58c02ca50fd354886d47f6af476e0d689b7420408359b7ecb310e374750"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "10.459999999999999",
+      "previous_close": "510.12",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 5,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "broker_instrument": "SCHX=STK.SMART",
+      "research_instrument": "SCHX.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "schx-gap-fade-long-next-close_20260904T155923Z.json",
+        "inputs": {
+          "data": "ea230080374bdf98dab089734ffce6630ca880c296bbbfa92ae54ed1d839f9bf",
+          "identity": "0cbf6371fae1feb5b78ff723187304fadb65067065862195a4c348bb2a6bf969",
+          "cost": "12b87a65162151ef4eca21a6c9c1cd37d181dc6b237185908b7c26e7d9eeab23",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "905bf06c47ecb50a4a0149550920faac2a9165a26edf63d672237e05ed322179"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "0.21928571428571406",
+      "previous_close": "30.49",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 6,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "broker_instrument": "SPY=STK.SMART",
+      "research_instrument": "SPY.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "spy-gap-fade-long-next-close_20260904T155943Z.json",
+        "inputs": {
+          "data": "e34c0522b3c298a9ac58609336e99e40faa51c79374129b56aed832d0e3ec975",
+          "identity": "ecf45fcf0961a7639fde3d8a2a534934be494ada3111b1d450a16013c83bc8b8",
+          "cost": "1198ecf3433ac8a8e172f651b23b2252de5b22244c810e44a188a7ec739895b8",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "ee5281c57dd0406ccd75f027f930f088988516c6d0765b55f8f08c6262a72bac"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "5.509999999999991",
+      "previous_close": "773.17",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 7,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "broker_instrument": "TLT=STK.SMART",
+      "research_instrument": "TLT.XNAS",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "tlt-gap-fade-long-next-close_20260904T160017Z.json",
+        "inputs": {
+          "data": "bf1434f9556c6cb0f38578589dab41cfe118b7a0fca41e4f61dd9293dc246835",
+          "identity": "d0ffe0630b4a349999aa8129f12fbf08d1ebe3fd59548bb16c601f5bf13eaa4a",
+          "cost": "7e6f5b240e1e24384b3aac2c1586b64143d77870a1c3d64e218fa4f280412cbf",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "da33b7f1bd52222876c4ad17950d5df83fd3c95cfaa1a74c7e2cbbc3924f3237"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "0.7478571428571428",
+      "previous_close": "82.07",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 8,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "broker_instrument": "XLF=STK.SMART",
+      "research_instrument": "XLF.ARCX",
+      "decision_bar": "2026-09-03",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-12",
+      "warmup_to": "2026-09-02",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "f956fa27cf499c13d602278a6b0c2743edfd28b3",
+        "tree_clean": false,
+        "verdict": "xlf-gap-fade-long-next-close_20260904T160022Z.json",
+        "inputs": {
+          "data": "845c7d662ad41b519ebd839ac734e57076202ce0011183fe9f22f2fd25bbb642",
+          "identity": "79a53f6d5aa75508cd422064b3dfc9f8329d14a71129b3c735b0b65d24d2b9b1",
+          "cost": "3f59de8bc2ac093e41fd8b0da40ba93710a8bc0155cd0b12f8b5b24308142f2b",
+          "code": "14123c280065bababb888f7dbe06417cb45ec15ba4aca02f14fa13fd4a2c22f5",
+          "combined": "d0da8c353ad52949e68bf376f7be5ffa741e677dd142c734f87b3340f1db9c75"
+        },
+        "moved": []
+      },
+      "atr_initialized": true,
+      "atr_value": "0.6750000000000002",
+      "previous_close": "58.56",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000253.87",
+        "allocation": "1000",
+        "requested_allocation": "1000",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1.00",
+        "max_notional": "100.00",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5.00",
+        "max_new_entries": "2"
+      },
+      "basket_position": 9,
+      "exposure_after": {
+        "max_total_risk": "5.00",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "refusals": []
+      },
+      "note": "",
+      "orders": []
+    }
+  ]
+}

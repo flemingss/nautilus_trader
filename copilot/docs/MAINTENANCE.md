@@ -498,12 +498,12 @@ verdicts where 14 were current, seven calibration outputs nothing referenced, an
 session record per run. Git history keeps every version regardless; the question is only
 what the working tree should present as *the* record.
 
-| Directory              | Keep                                                                    | Why                                                                       |
-| ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| `strategies/verdicts/` | The newest per activation, plus any a `holdouts/` record names          | The newest is what `--changed` compares against; a spend cites its base   |
-| `calibration/out/`     | Anything a module pins or an ADR, playbook or roadmap names by filename | A pinned snapshot is a dependency; a named one is evidence                |
-| `live/out/`            | Everything                                                              | Session records are the paper campaign's evidence and are never rewritten |
-| `strategies/holdouts/` | Everything                                                              | Single-use by construction                                                |
+| Directory              | Keep                                                                            | Why                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `strategies/verdicts/` | The newest per activation, plus any a `holdouts/` record names, voided included | The newest is what `--changed` compares against; a spend cites its base   |
+| `calibration/out/`     | Anything a module pins or an ADR, playbook or roadmap names by filename         | A pinned snapshot is a dependency; a named one is evidence                |
+| `live/out/`            | Everything                                                                      | Session records are the paper campaign's evidence and are never rewritten |
+| `strategies/holdouts/` | Everything, `voided/` included                                                  | Single-use by construction; a void is a record of why it was not          |
 
 Prune verdicts and calibration outputs when a filing supersedes them, in the same commit
 as the filing. A superseded file is not deleted history - it is one `git log` away - but

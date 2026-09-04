@@ -36,3 +36,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0018](0018-an-unusable-bar-is-substituted-whole.md)            | An unusable bar is substituted whole, from a versioned table     | Accepted   |
 | [0019](0019-spread-is-charged-from-measured-history.md)         | Spread is charged from measured history, in the execution window | Accepted   |
 | [0020](0020-the-holdout-boundary-is-per-activation.md)          | The holdout boundary is pinned per activation                    | Accepted   |
+| [0021](0021-an-unscorable-spend-still-consumes-the-holdout.md)  | An unscorable spend still consumes the holdout                   | Accepted   |

@@ -416,15 +416,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("symbols", help="Comma-separated symbols")
     add_catalog_argument(parser)
     parser.add_argument("--from", dest="start", default="2005-01-01")
-    parser.add_argument("--to", dest="end", default="2025-12-31")
+    parser.add_argument("--to", dest="end", default=None, help="Default: today")
     args = parser.parse_args(argv)
 
     return _report(
         args.catalog,
         [s.strip().upper() for s in args.symbols.split(",") if s.strip()],
         date.fromisoformat(args.start),
-        date.fromisoformat(args.end),
+        window_end(args.end, today=datetime.now(tz=UTC).date()),
     )
+
+
+def window_end(given: str | None, *, today: date) -> date:
+    """
+    Return the last day the scan covers: the one asked for, or today.
+
+    The default was 2025-12-31 until 2026-09-05, so a hand run of the command written to
+    catch a split would have missed every split of the current year. A scan's window has
+    no reason to end anywhere but now.
+
+    """
+    return date.fromisoformat(given) if given else today
 
 
 if __name__ == "__main__":

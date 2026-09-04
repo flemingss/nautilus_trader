@@ -1,0 +1,98 @@
+{
+  "compared_at": "2026-09-04T16:01:45.662785+00:00",
+  "record": "run_activation_20260904T160051Z.json",
+  "session": "2026-09-04",
+  "agrees": true,
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    }
+  ]
+}

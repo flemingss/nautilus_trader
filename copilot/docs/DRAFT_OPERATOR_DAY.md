@@ -98,7 +98,7 @@ python -m copilot.live.day evening
 
 | Check                                                          | Command                                        | Walked 2026-09-05 (JST)                                                       |
 | -------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
-| Strategy id, commit, config hash, data hash                    | in every verdict's `inputs` block              | Narrowed: the four digests exist per verdict; no single manifest yet          |
+| Strategy id, commit, config hash, data hash                    | the `manifest` line of every basket record     | **Closed 2026-09-05**: commit, newest verdict, four digests, what moved       |
 | Broker connection, account, permissions, data type, cash       | `copilot.live.preflight`                       | **40.3s**, **15/15 PASS**, 9/9 instruments                                    |
 | Fresh, non-crossed, correctly timestamped quote per instrument | `copilot.live.preflight`, the nine quote lines | **Closed**: 5 quotes each, 2.3s old, bid < ask, delayed feed                  |
 | Holiday, early close, DST, allowed session                     | `day evening` prints the clock                 | Closed: both zones, early close named                                         |
@@ -159,8 +159,8 @@ the order**, not from a foreign one.
 
 `cancel_working --all` swept nine instruments in one node in 40.3s, `RESULT: CACHE
 CLEAR`, each instrument on its own line. While orders are denied the sweep runs as the
-evening's last step; once they are enabled it is the 00:30 command, and the day will
-need a third phase for it.
+evening's last step; once they are enabled it is the 00:30 command, and `day sweep` is
+that command, built before it is needed.
 
 **GAP - nothing alerts.** The playbook makes alerting a limb of the kill switch and a
 gate for unattended paper. No code in this repository notifies anyone of anything.
@@ -235,5 +235,5 @@ account's real buying-power behaviour.
 - What is the smallest alerting path that satisfies the playbook - a phone push on a
   handful of conditions is probably enough, and probably an evening's work.
 - Does the delayed feed quote before the open? Tuesday answers it.
-- When orders are enabled, the sweep becomes its own phase at 00:30 JST; on an early
-  close it is 03:00 JST at the latest, not a moment later.
+- ~~When orders are enabled, the sweep becomes its own phase at 00:30 JST~~ - `day sweep`
+  exists; on an early close it runs by 03:00 JST at the latest, not a moment later.

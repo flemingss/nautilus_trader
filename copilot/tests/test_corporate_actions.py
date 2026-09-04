@@ -238,3 +238,14 @@ class TestScan:
         assert [(a.effective.date(), a.factor) for a in ACTIONS["GLDM"]] == [
             (date(2022, 2, 23), Decimal("0.5")),
         ]
+
+
+def test_the_scan_window_ends_today_unless_told_otherwise() -> None:
+    # The default ended 2025-12-31 until 2026-09-05; a hand run would have missed every
+    # split of the current year.
+    from datetime import date
+
+    from copilot.data.corporate_actions import window_end
+
+    assert window_end(None, today=date(2026, 9, 5)) == date(2026, 9, 5)
+    assert window_end("2025-12-31", today=date(2026, 9, 5)) == date(2025, 12, 31)
