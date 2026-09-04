@@ -75,6 +75,7 @@ from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
 
+from copilot.risk.exposure import ExposureLedger
 from copilot.risk.sizing import size_from_levels
 from copilot.validation.types import Direction
 from nautilus_trader.indicators import AverageTrueRange
@@ -254,6 +255,8 @@ class GapReversalStrategy(Strategy):
             risk_budget=Decimal(config.risk_budget),
             max_notional=Decimal(config.max_notional) if config.max_notional else None,
         )
+        self._ledger: ExposureLedger | None = None
+        self._entry_order_id: str | None = None
         self._deferred_atr: Decimal | None = None
         """
         A decision frozen at the signal bar, awaiting its session (``next_close`` only).
@@ -285,7 +288,12 @@ class GapReversalStrategy(Strategy):
         """
         self._registry = registry
 
-    def size_against(self, risk_budget: Decimal, max_notional: Decimal | None) -> None:
+    def size_against(
+        self,
+        risk_budget: Decimal,
+        max_notional: Decimal | None,
+        ledger: ExposureLedger | None = None,
+    ) -> None:
         """
         Replace the sizing the config seeded with numbers derived from the account.
 
@@ -301,12 +309,18 @@ class GapReversalStrategy(Strategy):
         would let the config's research budget survive into a live decision by default,
         which is exactly the state this hook was written to end.
 
+        ``ledger`` is the session-wide cap on planned risk, shared with every other
+        strategy in the node. With one, a sized trade is reserved against it before the
+        order is built and skipped if the reservation is refused; without one - every
+        research replay - the strategy sizes alone, as it always did.
+
         """
         if risk_budget <= 0:
             raise ValueError(f"risk_budget must be positive, got {risk_budget}")
         if max_notional is not None and max_notional <= 0:
             raise ValueError(f"max_notional must be positive when given, got {max_notional}")
         self._sizing = Sizing(risk_budget=risk_budget, max_notional=max_notional)
+        self._ledger = ledger
 
     def warm_up(self, bars: Sequence[Bar]) -> None:
         """
@@ -459,6 +473,12 @@ class GapReversalStrategy(Strategy):
             self._skip("unsizeable")
             return
 
+        if self._ledger is not None and not self._ledger.reserve(str(self.strategy_id), risk):
+            # The session-wide cap, which no per-order control can see. The ledger has
+            # recorded who was refused and why; here it is one more reason not to trade.
+            self._skip("portfolio_risk_capped")
+            return
+
         self._pending_risk = risk
         orders = self.order_factory.bracket(
             instrument_id=self.config.instrument_id,
@@ -467,7 +487,53 @@ class GapReversalStrategy(Strategy):
             sl_trigger_price=instrument.make_price(stop_price),
             tp_price=instrument.make_price(target_price),
         )
+        # A plain list on this build, entry first: the bracket builder returns its legs
+        # in submission order and the entry is what a denial or cancel must release.
+        self._entry_order_id = str(orders[0].client_order_id)
         self.submit_order_list(orders)
+
+    def on_position_closed(self, _event: Any) -> None:
+        """
+        Give the session back the risk this position was holding.
+        """
+        self._release_reservation()
+
+    def on_order_denied(self, event: Any) -> None:
+        """
+        Release the reservation for an entry the risk engine refused; it never became
+        open risk.
+        """
+        self._release_if_entry(event)
+
+    def on_order_rejected(self, event: Any) -> None:
+        """
+        Release the reservation for an entry the broker refused; it never became open
+        risk.
+        """
+        self._release_if_entry(event)
+
+    def on_order_canceled(self, event: Any) -> None:
+        """
+        Release the reservation for an entry cancelled before it filled.
+
+        Only the entry. A bracket's stop and target are cancelled as a matter of course
+        when the other leg fills, and releasing on those would free the reservation
+        while the position is still open.
+
+        """
+        self._release_if_entry(event)
+
+    def _release_if_entry(self, event: Any) -> None:
+        if (
+            self._entry_order_id is not None
+            and str(getattr(event, "client_order_id", "")) == self._entry_order_id
+        ):
+            self._release_reservation()
+
+    def _release_reservation(self) -> None:
+        if self._ledger is not None:
+            self._ledger.release(str(self.strategy_id))
+        self._entry_order_id = None
 
     def on_position_opened(self, event: Any) -> None:
         """
@@ -515,6 +581,14 @@ def strategy_factory(
             require_unfilled=bool(parameters.get("require_unfilled", False)),
             long=bool(parameters.get("long", True)),
             entry_timing=str(parameters.get("entry_timing", "signal_close")),
+            # Forwarded only when given: the base config's own default applies otherwise,
+            # and a basket of same-class strategies in one node needs distinct tags or
+            # the second registration silently replaces the first.
+            **(
+                {"order_id_tag": str(parameters["order_id_tag"])}
+                if parameters.get("order_id_tag")
+                else {}
+            ),
         ),
     )
     strategy.configure(risk_registry)

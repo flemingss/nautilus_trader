@@ -176,3 +176,24 @@ def test_a_record_without_a_budget_is_a_session_that_never_sized() -> None:
     # equity was never read, which is a different failure from a rule that declined.
     assert record().budget == {}
     assert record(budget={"equity": "1000"}).budget["equity"] == "1000"
+
+
+def test_two_activations_in_one_node_get_distinct_strategy_ids() -> None:
+    # Nautilus keys strategies by id. Two built from the same class with no tag collide
+    # silently - the second registration replaces the first - and a basket of eight
+    # would report one decision. The symbol is the tag because it is what differs.
+    schx = find_activation("schx-gap-fade-long-next-close")
+    tlt = find_activation("tlt-gap-fade-long-next-close")
+    a = build_strategy(schx, broker_instrument_id(schx.symbol, schx.venue))
+    b = build_strategy(tlt, broker_instrument_id(tlt.symbol, tlt.venue))
+    assert str(a.strategy_id) != str(b.strategy_id)
+    assert str(a.strategy_id).endswith("-schx")
+
+
+def test_a_record_carries_its_place_in_the_basket_and_the_ledger_after_it() -> None:
+    # A refusal is only readable against who was asked first, so the order is recorded
+    # per activation rather than once for the basket.
+    entry = record(basket_position=3, exposure_after={"total": "1.50", "entries": 2})
+    assert entry.basket_position == 3
+    assert entry.exposure_after["entries"] == 2
+    assert record().exposure_after == {}

@@ -48,6 +48,23 @@ Most of equity one position may be worth at entry: the playbook's "10% until
 diversification is proven".
 """
 
+DEFAULT_MAX_TOTAL_RISK_FRACTION = Decimal("0.0050")
+"""
+Most planned risk that may be open across every position at once: the low end of the
+playbook's 0.50% to 1.00%. Five positions at the default per-position risk.
+"""
+
+DEFAULT_MAX_NEW_ENTRIES = 2
+"""
+Most new positions one session may open.
+
+The playbook says "small and predefined" and leaves the number to whoever predefines it.
+Two, because the case that motivated the cap is four correlated wrappers firing on one
+gap-down morning, and a cap that admits all four is not a cap. A default for a canary,
+declared here so that raising it is a diff.
+
+"""
+
 CENT = Decimal("0.01")
 
 
@@ -59,15 +76,27 @@ class RiskPolicy:
 
     risk_fraction: Decimal = DEFAULT_RISK_FRACTION
     max_position_fraction: Decimal = DEFAULT_MAX_POSITION_FRACTION
+    max_total_risk_fraction: Decimal = DEFAULT_MAX_TOTAL_RISK_FRACTION
+    max_new_entries: int = DEFAULT_MAX_NEW_ENTRIES
 
     def __post_init__(self) -> None:
         """
-        Refuse a policy that is not a fraction of anything.
+        Refuse a policy that is not a fraction of anything, or that caps below one
+        trade.
         """
-        for name in ("risk_fraction", "max_position_fraction"):
+        for name in ("risk_fraction", "max_position_fraction", "max_total_risk_fraction"):
             value = getattr(self, name)
             if not Decimal(0) < value <= Decimal(1):
                 raise ValueError(f"{name} must be in (0, 1], got {value}")
+        if self.max_total_risk_fraction < self.risk_fraction:
+            # A session cap below one position's risk would refuse every trade, which is
+            # a policy that means "do not trade" and should be written as one.
+            raise ValueError(
+                f"max_total_risk_fraction {self.max_total_risk_fraction} is below "
+                f"risk_fraction {self.risk_fraction}; no position could ever be opened",
+            )
+        if self.max_new_entries < 1:
+            raise ValueError(f"max_new_entries must be at least 1, got {self.max_new_entries}")
 
 
 @dataclass(frozen=True)
@@ -91,6 +120,13 @@ class Budget:
     """Currency at risk per position: ``allocation * risk_fraction``, floored to a cent."""
     max_notional: Decimal
     """Most a position may be worth at entry: ``allocation * max_position_fraction``."""
+    max_total_risk: Decimal
+    """
+    Most planned risk open at once, session-wide.
+
+    ``allocation * max_total_risk_fraction``, floored to the cent.
+
+    """
 
     @property
     def allocation_capped(self) -> bool:
@@ -112,6 +148,9 @@ class Budget:
             "max_position_fraction": str(self.policy.max_position_fraction),
             "risk_budget": str(self.risk_budget),
             "max_notional": str(self.max_notional),
+            "max_total_risk_fraction": str(self.policy.max_total_risk_fraction),
+            "max_total_risk": str(self.max_total_risk),
+            "max_new_entries": str(self.policy.max_new_entries),
         }
 
 
@@ -151,11 +190,17 @@ def budget_for(
             CENT,
             rounding=ROUND_FLOOR,
         ),
+        max_total_risk=(capital * policy.max_total_risk_fraction).quantize(
+            CENT,
+            rounding=ROUND_FLOOR,
+        ),
     )
 
 
 __all__ = [
+    "DEFAULT_MAX_NEW_ENTRIES",
     "DEFAULT_MAX_POSITION_FRACTION",
+    "DEFAULT_MAX_TOTAL_RISK_FRACTION",
     "DEFAULT_RISK_FRACTION",
     "Budget",
     "RiskPolicy",

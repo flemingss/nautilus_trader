@@ -20,6 +20,7 @@ import pytest
 
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
+from copilot.risk.exposure import ExposureLedger
 from copilot.strategies.gap_reversal import ENTRY_TIMINGS
 from copilot.strategies.gap_reversal import MAX_SEARCHABLE_MIN_GAP_ATR
 from copilot.strategies.gap_reversal import SEARCH_SPACE
@@ -527,3 +528,74 @@ def test_a_config_notional_cap_binds_in_a_replay():
     assert free.quantity > bound.quantity
     assert bound.quantity * bound.entry_price <= Decimal(300)
     assert bound.risk_amount < free.risk_amount
+
+
+# ------------------------------------------------------------------ session cap
+
+
+def _with_ledger(ledger: ExposureLedger, **sizing: object):
+    """
+    Wrap the factory so the replay's strategy sizes against a shared ledger.
+    """
+
+    def factory(parameters: object, **kwargs: object):
+        strategy = strategy_factory(parameters, **kwargs)
+        strategy.size_against(
+            sizing.get("risk_budget", Decimal(1000)),
+            sizing.get("max_notional"),
+            ledger=ledger,
+        )
+        return strategy
+
+    return factory
+
+
+def _run_with_ledger(specs: list, ledger: ExposureLedger, **parameters: object):
+    return run_nautilus_replay(
+        bars_from(specs),
+        parameters,
+        instrument=INSTRUMENT,
+        bar_type=BAR_TYPE,
+        strategy_factory=_with_ledger(ledger),
+    )
+
+
+def test_a_refused_reservation_is_a_skip_not_a_trade():
+    """
+    The session-wide cap reaches the order path, and the skip names it.
+    """
+    ledger = ExposureLedger(max_total_risk=Decimal("0.01"), max_new_entries=5)
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    result = _run_with_ledger(specs, ledger, min_gap_atr="0.25", stop_atr="1.5")
+
+    assert result.trades == ()
+    # The replay result carries trades, not skips; the ledger is the witness that the
+    # refusal happened where it was supposed to, before any order was built.
+    assert ledger.entries == 0
+    assert ledger.refusals
+    assert "cap of 0.01" in ledger.refusals[0].reason
+
+
+def test_a_granted_reservation_is_released_when_the_position_closes():
+    """
+    The risk goes back to the session once it is no longer open, and the entry stays
+    counted - which is what lets the same ledger refuse a fifth entry later in the day.
+    """
+    ledger = ExposureLedger(max_total_risk=Decimal(10_000), max_new_entries=5)
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    result = _run_with_ledger(specs, ledger, min_gap_atr="0.25", stop_atr="1.5")
+
+    (trade,) = result.trades
+    assert ledger.total == Decimal(0)
+    assert ledger.entries == 1
+    assert ledger.reserved == {}
+    assert trade.risk_amount > 0
+
+
+def test_without_a_ledger_the_strategy_sizes_alone():
+    """
+    Every research replay: no ledger, no reservation, no change to any verdict.
+    """
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    result = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000")
+    assert len(result.trades) == 1

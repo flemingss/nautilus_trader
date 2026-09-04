@@ -15,7 +15,9 @@ from decimal import Decimal
 
 import pytest
 
+from copilot.risk.budget import DEFAULT_MAX_NEW_ENTRIES
 from copilot.risk.budget import DEFAULT_MAX_POSITION_FRACTION
+from copilot.risk.budget import DEFAULT_MAX_TOTAL_RISK_FRACTION
 from copilot.risk.budget import DEFAULT_RISK_FRACTION
 from copilot.risk.budget import RiskPolicy
 from copilot.risk.budget import budget_for
@@ -124,4 +126,42 @@ class TestBudgetFor:
             "max_position_fraction": "0.10",
             "risk_budget": "2.50",
             "max_notional": "100.00",
+            "max_total_risk_fraction": "0.0050",
+            "max_total_risk": "5.00",
+            "max_new_entries": "2",
         }
+
+
+class TestSessionCaps:
+    """
+    The two caps the playbook names for the session as a whole.
+    """
+
+    def test_total_risk_is_the_low_end_of_the_playbook_band(self) -> None:
+        """
+        0.50% to 1.00%: five positions at the default per-position risk.
+        """
+        assert Decimal("0.0050") == DEFAULT_MAX_TOTAL_RISK_FRACTION
+
+    def test_two_entries_is_a_declared_canary_default(self) -> None:
+        """
+        The case that motivated the cap was four correlated wrappers firing at once, and
+        a cap that admits all four is not a cap.
+        """
+        assert DEFAULT_MAX_NEW_ENTRIES == 2
+
+    def test_the_drill_account_gets_five_dollars_of_session_risk(self) -> None:
+        budget = budget_for(Decimal(1000))
+        assert budget.max_total_risk == Decimal("5.00")
+        assert budget.as_record()["max_new_entries"] == "2"
+
+    def test_a_session_cap_below_one_position_is_a_policy_to_not_trade(self) -> None:
+        """
+        And should be written as one, not as fractions that refuse everything.
+        """
+        with pytest.raises(ValueError, match="no position could ever be opened"):
+            RiskPolicy(risk_fraction=Decimal("0.0025"), max_total_risk_fraction=Decimal("0.0010"))
+
+    def test_zero_entries_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="at least 1"):
+            RiskPolicy(max_new_entries=0)
