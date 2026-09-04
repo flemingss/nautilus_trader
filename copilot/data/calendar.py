@@ -207,6 +207,26 @@ def session_end_minutes(day: date) -> int:
     return EARLY_CLOSE_MINUTES if day in early_closes(day.year) else REGULAR_CLOSE_MINUTES
 
 
+def session_open(day: date) -> datetime:
+    """
+    Return the instant a session begins, as an aware UTC datetime.
+
+    The counterpart to :func:`session_close`, and needed for the same reason: 09:30
+    Eastern is 13:30 UTC for part of the year and 14:30 for the rest, so anything asking
+    "has the session started" against a constant is wrong for a third of it.
+
+    """
+    local = datetime(
+        day.year,
+        day.month,
+        day.day,
+        SESSION_OPEN_MINUTES // MINUTES_PER_HOUR,
+        SESSION_OPEN_MINUTES % MINUTES_PER_HOUR,
+        tzinfo=EASTERN,
+    )
+    return local.astimezone(UTC)
+
+
 def session_close(day: date) -> datetime:
     """
     Return the instant a session ends, as an aware UTC datetime.
@@ -257,6 +277,8 @@ __all__ = [
     "easter_sunday",
     "is_trading_day",
     "market_holidays",
+    "session_close",
     "session_end_minutes",
+    "session_open",
     "trading_days",
 ]

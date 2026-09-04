@@ -31,6 +31,7 @@ from copilot.live.warmup import expected_sessions
 from copilot.live.warmup import inspect
 from copilot.live.warmup import load
 from copilot.live.warmup import report
+from copilot.live.warmup import session_to_prepare
 from copilot.strategies.activations import find_activation
 from copilot.strategies.gap_reversal import WARMUP_BARS
 from copilot.strategies.gap_reversal import GapReversalConfig
@@ -262,3 +263,41 @@ def test_a_short_warm_up_leaves_the_indicator_uninitialised() -> None:
     fade = strategy()
     fade.warm_up(nautilus_bars(3))
     assert not fade._atr.initialized
+
+
+def moment(iso: str) -> datetime:
+    """
+    Build one instant, given as an ISO string with an explicit offset.
+    """
+    return datetime.fromisoformat(iso)
+
+
+def test_before_the_open_the_session_to_prepare_for_is_today() -> None:
+    # The Before checklist runs about an hour before the open. Answering "tomorrow" here
+    # reports BLOCKED for a catalog that is ready, which teaches an operator to ignore
+    # the check - the first version of this did exactly that.
+    assert session_to_prepare(moment("2026-09-04T12:30:00+00:00")) == date(2026, 9, 4)
+
+
+def test_once_the_session_has_opened_it_is_the_next_one() -> None:
+    assert session_to_prepare(moment("2026-09-04T18:00:00+00:00")) == date(2026, 9, 8)
+
+
+def test_after_the_close_it_is_the_next_session() -> None:
+    # 07:00 JST is the evening of the Eastern day that just closed.
+    assert session_to_prepare(moment("2026-09-04T22:00:00+00:00")) == date(2026, 9, 8)
+
+
+def test_a_weekend_looks_ahead_to_monday() -> None:
+    assert session_to_prepare(moment("2026-09-05T12:30:00+00:00")) == date(2026, 9, 8)
+
+
+def test_a_holiday_is_skipped() -> None:
+    # 2026-09-07 is Labor Day; preparing on it means preparing for the 8th.
+    assert session_to_prepare(moment("2026-09-07T12:30:00+00:00")) == date(2026, 9, 8)
+
+
+def test_the_boundary_is_the_open_not_midnight() -> None:
+    # One minute either side of 09:30 Eastern, which is 13:30 UTC in September.
+    assert session_to_prepare(moment("2026-09-04T13:29:00+00:00")) == date(2026, 9, 4)
+    assert session_to_prepare(moment("2026-09-04T13:31:00+00:00")) == date(2026, 9, 8)

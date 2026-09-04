@@ -1,14 +1,29 @@
 # Draft: a day in the life of the operator
 
-**Status: working draft, 2026-09-04. Not governance.** The [charter](CHARTER.md), the
+**Status: working draft, second pass 2026-09-04. Not governance.** The [charter](CHARTER.md), the
 [playbook](playbook/README.md) and the ADRs decide things; this file does not. It exists
 to be argued with and rewritten a few times, and its job is to force the question the
 other documents do not ask: *what does the person actually do, at what hour, with which
 command, and what happens when the answer is "nothing exists yet"?*
 
-Written after an end-to-end read of the playbook against the code on 2026-09-03. Every
-**GAP** below is tracked in [`ROADMAP.md`](ROADMAP.md); this file is where they are seen
+First pass was an end-to-end *read* of the playbook against the code, 2026-09-03. Second
+pass **ran it** on 2026-09-04 - every command below was executed in order, against the
+real catalog and a live TWS, and the timings and outputs are from that walk. Three of the
+gaps closed between the two passes; two new ones were found by running rather than
+reading, which is the argument for doing this again.
+
+Every **GAP** is tracked in [`ROADMAP.md`](ROADMAP.md); this file is where they are seen
 in sequence rather than as a list.
+
+## What the day needs exported
+
+Not a detail. Two of these are not in any `.env`, and one of them fails opaquely.
+
+```bash
+set -a; . trade-copilot/.env; set +a          # MARKETSTACK_API_KEY, DATABENTO_API_KEY
+export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"  # or every IB connect fails opaquely
+export COPILOT_PAPER_ACCOUNT=DUT067974          # or preflight refuses, clearly, at least
+```
 
 ## The clock is the hard part
 
@@ -36,18 +51,24 @@ and, as of 2026-09-03, the three scheduled early closes - on which the market sh
 
 The US close was about two hours ago. Nothing is urgent; this is the thinking part.
 
-| Step                                      | Command                                                             | State                                            |
-| ----------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------ |
-| Ingest yesterday's bar                    | `python -m copilot.data.backfill --symbols ... --from ... --to ...` | Built, and **cannot be run** - see the gap below |
-| Check corporate actions on anything new   | `python -m copilot.data.corporate_actions NVDA,AVGO`                | Built 2026-09-03                                 |
-| Recompute the verdict if anything changed | `python -m copilot.strategies.validate --all`                       | Built                                            |
+| Step                                      | Command                                              | Walked 2026-09-04   |
+| ----------------------------------------- | ---------------------------------------------------- | ------------------- |
+| Ingest yesterday's bar                    | `python -m copilot.data.append`                      | **3s**, exit 0      |
+| Check corporate actions on anything new   | `python -m copilot.data.corporate_actions AAPL,MSFT` | **1s**, 0 to add    |
+| Recompute the verdict if anything changed | `python -m copilot.strategies.validate --all`        | **123s**, unchanged |
 
-**GAP - the live path has no source of today's bar.** The catalog is frozen at
-2025-12-31 because extending it pushes the holdout past the charter's 20% band and every
-`validate` run then raises `HoldoutCarveError` ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)).
-Research needs the freeze; execution needs freshness; one catalog serves both. This is a
-design decision, not a bug to fix quietly - two catalogs, a live-only window, or a
-re-decided carve are all defensible and they are not the same choice.
+The data gap closed on 2026-09-04. The evaluation window is pinned at both ends
+([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)), so the same
+catalog is frozen for research and fresh for execution, and `append` keeps it current
+without moving a verdict. The first pass framed this as "the strategy warms from a frozen
+catalog"; it did not warm from anything, which is a different and worse problem.
+
+**GAP - "if anything changed" has no answer.** The verdict recompute is two minutes and
+it was run here for nothing: the catalog gained no bars, so no fold could have moved.
+`append` already knows - it printed `+0` - and nothing connects the two, so the operator
+either burns the two minutes daily or decides by memory whether to bother. A morning
+command that appends, and only then validates what actually changed, is the missing
+piece rather than a faster gate.
 
 ### Daytime - nothing
 
@@ -59,15 +80,29 @@ weeks. A design that needs attention here is the wrong design for this operator.
 The playbook's **Before** checklist. This is the densest hour of the day and most of it
 is built.
 
-| Check                                                          | Command                                 | State                                     |
-| -------------------------------------------------------------- | --------------------------------------- | ----------------------------------------- |
-| Strategy id, commit, config hash, data hash                    | -                                       | **GAP** - no manifest tool                |
-| Broker connection, account, permissions, data type, cash       | `python -m copilot.live.preflight`      | Built, passing                            |
-| Holiday, early close, DST, allowed session                     | `copilot.data.calendar`                 | Built; **not wired into a session check** |
-| Reconcile positions, cash, working orders                      | `python -m copilot.live.cancel_working` | Built for orders                          |
-| Indicator warm-up from the local catalog                       | -                                       | Blocked by the data gap above             |
-| Fresh, non-crossed, correctly timestamped quote per instrument | part of `preflight`                     | Built                                     |
-| Kill switch and remote broker access verified                  | -                                       | **GAP** - no operator kill command        |
+| Check                                                          | Command                                 | Walked 2026-09-04                       |
+| -------------------------------------------------------------- | --------------------------------------- | --------------------------------------- |
+| Strategy id, commit, config hash, data hash                    | -                                       | **GAP** - no manifest tool              |
+| Broker connection, account, permissions, data type, cash       | `python -m copilot.live.preflight`      | **43s**, 6/6 PASS                       |
+| Holiday, early close, DST, allowed session                     | `copilot.data.calendar`                 | Now wired - `warmup` picks the session  |
+| Reconcile positions, cash, working orders                      | `python -m copilot.live.cancel_working` | Built, **one symbol per run**           |
+| Indicator warm-up from the local catalog                       | `python -m copilot.live.warmup`         | **<1s**, 6/6 ready, exit 0              |
+| Fresh, non-crossed, correctly timestamped quote per instrument | -                                       | **GAP** - not in `preflight`, see below |
+| Kill switch and remote broker access verified                  | -                                       | **GAP** - no operator kill command      |
+
+**GAP - `preflight` does not check quotes, and the first pass said it did.** Its six
+checks are the halt before start, the halt through startup, instruments resolved, the
+account reported by the broker, balances present, and a clean shutdown. Not one of them
+looks at a price. The playbook asks for a fresh, non-crossed, correctly timestamped quote
+per instrument before the session, and nothing provides it - which matters more than it
+sounds, because a stale or crossed quote is how a bracket gets placed around the wrong
+level and the account is on delayed data anyway.
+
+**GAP - the monitoring-end sweep is one symbol at a time.** `cancel_working` defaults to
+`--symbol AAPL` and takes one instrument per invocation, so a three-instrument sweep is
+three commands and a forgotten one leaves an order working overnight. That is precisely
+the failure the monitoring-end policy exists to prevent, and it is currently prevented by
+the operator remembering.
 
 Every one of these needs `IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"` exported first. It is
 not optional and its absence fails opaquely.
@@ -115,6 +150,24 @@ The operator is asleep in ninety minutes.
 Without the replay comparison, a session that silently decided differently from the
 backtest looks exactly like one that agreed.
 
+## What running it exposed that reading it did not
+
+**A check that is wrong at the hour it is used trains you to ignore it.** The first
+version of `warmup` defaulted to "the next trading day after today", which at 21:30 JST -
+an hour before tonight's open - reported BLOCKED for a catalog that was completely ready.
+The correct answer is today's session while today's session has not opened, and the walk
+is the only thing that would have caught it: every unit test passed, because they all
+passed an explicit date. Fixed 2026-09-04.
+
+**A verdict now needs to say what it did not score.** With the catalog running to
+2026-09-03 and the window ending 2026-01-01, `validate` was reporting folds over
+2005-2021 with nothing on screen saying 169 bars were clipped. The record carried it; the
+console did not, and the console is what the operator reads. Fixed the same day.
+
+**The machine time is not the problem.** The whole morning is 2m07s and the pre-open
+block is under a minute. What costs is that it is six commands in an order that exists
+only in this document.
+
 ## What this walk exposes that a list does not
 
 **The blocking constraint is not any of the gaps above.** It is that Track A has never
@@ -136,8 +189,12 @@ failure is most likely, and the rehearsal cannot rehearse them.
 
 - Does the execution window want to be a window at all, or a single time? The spread
   evidence says the first five minutes are expensive and the rest of the two hours is not.
-- Is one catalog for research and execution ever going to work, or is the freeze telling
-  us they are different products?
+- ~~Is one catalog for research and execution ever going to work?~~ **Answered
+  2026-09-04:** yes, with the window pinned at both ends. The freeze was telling us the
+  *carve* had one end, not that the products differ.
+  ([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md))
+- Should the day have two commands instead of eight? The walk took six invocations with
+  three separate exports, and the ordering is knowledge that lives only in this file.
 - What is the smallest alerting path that satisfies the playbook - a phone push on a
   handful of conditions is probably enough, and probably an evening's work.
 - What does the operator do on a scheduled early close, when the evening ends at 02:00

@@ -27,6 +27,7 @@ from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import market_holidays
 from copilot.data.calendar import session_close
 from copilot.data.calendar import session_end_minutes
+from copilot.data.calendar import session_open
 from copilot.data.calendar import trading_days
 
 
@@ -201,3 +202,21 @@ def test_session_close_matches_the_minute_the_calendar_states() -> None:
         minutes = session_end_minutes(day)
         local = session_close(day).astimezone(EASTERN)
         assert local.hour * 60 + local.minute == minutes
+
+
+def test_session_open_is_1430_utc_in_winter() -> None:
+    assert session_open(date(2026, 2, 23)) == datetime(2026, 2, 23, 14, 30, tzinfo=UTC)
+
+
+def test_session_open_is_1330_utc_in_summer() -> None:
+    assert session_open(date(2026, 7, 2)) == datetime(2026, 7, 2, 13, 30, tzinfo=UTC)
+
+
+def test_a_half_day_opens_at_the_usual_time() -> None:
+    # An early close moves the close, not the open.
+    assert session_open(date(2025, 11, 28)) == datetime(2025, 11, 28, 14, 30, tzinfo=UTC)
+
+
+def test_a_session_opens_before_it_closes() -> None:
+    for day in (date(2026, 2, 23), date(2026, 7, 2), date(2025, 11, 28)):
+        assert session_open(day) < session_close(day)
