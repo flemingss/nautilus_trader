@@ -17,6 +17,7 @@ from decimal import Decimal
 from copilot.live.day import EVENING
 from copilot.live.day import MORNING
 from copilot.live.day import REQUIRED_TIMEZONE_ALIAS
+from copilot.live.day import SWEEP
 from copilot.live.day import TIMEZONE_ALIASES_ENV
 from copilot.live.day import Connection
 from copilot.live.day import Step
@@ -28,6 +29,7 @@ from copilot.live.day import required_environment
 from copilot.live.day import run_steps
 from copilot.live.day import session_clock
 from copilot.live.day import summarise
+from copilot.live.day import sweep_steps
 from copilot.paths import MARKETSTACK_API_KEY_ENV
 
 
@@ -191,3 +193,18 @@ def test_the_morning_knows_which_session_closed() -> None:
     assert closed_session(saturday_jst) == date(2026, 9, 4)
     before_close = datetime(2026, 9, 4, 19, 0, tzinfo=UTC)  # 15:00 ET Friday
     assert closed_session(before_close) == date(2026, 9, 3)
+
+
+def test_monitoring_end_is_the_sweep_alone_over_the_registry() -> None:
+    steps = sweep_steps(CONNECTION)
+    assert [s.name for s in steps] == ["sweep"]
+    assert "--all" in steps[0].argv
+    assert "DUT067974" in steps[0].argv
+
+
+def test_monitoring_end_needs_what_the_evening_needs() -> None:
+    assert required_environment(SWEEP, environ={}, account="") == required_environment(
+        EVENING,
+        environ={},
+        account="",
+    )

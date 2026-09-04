@@ -9,6 +9,11 @@
   "code_commit": "f29a33637ddb1dbd8b848847f292b17ab2c7a8f2",
   "holdout_spent": true,
   "owner_decision": null,
+  "voided": {
+    "at": "2026-09-05",
+    "reason": "The series this spend scored did not exist. Two SCHX splits (2:1 on 2022-03-11, 3:1 on 2024-10-11) were unregistered and sitting in the stored prices; the 3:1 fell inside the holdout window as a -67% gap-down. Registered 2026-09-04; the series now reads continuous. Under ADR-0021 a spend on a series later shown not to exist is void, and the holdout may be spent once more on the corrected series. The four-trade count is not the ground: an unscorable spend on a true series would have stood.",
+    "decision": "ADR-0021"
+  },
   "owner_decision_allowed": [
     "reject",
     "revise",

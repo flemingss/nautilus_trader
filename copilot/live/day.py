@@ -3,6 +3,7 @@ The operator's day as two commands, so the sequence lives in code.
 
     python -m copilot.live.day morning      # ~07:00 JST, after the US close
     python -m copilot.live.day evening      # ~21:30 JST, an hour before the US open
+    python -m copilot.live.day sweep        # 00:30 JST, monitoring end, once orders are enabled
 
 Why a sequence and not a list
 -----------------------------
@@ -70,7 +71,17 @@ OUT_DIR = Path(__file__).parent / "out"
 
 MORNING = "morning"
 EVENING = "evening"
-PHASES = (MORNING, EVENING)
+SWEEP = "sweep"
+PHASES = (MORNING, EVENING, SWEEP)
+"""
+Three phases. ``sweep`` is the monitoring-end command on its own.
+
+While orders are denied nothing can be working after the basket, so the evening runs the
+sweep as its last step. The day orders are enabled, the sweep moves to 00:30 JST - the
+end of the charter's window, an hour before the operator sleeps - and this phase is that
+command, existing before it is needed rather than being written the night it is.
+
+"""
 
 OPERATOR_ZONE = ZoneInfo("Asia/Tokyo")
 """
@@ -229,7 +240,7 @@ def required_environment(
     missing: list[str] = []
     if phase == MORNING and not environ.get(MARKETSTACK_API_KEY_ENV):
         missing.append(f"{MARKETSTACK_API_KEY_ENV}: append and the corporate-actions scan need it")
-    if phase == EVENING:
+    if phase in (EVENING, SWEEP):
         aliases = environ.get(TIMEZONE_ALIASES_ENV, "")
         if REQUIRED_TIMEZONE_ALIAS not in aliases:
             missing.append(
@@ -355,6 +366,20 @@ def evening_steps(
     )
 
 
+def sweep_steps(connection: Connection) -> tuple[Step, ...]:
+    """
+    Return monitoring end on its own: cancel every working entry, and hear the broker.
+    """
+    return (
+        Step(
+            "sweep",
+            "copilot.live.cancel_working",
+            ("--all", *connection.argv),
+            why="an order is still working; confirm against the broker's own list",
+        ),
+    )
+
+
 def run_module(step: Step) -> int:
     """
     Run one step as its own process, output on the terminal, and return its exit code.
@@ -470,6 +495,15 @@ def main(argv: list[str] | None = None) -> int:
             f"{session_to_prepare(now).isoformat()}",
         )
         steps = morning_steps(args.catalog, today=now.astimezone(EASTERN).date())
+    elif args.phase == SWEEP:
+        session = date.fromisoformat(args.session) if args.session else session_to_prepare(now)
+        clock = session_clock(session)
+        record.session = session.isoformat()
+        record.clock = clock.lines()
+        print(f"Monitoring end for the session of {session.isoformat()} ({session:%A})")
+        for line in clock.lines():
+            print(f"  {line}")
+        steps = sweep_steps(Connection(host=args.host, port=args.port, account=args.account))
     else:
         session = date.fromisoformat(args.session) if args.session else session_to_prepare(now)
         clock = session_clock(session)
@@ -511,6 +545,7 @@ __all__ = [
     "OPERATOR_ZONE",
     "PHASES",
     "REQUIRED_TIMEZONE_ALIAS",
+    "SWEEP",
     "TIMEZONE_ALIASES_ENV",
     "Connection",
     "DayRecord",
@@ -526,6 +561,7 @@ __all__ = [
     "run_steps",
     "session_clock",
     "summarise",
+    "sweep_steps",
 ]
 
 

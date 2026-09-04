@@ -2,6 +2,29 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-05, later (the decisions, and the day's last quick wins)
+
+### Decided
+
+- **All five owner decisions, in one sitting.** AAPL: `revise`, recorded in the holdout
+  record with the reasoning. SCHX: the spend is void - it scored a series that did not
+  exist - and one re-spend on the corrected series is allowed
+  ([ADR-0021](decisions/0021-an-unscorable-spend-still-consumes-the-holdout.md)); the
+  record moved to `holdouts/voided/`. An unscorable spend on a true series consumes the
+  holdout (the same ADR). Marketstack stays until EODHD passes the probes that caught it.
+  The consolidated data purchase is skipped. Roadmap: fifteen items, ten ready to build,
+  nothing waiting on a decision.
+
+### Built
+
+- **Every session record carries a manifest**: the commit (marked dirty when it is), the
+  newest verdict, the four input digests as of the session, and which of the verdict's
+  digests moved. The playbook's *verify strategy ID, code commit, config hash and data
+  hash*, printed per activation. Lives under `live/manifest.py` so it cannot move the
+  code digest it reports.
+- **`day sweep`**: monitoring end as its own phase, for the night orders are enabled.
+- **`corporate_actions` scans to today by default.** The default ended 2025-12-31.
+
 ## 2026-09-05 (the day as two commands, and what the replay comparison found)
 
 ### Built

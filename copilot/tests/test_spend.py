@@ -316,3 +316,13 @@ class TestThinHoldoutRefusal:
 
         """
         assert Decimal("1.0") == MIN_PROJECTED_TRADES_MARGIN
+
+
+def test_a_voided_record_does_not_count_as_spent(tmp_path: Path):
+    # ADR-0021: a spend on a series that did not exist moves to voided/ and refuses
+    # nothing, so the holdout may be spent once more on the corrected series.
+    activation = an_activation()
+    (tmp_path / "voided").mkdir()
+    (tmp_path / "voided" / f"{activation.name}.json").write_text("{}")
+    assert not is_spent(activation.name, tmp_path)
+    assert refusal(activation, tmp_path) is None

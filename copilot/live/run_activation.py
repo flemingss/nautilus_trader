@@ -72,11 +72,15 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from copilot.calibration.cost_model import CostModel
 from copilot.data.catalog import BAR_SPEC
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import read_series
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import reported_equity
+from copilot.live.manifest import Manifest
+from copilot.live.manifest import current_commit
+from copilot.live.manifest import manifest_for
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.session import add_broker_arguments
@@ -140,6 +144,10 @@ class Plan:
     raises and the session is refused before a connection is opened.
 
     """
+    manifest: Manifest | None = None
+    """
+    Commit, newest verdict and the four digests, so the record ties to what was scored.
+    """
 
 
 class NoBrokerInstrumentError(RuntimeError):
@@ -180,6 +188,10 @@ class SessionRecord:
     """
     Whether these parameters are a seeded identity or a frozen set, and what was
     unfixed.
+    """
+    manifest: dict[str, object] = field(default_factory=dict)
+    """
+    The playbook's first Before line: commit, verdict, and whether the inputs moved.
     """
     atr_initialized: bool = False
     atr_value: str | None = None
@@ -367,6 +379,7 @@ async def run_session(
             warmup_to=plan.warmup[-1].closed_at.date().isoformat(),
             parameters={k: str(v) for k, v in plan.activation.parameters.items()},
             parameters_source=plan.provenance.as_record(),
+            manifest=plan.manifest.as_record() if plan.manifest else {},
             basket_position=index + 1,
         )
         for index, plan in enumerate(plans)
@@ -473,6 +486,8 @@ def _report(record: SessionRecord) -> None:
     print(f"  decision bar    {record.decision_bar}")
     if record.parameters_source:
         print(f"  parameters      {Provenance.from_record(record.parameters_source).label}")
+    if record.manifest:
+        print(f"  manifest        {Manifest(**_manifest_fields(record.manifest)).label}")
     print(f"  indicator       initialized={record.atr_initialized}  atr={record.atr_value}")
     print(f"  previous close  {record.previous_close}")
     _report_sizing(record)
@@ -481,6 +496,19 @@ def _report(record: SessionRecord) -> None:
     _report_outcome(record)
     if record.note:
         print(f"  note            {record.note}")
+
+
+def _manifest_fields(record: dict[str, object]) -> dict[str, object]:
+    """
+    Rebuild a manifest's fields from the record, so the report reads what was filed.
+    """
+    return {
+        "code_commit": str(record["code_commit"]),
+        "tree_clean": bool(record["tree_clean"]),
+        "verdict": record.get("verdict"),
+        "inputs": dict(record.get("inputs") or {}),  # type: ignore[call-overload]
+        "moved": tuple(record.get("moved") or ()),  # type: ignore[arg-type]
+    }
 
 
 def _report_sizing(record: SessionRecord) -> None:
@@ -585,6 +613,8 @@ def main(argv: list[str] | None = None) -> int:
         else session_to_prepare(datetime.now(tz=UTC))
     )
 
+    cost_model = CostModel.from_snapshot()
+    commit = current_commit()
     plans = []
     for activation in activations:
         # Before any bar is read: a trading activation whose parameters the gate never
@@ -613,6 +643,13 @@ def main(argv: list[str] | None = None) -> int:
                 warmup=catalog_bars[-(needed + 1) : -1],
                 decision=catalog_bars[-1],
                 provenance=source,
+                # Over the whole stored series, as the verdict's own digest was taken.
+                manifest=manifest_for(
+                    activation,
+                    read_series(args.catalog, activation.symbol, activation.venue),
+                    cost_model,
+                    commit=commit,
+                ),
             ),
         )
 

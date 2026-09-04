@@ -8,7 +8,9 @@
   "runtime_seconds": 27.7,
   "code_commit": "af2d356ce061e382b3c605ec927a709399d3f3ab",
   "holdout_spent": true,
-  "owner_decision": null,
+  "owner_decision": "revise",
+  "owner_decision_recorded": "2026-09-05",
+  "owner_decision_reason": "Passed thinly: +0.035130 R over 111 trades, a third of the walk-forward's estimate; profit factor 1.10 with the average loss larger than the average win, so the edge is a 54.1% win rate; max drawdown 8.80 R against 5.44 R made; crosses zero at USD 25,000 against an account under 10,000. Not frozen: a premise on paper whose edge the account cannot fund proves nothing. Revised as a new experiment; the holdout stays spent and this series is development data from here (ADR-0014).",
   "owner_decision_allowed": [
     "reject",
     "revise",
