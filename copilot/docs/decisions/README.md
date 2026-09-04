@@ -32,3 +32,5 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0014](0014-the-holdout-is-spent-as-one-more-fold.md)           | The holdout is spent as one more fold                          | Accepted   |
 | [0015](0015-databento-is-the-intraday-source-only.md)           | Databento is the intraday source, and only the intraday source | Accepted   |
 | [0016](0016-corporate-actions-are-applied-on-read.md)           | Corporate actions are applied on read, from one table          | Accepted   |
+| [0017](0017-the-evaluation-window-is-pinned-at-both-ends.md)    | The evaluation window is pinned at both ends                   | Accepted   |
+| [0018](0018-an-unusable-bar-is-substituted-whole.md)            | An unusable bar is substituted whole, from a versioned table   | Accepted   |

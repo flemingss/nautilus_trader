@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Seventeen items. Grouped by blocking condition rather than by component, because that is
+Sixteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -283,7 +283,7 @@ No code closes these.
 | US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (5)
+### Ready to build (4)
 
 | Item                                                                                                                         | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | ---------------------------------------------------------------------------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -296,7 +296,9 @@ No code closes these.
 | ~~Pull intraday, and verify the daily bars against it~~ **Done 2026-09-03**                                                  | 00    | $19.54 bought 7.6 years of per-minute bars and quotes. 38,539 sessions checked: **99.91% of daily bars contain the listing venue's own range within 20 bps**. The 33 that do not concentrate on 2023-01-24, the NYSE opening-auction failure, where the venue printed trades that were later busted and the consolidated bar correctly excludes.                                                                                |
 
 | **Iterate the operator-day draft** | 08 | [`DRAFT_OPERATOR_DAY.md`](DRAFT_OPERATOR_DAY.md) walks the JST clock from the close through the execution window to the next morning, with the command for each step and the gaps in sequence. A working draft to be argued with a few times, not governance. Its own open questions are listed at the end of it. |
-| **Give the live path a source of today's bar** | 08 | The strategy warms indicators from the catalog, and the catalog is **frozen at 2025-12-31**: extending it pushes the holdout past the charter's 20% band and every `validate` run raises `HoldoutCarveError` ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)). Research needs the freeze and execution needs freshness, and today one catalog serves both. `supervised_session` already works around it by pricing from a live quote, which is fine for a plumbing check and not for a signal. **Nothing decides this yet.** |
+| ~~Append the catalog daily~~ **Done 2026-09-04**                                                                             | 08    | `python -m copilot.data.append` brings every activation's instrument to the last published session and exits 1 on a hole, 2 on a misconfiguration, so a scheduler can act on it. Three things the naive `backfill --from yesterday` would have got wrong: the catalog **raises** on overlapping writes rather than de-duplicating, symbols diverge when the vendor drops one and not another, and a rejection has to be survived rather than fatal - refusing the batch would leave the catalog further behind on every run. An absent session is a *hole* only past [`PUBLICATION_GRACE_HOURS`](../data/append.py); before that it is pending, because an operator woken at 3am should have been woken for something real. Scheduling is documented in [`MAINTENANCE.md`](MAINTENANCE.md), not installed. |
+| ~~Fill the 2026 holes in the daily series~~ **Done 2026-09-04**                                                              | 00    | Marketstack's 2026 rows carry **11 sessions it cannot price** - 8 null closes, 2 SPY closes of exactly `0.0`, and one field-shifted MSFT row. Substituted whole from Databento for **$0.0019**, recorded in a versioned table that re-fetches and compares ([ADR-0018](decisions/0018-an-unusable-bar-is-substituted-whole.md)); 11/11 reproduce from source. The catalog now runs to **2026-09-03**, 5,452 bars per symbol, and all six verdicts re-run bit-identical - the first end-to-end proof of ADR-0017 rather than a test of it. |
+| ~~Give the live path a source of today's bar~~ **Done 2026-09-04** | 08 | This row's premise was wrong, and the correction was the substance. The live path never read the catalog at all: `on_start` subscribes and nothing else, so an unwarmed strategy needs **sixteen real sessions** before it can fire, which reads as "no setups triggered". The window is now pinned at both ends ([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)) so one catalog serves research frozen and execution fresh, and `copilot/live/warmup.py` loads the warm-up or refuses, naming the missing sessions. All six verdicts re-run bit-identical. The catalog now runs to 2026-09-03, so the only session the warm-up still wants is the one that has not closed yet. |
 | **Build an alerting path** | 08 | The playbook makes alerting a gate for unattended paper and a required limb of the kill switch - *preserve state and alert*, *acknowledge critical alerts within the deadline*. **No code sends an alert anywhere.** `failure_injection` proves the system notices, not that anyone is told. An operator asleep in Japan while the US session runs is the whole reason this matters. |
 | **Compare live decisions against offline replay** | 08 | The playbook's After checklist requires it and no tool does it. Without it, a live session that silently decided differently from the backtest looks identical to one that agreed. |
 | **Size from settled cash, not headline equity** | 06 | The charter requires it for a cash account and no code reads a settled figure. The paper account is MARGIN with USD 1M, so it **cannot** surface the bug ([paper fidelity limits](PAPER_CAMPAIGN.md)). Pairs with the settlement-rules item under the account group. |
@@ -436,6 +438,44 @@ sessions, zero extra, zero missing - and flags only SPY's two phantom rows.
 That test earned its keep immediately. The first version closed 31 December when
 1 January fell on a Saturday, following the federal observance rule; the exchanges stay
 open, and all three symbols traded on 2010-12-31 and 2021-12-31.
+
+### The vendor's 2026 rows are holed, and the gate refused them
+
+Measured 2026-09-04, attempting to bring the catalog current for the live warm-up. Of 507
+rows fetched for AAPL, MSFT and SPY over 2026-01-01 to 2026-09-04, **11 are unusable**:
+
+| Defect           | Rows | Detail                                                     |
+| ---------------- | ---- | ---------------------------------------------------------- |
+| `close` is null  | 8    | 2026-06-09 and 06-10 for all three; 06-15 for MSFT and SPY |
+| `close` is `0.0` | 2    | SPY 2026-04-07 and 04-08, with open, high and low all sane |
+| Incoherent OHLC  | 1    | MSFT 2026-01-15, high 464.12 below open 466.345            |
+
+That is a 2.17% rejection ratio against `backfill`'s 2% threshold, so **nothing was
+written** - which is the gate working. A half-ingested history is worse than none,
+because later runs treat whatever landed as complete.
+
+**It is not transient.** A narrow re-fetch of the exact dates returns the identical
+nulls, so this is the vendor's stored data rather than a bulk-query artefact. AAPL has a
+close on 2026-06-15 while MSFT and SPY do not, so it is per-symbol-per-day rather than a
+market-wide outage. The zero closes are the more dangerous shape: a null is refused by
+any schema check, while `0.0` is a number, and a gate that only tested for presence would
+have written it.
+
+**Resolved 2026-09-04.** All eleven are substituted whole from Databento - consolidated
+daily bar, close from the listing venue's official auction print - recorded in
+`copilot/data/substitutions.py` and verifiable with `python -m copilot.data.substitutions`,
+which re-fetches and compares. 11/11 reproduce. The pull cost **$0.0019**, and priced the
+whole 2026 year rather than the six bad dates so every session could be checked, not just
+the broken ones: **no other 2026 close disagrees by more than 10 bps**.
+
+MSFT 2026-01-15 was the interesting one. Its close was fine; the row is *field-shifted* -
+the open repeats 2026-01-14's and the true open (464.12) sits in the high slot, which is
+why it read as an incoherent bar. That shape would pass a null check and a zero check
+both.
+
+The catalog now runs to 2026-09-03 at 5,452 bars per symbol, the carve is unchanged
+(4,280 development, 1,003 holdout, 169 clipped, 18.99%), and all six verdicts re-run
+bit-identical. See [ADR-0018](decisions/0018-an-unusable-bar-is-substituted-whole.md).
 
 ### Other findings worth keeping
 

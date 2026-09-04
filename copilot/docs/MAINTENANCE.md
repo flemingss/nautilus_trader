@@ -429,6 +429,42 @@ The agent-side note that belongs with this: Claude's auto-memory is machine-loca
 does not travel. The repository documents are the durable copy - which is why this file
 and `ROADMAP.md` carry the warm-start records rather than leaving them in memory.
 
+## Keeping the catalog current
+
+The live warm-up reads the catalog and refuses a window that is stale or holed
+([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)), so the
+catalog has to be appended daily or the strategy cannot start.
+
+```bash
+export MARKETSTACK_API_KEY=...
+python -m copilot.data.append          # every registered activation's instrument
+python -m copilot.live.warmup          # did it work: readiness for the next session
+```
+
+**Exit codes are the product.** `append` returns 0 when the catalog holds every session
+that should exist by now, 1 when a session the vendor should have published is absent,
+and 2 on a misconfiguration - no API key, or a symbol with no history to append to. A
+scheduler should act on 1 and page on 2.
+
+**It is safe to run repeatedly.** A run with nothing to do fetches nothing and writes
+nothing. That matters more than it sounds: `ParquetDataCatalog` raises on non-disjoint
+intervals rather than de-duplicating, so an append that re-covered stored history would
+fail every day after the first.
+
+**When to run it.** US sessions close 20:00 UTC (21:00 in winter, 18:00 on a half day),
+and the vendor's row was measured available **9.5 hours** after the 2026-09-03 close.
+A daily run at **07:00 UTC** - 16:00 JST, the operator's afternoon - is comfortably past
+that and well before the next session. There is no timer installed; this is the command
+to put in one, deliberately, because a machine that starts writing to the catalog on its
+own is not something to acquire by accident.
+
+**A rejection is routine.** Marketstack ships rows it cannot price - see the 2026 holes
+in `ROADMAP.md` - so the append writes what is good and names what is missing rather than
+refusing the batch the way `backfill` does. A missing session is fixed at the source or
+recorded in `copilot/data/substitutions.py`
+([ADR-0018](decisions/0018-an-unusable-bar-is-substituted-whole.md)); it is not worked
+around by loosening the gate.
+
 ## Inherited governance surfaces
 
 Surveyed 2026-09-02, after ownership. These files came with the copy and describe how to

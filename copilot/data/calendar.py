@@ -36,8 +36,11 @@ bars and would not be for intraday.
 
 from __future__ import annotations
 
+from datetime import UTC
 from datetime import date
+from datetime import datetime
 from datetime import timedelta
+from zoneinfo import ZoneInfo
 
 
 SATURDAY = 5
@@ -119,6 +122,13 @@ def _observed(day: date) -> date:
     return day
 
 
+MINUTES_PER_HOUR = 60
+
+EASTERN = ZoneInfo("America/New_York")
+"""
+The exchange's own zone, which is what a session's clock is stated in.
+"""
+
 SESSION_OPEN_MINUTES = 9 * 60 + 30
 REGULAR_CLOSE_MINUTES = 16 * 60
 EARLY_CLOSE_MINUTES = 13 * 60
@@ -197,6 +207,31 @@ def session_end_minutes(day: date) -> int:
     return EARLY_CLOSE_MINUTES if day in early_closes(day.year) else REGULAR_CLOSE_MINUTES
 
 
+def session_close(day: date) -> datetime:
+    """
+    Return the instant a session ends, as an aware UTC datetime.
+
+    The minute comes from :func:`session_end_minutes` and the offset from the Eastern
+    zone, so a half day and a daylight-saving boundary are both handled by the same call
+    rather than by a constant that is right for most of the year.
+
+    Callers asking "should this session's data exist by now" need the close as an instant,
+    not as a local minute; anything that compares a session against a wall clock without
+    this ends up hard-coding an offset that is wrong for a third of the year.
+
+    """
+    minutes = session_end_minutes(day)
+    local = datetime(
+        day.year,
+        day.month,
+        day.day,
+        minutes // MINUTES_PER_HOUR,
+        minutes % MINUTES_PER_HOUR,
+        tzinfo=EASTERN,
+    )
+    return local.astimezone(UTC)
+
+
 def trading_days(start: date, end: date) -> tuple[date, ...]:
     """
     Every trading day in ``[start, end]``, inclusive and in order.
@@ -212,7 +247,9 @@ def trading_days(start: date, end: date) -> tuple[date, ...]:
 
 __all__ = [
     "EARLY_CLOSE_MINUTES",
+    "EASTERN",
     "JUNETEENTH_FIRST_OBSERVED",
+    "MINUTES_PER_HOUR",
     "REGULAR_CLOSE_MINUTES",
     "SESSION_OPEN_MINUTES",
     "UNSCHEDULED_CLOSURES",

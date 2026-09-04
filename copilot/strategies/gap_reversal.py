@@ -71,6 +71,7 @@ scores every trade at ``r_multiple == 0`` and reports no edge anywhere.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import TYPE_CHECKING
 from typing import Any
 
 from copilot.risk.sizing import size_from_levels
@@ -80,6 +81,10 @@ from nautilus_trader.model import Bar
 from nautilus_trader.model import OrderSide
 from nautilus_trader.trading import Strategy
 from nautilus_trader.trading import StrategyConfig
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
 
 
 DEFAULT_ATR_PERIOD = 14
@@ -261,6 +266,30 @@ class GapReversalStrategy(Strategy):
 
         """
         self._registry = registry
+
+    def warm_up(self, bars: Sequence[Bar]) -> None:
+        """
+        Prime the indicator and the previous close from history, before the node runs.
+
+        A backtest gets its warm-up for free: every bar reaches ``on_bar``, so by the
+        time the rule can fire the ATR is initialised and ``_previous_close`` holds the
+        prior session. Live, the subscription starts empty, and an unwarmed strategy
+        spends sixteen sessions logging `insufficient_history` while looking like a
+        premise that simply never triggers.
+
+        Fed through ``handle_bar`` - the same call the engine makes - so an indicator
+        warmed here holds the value it would hold having been run, rather than an
+        approximation of it. ``_previous_close`` takes the last warm bar's close, which
+        is exactly what ``on_bar`` would have left there.
+
+        Bars come from :mod:`copilot.live.warmup`, which refuses to supply a stale or
+        holed window; nothing is validated again here, because a strategy is the wrong
+        place to discover that the catalog is out of date.
+
+        """
+        for bar in bars:
+            self._atr.handle_bar(bar)
+            self._previous_close = Decimal(str(bar.close))
 
     def on_start(self) -> None:
         """
