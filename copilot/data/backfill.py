@@ -100,8 +100,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def _report_substitutions(applied: Sequence[Substitution]) -> None:
     """
-    Say which sessions came from the second source, and which the table expected and
-    missed.
+    Name which sessions the second source supplied, and which it was expected to.
 
     Printed whether or not any applied. Silence would make a run over a window
     containing no substituted day indistinguishable from one where the table failed to

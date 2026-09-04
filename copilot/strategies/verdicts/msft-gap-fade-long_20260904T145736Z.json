@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "MSFT.XNAS",
-  "run_at": "2026-09-04T13:31:39.470153+00:00",
-  "runtime_seconds": 19.5,
+  "run_at": "2026-09-04T14:57:36.655731+00:00",
+  "runtime_seconds": 21.1,
   "bars": 4280,
   "bar_range": [
     "2005-01-03",
@@ -62,8 +62,8 @@
     "data": "7fb472a9616869364e753cc6c10454ec163965e8e11338c58ff7e8a95b151318",
     "identity": "0c7b49219f06a47a2cd7fdbad84d0f9248f25e172e0320ccd0ee6523a1b48653",
     "cost": "952601aba8b6b140aa7fdfc0530c678e556d07f2d5bb1ab236f119686553c4b7",
-    "code": "c5919264a10d27cfb783cd661dfd5ebf30ed7c74351c9ec03eb80ea31717ae65",
-    "combined": "d982fae6d2993301135fdf3399d4994a0909799ed3b287e2d262b2ca194086d3"
+    "code": "e056fe8a278ea7387594bf6096384062b78a03fc8f2be4039047bb298f0c1285",
+    "combined": "b74f17a189c46ce7ff6299ea0a487045c9af7e55b06ddfc9de6293f2debdb74c"
   },
   "holdout_spent": false,
   "folds": 31,

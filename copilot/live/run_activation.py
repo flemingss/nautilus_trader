@@ -60,7 +60,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import sys
 from dataclasses import dataclass
 from dataclasses import field
@@ -71,10 +70,13 @@ from decimal import Decimal
 from pathlib import Path
 
 from copilot.data.catalog import BAR_SPEC
-from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
+from copilot.data.catalog import read_series
+from copilot.live.account import EXEC_CLIENT_VENUE
+from copilot.live.account import reported_equity
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
+from copilot.live.session import add_broker_arguments
 from copilot.live.symbology import broker_instrument_id
 from copilot.live.warmup import load as load_warmup
 from copilot.live.warmup import session_to_prepare
@@ -90,7 +92,6 @@ from copilot.validation.types import DailyBar
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import Bar
 from nautilus_trader.model import BarType
-from nautilus_trader.model import Currency
 from nautilus_trader.model import Equity
 from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import Venue
@@ -125,46 +126,6 @@ class Plan:
     activation: Activation
     warmup: tuple[DailyBar, ...]
     decision: DailyBar
-
-
-class NoAccountEquityError(RuntimeError):
-    """
-    The broker reported no usable equity, so nothing can be sized.
-    """
-
-
-EQUITY_CURRENCY = "USD"
-EXEC_VENUE = "IB"
-
-
-def reported_equity(cache: object, venues: tuple[Venue, ...]) -> tuple[Decimal, str]:
-    """
-    Read the account's total balance in the sizing currency, and say which account.
-
-    The same search the preflight makes, for the same reason: the account is registered
-    under the exec client's venue rather than the instrument's, and looking under only
-    one of them is how the first preflight reported a missing account that was in the
-    cache the whole time.
-
-    ``total`` rather than ``free``. Free excludes what working orders have reserved,
-    which on a session that starts with none is the same number; the playbook's
-    settled-cash term is the one that would differ, and it is not modelled here.
-
-    """
-    for venue in venues:
-        account_id = cache.account_id(venue)  # type: ignore[attr-defined]
-        if account_id is None:
-            continue
-        account = cache.account_for_venue(venue)  # type: ignore[attr-defined]
-        balance = account.balances().get(Currency.from_str(EQUITY_CURRENCY))
-        if balance is None:
-            continue
-        return balance.total.as_decimal(), str(account_id)
-    raise NoAccountEquityError(
-        f"no {EQUITY_CURRENCY} balance under any of {[str(v) for v in venues]}. A session "
-        f"cannot size against equity it cannot read; check the account with "
-        f"python -m copilot.live.preflight before reading anything else into this.",
-    )
 
 
 class NoBrokerInstrumentError(RuntimeError):
@@ -376,7 +337,7 @@ async def run_session(
         # construction because the equity does not exist until the exec client has
         # connected, and the strategies have to exist before the node.
         first = plans[0].activation
-        venues = (broker_instrument_id(first.symbol, first.venue).venue, Venue(EXEC_VENUE))
+        venues = (broker_instrument_id(first.symbol, first.venue).venue, Venue(EXEC_CLIENT_VENUE))
         equity, _account = reported_equity(cache, venues)
         budget = budget_for(equity, allocation=allocation, policy=policy)
         ledger = ExposureLedger(
@@ -497,6 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.run_activation",
         description="Run a registered activation on the paper broker, orders denied.",
     )
+    add_broker_arguments(parser, data_client_id=871, exec_client_id=872)
     parser.add_argument(
         "activations",
         nargs="*",
@@ -504,9 +466,6 @@ def main(argv: list[str] | None = None) -> int:
         "next_close activation, by name)",
     )
     parser.add_argument("--all", action="store_true", help="Run every next_close activation")
-    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
-    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
     add_catalog_argument(parser)
     parser.add_argument("--session", help="Session to run for, YYYY-MM-DD (default: the next)")
     parser.add_argument("--settle-secs", type=int, default=SETTLE_SECS)
@@ -525,8 +484,6 @@ def main(argv: list[str] | None = None) -> int:
             f"(default {DEFAULT_RISK_FRACTION})"
         ),
     )
-    parser.add_argument("--data-client-id", type=int, default=871)
-    parser.add_argument("--exec-client-id", type=int, default=872)
     args = parser.parse_args(argv)
 
     if not args.account:
@@ -631,11 +588,7 @@ def _catalog_bars(catalog_path: str, activation: Activation, before: date) -> tu
     """
     Return the catalog's bars for this instrument, ending before ``before``.
     """
-    from copilot.data.catalog import open_catalog  # noqa: PLC0415 - CLI path only
-    from copilot.data.catalog import read_daily_bars  # noqa: PLC0415
-
-    instrument = equity_for(activation.symbol, activation.venue)
-    stored = read_daily_bars(open_catalog(catalog_path), bar_type_for(instrument.id))
+    stored = read_series(catalog_path, activation.symbol, activation.venue)
     return tuple(bar for bar in stored if bar.closed_at.date() < before)
 
 

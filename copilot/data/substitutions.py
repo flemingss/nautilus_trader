@@ -81,8 +81,7 @@ than against a confusing empty response.
 @dataclass(frozen=True)
 class Substitution:
     """
-    One session's bar, taken from the second source because the first could not price
-    it.
+    One session's bar, taken whole from the second source.
     """
 
     symbol: str

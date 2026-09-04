@@ -253,7 +253,7 @@ def test_an_absent_account_names_the_read_only_cause():
 
 
 def test_a_clean_lifecycle_passes():
-    from copilot.live.controlled_order import Outcome
+    from copilot.live.probes.controlled_order import Outcome
 
     assert Outcome(submitted=True, accepted=True, canceled=True).passed
 
@@ -266,7 +266,7 @@ def test_a_fill_fails_the_stage_even_though_the_lifecycle_completed():
     healthy run at the exact moment the safety argument collapsed.
 
     """
-    from copilot.live.controlled_order import Outcome
+    from copilot.live.probes.controlled_order import Outcome
 
     assert not Outcome(submitted=True, accepted=True, canceled=True, filled=True).passed
 
@@ -279,7 +279,7 @@ def test_a_refused_order_fails_the_stage(refusal):
     A refusal proves the path is not working.
 
     """
-    from copilot.live.controlled_order import Outcome
+    from copilot.live.probes.controlled_order import Outcome
 
     assert not Outcome(submitted=True, **{refusal: True}).passed
 
@@ -293,7 +293,7 @@ def test_an_order_that_was_never_cancelled_fails():
     distinguished that run from a clean one.
 
     """
-    from copilot.live.controlled_order import Outcome
+    from copilot.live.probes.controlled_order import Outcome
 
     assert not Outcome(submitted=True, accepted=True).passed
 
@@ -302,7 +302,7 @@ def test_an_order_that_was_never_cancelled_fails():
 
 
 def test_a_shape_that_round_trips_passes():
-    from copilot.live.order_types import Attempt
+    from copilot.live.probes.order_types import Attempt
 
     assert Attempt(name="LIMIT/GTC", submitted=True, accepted=True, canceled=True).passed
 
@@ -316,7 +316,7 @@ def test_a_shape_that_filled_or_was_refused_fails(problem):
     be reported as working.
 
     """
-    from copilot.live.order_types import Attempt
+    from copilot.live.probes.order_types import Attempt
 
     attempt = Attempt(
         name="LIMIT/GTC",
@@ -337,7 +337,7 @@ def test_the_untestable_shapes_are_named_rather_than_omitted():
     has to appear in the output as untested rather than simply be absent from it.
 
     """
-    from copilot.live.order_types import UNTESTED_HERE
+    from copilot.live.probes.order_types import UNTESTED_HERE
 
     assert "MARKET" in UNTESTED_HERE
     assert "BRACKET_MARKET_ENTRY" in UNTESTED_HERE
@@ -349,7 +349,7 @@ def test_the_untestable_shapes_are_named_rather_than_omitted():
 
 
 def a_complete_round_trip(**overrides: object):
-    from copilot.live.supervised_session import SessionResult
+    from copilot.live.probes.supervised_session import SessionResult
 
     return SessionResult(
         **{
@@ -404,9 +404,9 @@ def test_an_unscored_case_does_not_break_the_scored_ones():
     order at the broker - reported only as "left working", with no hint of the cause.
 
     """
-    from copilot.live.failure_injection import FailureInjection
-    from copilot.live.failure_injection import InjectionResult
-    from copilot.live.failure_injection import Probe
+    from copilot.live.probes.failure_injection import FailureInjection
+    from copilot.live.probes.failure_injection import InjectionResult
+    from copilot.live.probes.failure_injection import Probe
 
     result = InjectionResult(probes=[Probe(name="denied_by_risk_engine", expected="denied")])
     lookup = FailureInjection._probe.__get__(
@@ -418,8 +418,8 @@ def test_an_unscored_case_does_not_break_the_scored_ones():
 
 
 def test_the_injection_passes_only_when_nothing_is_left_working():
-    from copilot.live.failure_injection import InjectionResult
-    from copilot.live.failure_injection import Probe
+    from copilot.live.probes.failure_injection import InjectionResult
+    from copilot.live.probes.failure_injection import Probe
 
     scored = [Probe(name="p", expected="denied", observed="denied")]
 
@@ -429,7 +429,7 @@ def test_the_injection_passes_only_when_nothing_is_left_working():
 
 def test_a_probe_that_never_observed_anything_fails():
     """Silence is not success: a probe with no outcome has not been answered."""
-    from copilot.live.failure_injection import InjectionResult
-    from copilot.live.failure_injection import Probe
+    from copilot.live.probes.failure_injection import InjectionResult
+    from copilot.live.probes.failure_injection import Probe
 
     assert not InjectionResult(probes=[Probe(name="p", expected="denied")]).passed

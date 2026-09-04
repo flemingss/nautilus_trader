@@ -79,13 +79,11 @@ import base64
 import json
 import os
 import sys
-from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
-from itertools import pairwise
 from pathlib import Path
 from typing import Any
 from urllib.error import HTTPError
@@ -187,47 +185,6 @@ class Minute:
         Return whether the bar's close and open sit inside its own range.
         """
         return self.low <= min(self.open, self.close) and max(self.open, self.close) <= self.high
-
-
-@dataclass(frozen=True)
-class ProbeFinding:
-    """
-    What the fidelity probe measured, and whether it is worth trusting.
-    """
-
-    symbol: str
-    dataset: str
-    rows: int
-    distinct: dict[str, int]
-    volume_is_monotonic: bool
-    volume_sum: int
-    incoherent_rows: int
-
-    @property
-    def looks_like_real_bars(self) -> bool:
-        """
-        Return whether every fidelity check passed.
-
-        A single distinct value in any price field, or volume that never decreases, is
-        the failure mode that made the previous vendor's intraday unusable.
-
-        """
-        varies = all(count > 1 for count in self.distinct.values())
-        return varies and not self.volume_is_monotonic and self.incoherent_rows == 0
-
-    def report(self) -> str:
-        """
-        Return the human-readable verdict, findings first.
-        """
-        lines = [
-            f"{self.symbol} on {self.dataset}: {self.rows} one-minute rows",
-            "  distinct values  " + "  ".join(f"{k}={v}" for k, v in self.distinct.items()),
-            f"  volume monotonic {self.volume_is_monotonic}  (True means cumulative)",
-            f"  volume summed    {self.volume_sum:,}",
-            f"  incoherent rows  {self.incoherent_rows}",
-            f"  VERDICT          {'real bars' if self.looks_like_real_bars else 'NOT USABLE'}",
-        ]
-        return "\n".join(lines)
 
 
 class DatabentoClient:
@@ -642,105 +599,6 @@ def normalize_minute(raw: dict[str, Any]) -> Minute:
     )
 
 
-def measure(symbol: str, dataset: str, minutes: list[Minute]) -> ProbeFinding:
-    """
-    Run the fidelity checks over a sample, and return what they found.
-    """
-    if not minutes:
-        raise DatabentoError(f"no rows returned for {symbol}; nothing to measure")
-
-    distinct = {
-        field: len(Counter(getattr(m, field) for m in minutes))
-        for field in ("open", "high", "low", "close")
-    }
-    volumes = [m.volume for m in minutes]
-    monotonic = all(b >= a for a, b in pairwise(volumes))
-    return ProbeFinding(
-        symbol=symbol,
-        dataset=dataset,
-        rows=len(minutes),
-        distinct=distinct,
-        volume_is_monotonic=monotonic,
-        volume_sum=sum(volumes),
-        incoherent_rows=sum(1 for m in minutes if not m.coherent),
-    )
-
-
-@dataclass(frozen=True)
-class SymbolAudit:
-    """
-    One symbol's catalog checked against an independent daily series.
-    """
-
-    symbol: str
-    days_compared: int
-    exact_closes: int
-    max_deviation_bps: Decimal
-    worst_day: str
-    median_volume_ratio: Decimal
-
-    @property
-    def clean(self) -> bool:
-        """
-        Return whether every overlapping close matched to the cent.
-        """
-        return self.days_compared > 0 and self.exact_closes == self.days_compared
-
-    def row(self) -> str:
-        """
-        Return one fixed-width line for the audit table.
-        """
-        share = f"{self.exact_closes}/{self.days_compared}"
-        return (
-            f"  {self.symbol:<7}{share:>10}{self.max_deviation_bps:>12}"
-            f"{self.worst_day:>13}{self.median_volume_ratio:>10}  "
-            f"{'ok' if self.clean else 'MISMATCH'}"
-        )
-
-
-def audit_symbol(
-    symbol: str,
-    vendor: dict[date, tuple[Decimal, int]],
-    catalog: dict[date, tuple[Decimal, int]],
-) -> SymbolAudit:
-    """
-    Compare one symbol's closes and volumes over the days both sources carry.
-
-    Only overlapping days are compared, so a shorter vendor window narrows the audit
-    rather than reporting the missing days as failures. The catalog holds vendor prices
-    that are already split-adjusted while Databento reports them as traded, so a split
-    inside the window would surface here as a large deviation - which is a finding, not
-    a bug in this function.
-
-    """
-    shared = sorted(set(vendor) & set(catalog))
-    exact = 0
-    worst = Decimal(0)
-    worst_day = "-"
-    ratios = []
-    for day in shared:
-        vendor_close, vendor_volume = vendor[day]
-        catalog_close, catalog_volume = catalog[day]
-        if vendor_close == catalog_close:
-            exact += 1
-        deviation = abs(catalog_close - vendor_close) / catalog_close * 10000
-        if deviation > worst:
-            worst, worst_day = deviation, day.isoformat()
-        if catalog_volume:
-            ratios.append(Decimal(vendor_volume) / Decimal(catalog_volume))
-
-    ratios.sort()
-    median = ratios[len(ratios) // 2] if ratios else Decimal(0)
-    return SymbolAudit(
-        symbol=symbol,
-        days_compared=len(shared),
-        exact_closes=exact,
-        max_deviation_bps=worst.quantize(Decimal("0.01")),
-        worst_day=worst_day,
-        median_volume_ratio=median.quantize(Decimal("0.001")),
-    )
-
-
 def catalog_series(
     catalog_path: str,
 ) -> dict[str, tuple[str, dict[date, tuple[Decimal, int]]]]:
@@ -911,84 +769,6 @@ def _cost(
     )
 
 
-def _audit_deep(client: DatabentoClient, catalog_path: str, start: str, end: str) -> int:
-    """
-    Check the catalog against each listing venue's official closing auction print.
-
-    Routed per venue because the auction that sets a security's official close is run by
-    the venue it is listed on, and those datasets reach 2018-05-01 rather than the
-    consolidated summary's 2024-07-01.
-
-    """
-    held = catalog_series(catalog_path)
-    by_venue: dict[str, list[str]] = {}
-    for symbol, (venue, _) in held.items():
-        by_venue.setdefault(venue, []).append(symbol)
-
-    audits = []
-    for venue, symbols in sorted(by_venue.items()):
-        dataset = LISTING_DATASETS.get(venue)
-        if dataset is None:
-            print(f"  no listing dataset for venue {venue}; skipped {sorted(symbols)}")
-            continue
-        official = client.fetch_official_closes(sorted(symbols), dataset, start, end)
-        for symbol in sorted(symbols):
-            series = {day: (price, 0) for day, price in official.get(symbol, {}).items()}
-            audits.append(audit_symbol(symbol, series, held[symbol][1]))
-
-    print(f"\nCatalog audited against official closing auction prints, {start} to {end}")
-    print(f"  {'symbol':<7}{'exact':>12}{'worst bps':>12}{'worst day':>13}")
-    for entry in sorted(audits, key=lambda a: a.symbol):
-        share = f"{entry.exact_closes}/{entry.days_compared}"
-        flag = "ok" if entry.clean else "MISMATCH"
-        print(
-            f"  {entry.symbol:<7}{share:>12}{entry.max_deviation_bps:>12}"
-            f"{entry.worst_day:>13}  {flag}",
-        )
-    clean = sum(1 for a in audits if a.clean)
-    compared = sum(a.days_compared for a in audits)
-    disagreed = sum(a.days_compared - a.exact_closes for a in audits)
-    print(f"\n  {clean}/{len(audits)} symbols exact across {compared:,} days")
-    print(f"  {disagreed} disagreements ({disagreed / compared * 100:.3f}%)")
-    return 0
-
-
-def _audit(client: DatabentoClient, catalog_path: str, start: str, end: str) -> int:
-    """
-    Check the catalog's closes against an independent daily series.
-    """
-    held = catalog_closes(catalog_path)
-    vendor = client.fetch_daily(sorted(held), start, end, DAILY_DATASET)
-    audits = [audit_symbol(s, vendor.get(s, {}), held[s]) for s in sorted(held)]
-    print(f"\nCatalog audited against {DAILY_DATASET}, {start} to {end}")
-    print(
-        f"  {'symbol':<7}{'exact':>10}{'worst bps':>12}{'worst day':>13}{'vol ratio':>10}",
-    )
-    for entry in audits:
-        print(entry.row())
-    clean = sum(1 for a in audits if a.clean)
-    compared = sum(a.days_compared for a in audits)
-    print(f"\n  {clean}/{len(audits)} symbols matched exactly across {compared} days")
-    if clean != len(audits):
-        return 1
-
-    return 0
-
-
-def _probe(client: DatabentoClient, symbol: str, start: str, end: str) -> int:
-    """
-    Measure whether a feed's one-minute rows are bars at all.
-    """
-    minutes = client.fetch_minutes(symbol, start, end)
-    finding = measure(symbol, client.dataset, minutes)
-    print()
-    print(finding.report())
-    if not finding.looks_like_real_bars:
-        return 1
-
-    return 0
-
-
 def _preflight(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
     """
     Refuse a run that names no action, or one that would spend without saying so.
@@ -1059,6 +839,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cost:
         _cost(client, symbols, args.start, args.end, args.schema)
+
+    from copilot.data.databento_audit import _audit  # noqa: PLC0415 - avoids an import cycle
+    from copilot.data.databento_audit import _audit_deep  # noqa: PLC0415
+    from copilot.data.databento_probe import _probe  # noqa: PLC0415
 
     if args.pull:
         failed = _pull(client, args)

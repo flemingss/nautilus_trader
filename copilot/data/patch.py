@@ -65,6 +65,7 @@ from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
+from copilot.data.catalog import read_series
 from copilot.data.catalog import write_ingestion
 from copilot.data.databento import DEFAULT_STORE
 from copilot.data.databento import LISTING_DATASETS
@@ -190,8 +191,7 @@ def holes_in(catalog_path: str, symbol: str, venue: str) -> tuple[tuple[date, ..
     one would bury the real holes in thousands of false ones.
 
     """
-    catalog = open_catalog(catalog_path)
-    bars = read_daily_bars(catalog, bar_type_for(equity_for(symbol, venue).id))
+    bars = read_series(catalog_path, symbol, venue)
     if not bars:
         return (), 0
     held = {bar.closed_at.date() for bar in bars}

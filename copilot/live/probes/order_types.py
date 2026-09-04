@@ -2,7 +2,7 @@
 Paper stage four: submit every planned order type and time in force, and cancel each.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.order_types --account DUT067974 --reference-price 271.86
+    python -m copilot.live.probes.order_types --account DUT067974 --reference-price 271.86
 
 Stage three proved one order type works. This proves the ones the strategies will actually
 use are accepted by the broker in the shapes we intend to send them, before a session
@@ -336,7 +336,7 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     parser = argparse.ArgumentParser(
-        prog="python -m copilot.live.order_types",
+        prog="python -m copilot.live.probes.order_types",
         description="Paper stage four: every planned order type and time in force.",
     )
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))

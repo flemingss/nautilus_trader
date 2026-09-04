@@ -168,15 +168,15 @@ The campaign, its gates and its evidence log live in [`PAPER_CAMPAIGN.md`](PAPER
 
 What stages 1 to 6 need built, none of it blocked:
 
-| Piece                           | State                                                                                                                                                                           |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                               |
-| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests. |
-| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.        |
-| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                             |
-| A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                    |
-| Map catalog ids to broker ids   | **Built**, `live/symbology.py`. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`, with the routing table listed rather than defaulted so an unmapped venue raises.               |
-| Failure injection               | **Built, run, passing** on the second run, `live/failure_injection.py`. Two cases are excluded and named rather than scored: one paper cannot decide, one is unconfirmed.       |
+| Piece                           | State                                                                                                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Execution client wiring         | **Built**, `live/node.py`. First execution client in the overlay.                                                                                                                |
+| A paper node builder            | **Built**, `live/session.py`. Paper and live differ by a port number on this deployment shape, so two independent checks must agree before a session is called paper. 17 tests.  |
+| An orders-disabled mode         | **Built.** Strategies run normally and the risk engine is halted, so the real path is exercised and every order is denied inside the engine rather than never submitted.         |
+| Guard handle taken before start | **Built.** `build_paper_node` returns it rather than leaving the caller to find it.                                                                                              |
+| A preflight check script        | **Built, run, passing.** Stages 1 and 2 both pass against the paper account.                                                                                                     |
+| Map catalog ids to broker ids   | **Built**, `live/symbology.py`. Research `AAPL.XNAS` to broker `AAPL=STK.SMART`, with the routing table listed rather than defaulted so an unmapped venue raises.                |
+| Failure injection               | **Built, run, passing** on the second run, `live/probes/failure_injection.py`. Two cases are excluded and named rather than scored: one paper cannot decide, one is unconfirmed. |
 
 ## Open work, grouped by what unblocks it
 
@@ -207,7 +207,7 @@ maps before emitting, cancel-all did not - so an order adopted from the venue ha
 route and the emission died with "Instrument ID not found for pending cancel order".
 Cancel-all now carries the identity out of the cache and routes it before the cancel, and
 reports a failed cancel as `OrderCancelRejected`. Confirmed against IB by re-running
-`live/strand_recovery.py` on a rebuilt extension: that error is gone and the adopted order
+`live/probes/strand_recovery.py` on a rebuilt extension: that error is gone and the adopted order
 reaches `PENDING_CANCEL`. Two things were learned that no unit test could decide. **A
 cancel takes effect from the originating client id and not from a foreign one**, and IB
 sends no acknowledgement to a client that did not place the order - so the probe records
@@ -802,7 +802,7 @@ sending a later `unsubscribe_quotes` to cancel the *trades* stream instead. The 
 `(InstrumentId, SubscriptionType)`.
 
 **The original observation no longer reproduces.** Tested 2026-09-02 inside a live session
-with `live/subscription_interference.py`, which treats one instrument with the second
+with `live/probes/subscription_interference.py`, which treats one instrument with the second
 subscription and leaves a control instrument alone, then counts quotes for both across the
 same two windows. Quotes stopping on both would be a session-wide event and evidence about
 nothing; only the treated instrument stopping is the reported behaviour.
