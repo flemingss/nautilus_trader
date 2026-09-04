@@ -21,9 +21,13 @@ a commit.
 
 **Over the development window only, as of [ADR-0012].** The most recent slice of history
 (from 2022-01-01) is the locked holdout: `carve` withholds it before the walk-forward
-ever sees a bar, and the record names what was withheld. What the verdict still is not:
-the holdout result itself (walk-forward is repeatable; the single-use out-of-sample is
-not, and spending it is a deliberate separate act - `spend_holdout`, [ADR-0014]), and not
+ever sees a bar, and the record names what was withheld. The window also has a far end
+(2026-01-01, [ADR-0017]): the catalog is kept fresh for the live path, and bars past the
+pin are clipped here rather than scored, so a backfill cannot move a verdict.
+
+What the verdict still is not: the holdout result itself (walk-forward is repeatable;
+the single-use out-of-sample is not, and spending it is a deliberate separate act -
+`spend_holdout`, [ADR-0014]), and not
 a viability judgment at the target account size, which is [ADR-0009]'s sweep - costs
 here are charged on the trades as replayed, at the research sizing.
 
@@ -51,6 +55,7 @@ from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
 from copilot.strategies.spend_holdout import is_spent
+from copilot.validation.holdout import EVALUATION_END
 from copilot.validation.holdout import HOLDOUT_START
 from copilot.validation.holdout import carve
 from copilot.validation.nautilus_replay import make_replay
@@ -74,6 +79,7 @@ class Verdict:
     last_bar: str
     holdout_bars: int
     holdout_range: tuple[str, str]
+    unevaluated_bars: int
     seconds: float
     cost_model: CostModel
 
@@ -100,6 +106,14 @@ class Verdict:
                 "start": HOLDOUT_START.date().isoformat(),
                 "bars_reserved": self.holdout_bars,
                 "range": list(self.holdout_range),
+            },
+            # The window is pinned at both ends (ADR-0017), so the catalog may hold bars
+            # this run never saw. Recorded because a verdict naming only its start would
+            # read, to anyone comparing it against a later catalog, as a run over
+            # everything available.
+            "evaluation_window": {
+                "end": EVALUATION_END.date().isoformat(),
+                "bars_beyond": self.unevaluated_bars,
             },
             "search_space": {
                 k: [str(x) for x in v] for k, v in self.activation.setup.search_space.items()
@@ -162,7 +176,8 @@ def run(
         )
 
     # The carve happens here, before the gate sees a bar: everything downstream of this
-    # line runs on the development window alone (ADR-0012).
+    # line runs on the development window alone (ADR-0012), clipped to the evaluation
+    # window (ADR-0017) so a catalog kept fresh for the live path scores nothing new.
     carved = carve(bars)
 
     settings = activation.validation
@@ -196,6 +211,7 @@ def run(
             carved.holdout[0].closed_at.date().isoformat(),
             carved.holdout[-1].closed_at.date().isoformat(),
         ),
+        unevaluated_bars=len(carved.unevaluated),
         seconds=time.time() - started,
         cost_model=cost_model,
     )
