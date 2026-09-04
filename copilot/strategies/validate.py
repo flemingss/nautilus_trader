@@ -54,6 +54,10 @@ from copilot.data.catalog import read_daily_bars
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
+from copilot.strategies.fingerprint import Fingerprint
+from copilot.strategies.fingerprint import filed_fingerprint
+from copilot.strategies.fingerprint import fingerprint_for
+from copilot.strategies.fingerprint import unchanged_since
 from copilot.strategies.spend_holdout import is_spent
 from copilot.validation.holdout import EVALUATION_END
 from copilot.validation.holdout import HOLDOUT_START
@@ -82,6 +86,7 @@ class Verdict:
     unevaluated_bars: int
     seconds: float
     cost_model: CostModel
+    fingerprint: Fingerprint
 
     def as_record(self) -> dict[str, Any]:
         """
@@ -129,6 +134,9 @@ class Verdict:
             "warmup_bars": self.activation.setup.warmup_bars,
             "costs_modelled": True,
             "cost_model": self.cost_model.as_record(self.activation.symbol),
+            # The four inputs this number was computed from. A later `--changed` run
+            # compares these against the world and skips what cannot have moved.
+            "inputs": self.fingerprint.as_record(),
             # True from the moment a record exists under strategies/holdouts/ (ADR-0014):
             # a walk-forward re-run after the spend is a development run on a premise
             # whose one-time test has been used, and the record must say so.
@@ -161,6 +169,25 @@ class Verdict:
         }
 
 
+def stored_bars(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> tuple:
+    """
+    Read the bars the gate would run this activation on, as the gate reads them.
+
+    Split out so the fingerprint and the run see the same bars through the same call:
+    a digest taken over a different read path would answer a different question.
+
+    """
+    catalog = open_catalog(catalog_path)
+    instrument = equity_for(activation.symbol, activation.venue)
+    bars = read_daily_bars(catalog, bar_type_for(instrument.id))
+    if not bars:
+        raise ValueError(
+            f"no bars in the catalog for {instrument.id}. Backfill it first: "
+            f"python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
+        )
+    return bars
+
+
 def run(
     activation: Activation,
     catalog_path: str = DEFAULT_CATALOG,
@@ -171,15 +198,10 @@ def run(
     """
     if cost_model is None:
         cost_model = CostModel.from_snapshot()
-    catalog = open_catalog(catalog_path)
     instrument = equity_for(activation.symbol, activation.venue)
     bar_type = bar_type_for(instrument.id)
-    bars = read_daily_bars(catalog, bar_type)
-    if not bars:
-        raise ValueError(
-            f"no bars in the catalog for {instrument.id}. Backfill it first: "
-            f"python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
-        )
+    bars = stored_bars(activation, catalog_path)
+    fingerprint = fingerprint_for(activation, bars, cost_model)
 
     # The carve happens here, before the gate sees a bar: everything downstream of this
     # line runs on the development window alone (ADR-0012), clipped to the evaluation
@@ -220,6 +242,7 @@ def run(
         unevaluated_bars=len(carved.unevaluated),
         seconds=time.time() - started,
         cost_model=cost_model,
+        fingerprint=fingerprint,
     )
 
 
@@ -268,14 +291,23 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="File the verdict as JSON under strategies/verdicts/",
     )
+    parser.add_argument(
+        "--changed",
+        action="store_true",
+        help="Skip any activation whose newest filed verdict was computed from these "
+        "exact inputs (data inside the window, identity, cost basis, code)",
+    )
     args = parser.parse_args(argv)
 
-    if args.all:
+    if args.all or (args.changed and not args.activation):
+        # `--changed` on its own is the morning command: every activation, recomputing
+        # only what moved. Making it also require `--all` would be one more flag whose
+        # absence fails after the operator thought the step was done.
         activations = load_activations()
     elif args.activation:
         activations = (find_activation(args.activation),)
     else:
-        parser.error("name an activation or pass --all")
+        parser.error("name an activation, or pass --all or --changed")
 
     cost_model = CostModel.from_snapshot()
     print(
@@ -286,7 +318,20 @@ def main(argv: list[str] | None = None) -> int:
         f"{EVALUATION_END.date().isoformat()} are outside the evaluation window "
         f"entirely (ADR-0017).\n",
     )
+    skipped = 0
     for activation in activations:
+        if args.changed:
+            current = fingerprint_for(
+                activation,
+                stored_bars(activation, args.catalog),
+                cost_model,
+            )
+            filed = unchanged_since(activation.name, current)
+            if filed is not None:
+                skipped += 1
+                print(f"{activation.name:<24} unchanged since {filed.name}", flush=True)
+                continue
+            _say_why_running(activation.name, current)
         verdict = run(activation, args.catalog, cost_model)
         _print(verdict)
         if args.write:
@@ -295,7 +340,32 @@ def main(argv: list[str] | None = None) -> int:
             path = OUT_DIR / f"{activation.name}_{stamp}.json"
             path.write_text(json.dumps(verdict.as_record(), indent=2) + "\n")
             print(f"    filed {path}", flush=True)
+    if args.changed:
+        ran = len(activations) - skipped
+        print(f"\n{ran} recomputed, {skipped} unchanged.", flush=True)
     return 0
+
+
+def _say_why_running(name: str, current: Fingerprint) -> None:
+    """
+    Name the input that moved, or say nothing usable was filed.
+
+    The cost of a recompute is minutes; the cost of not knowing why it ran is that the
+    operator learns to run everything, which is the state this flag exists to end.
+
+    """
+    from copilot.strategies.fingerprint import latest_verdict  # noqa: PLC0415
+
+    path = latest_verdict(name)
+    if path is None:
+        print(f"{name:<24} no verdict filed; running", flush=True)
+        return
+    filed = filed_fingerprint(path)
+    if filed is None:
+        print(f"{name:<24} {path.name} predates input fingerprints; running", flush=True)
+        return
+    moved = ", ".join(current.differs_from(filed))
+    print(f"{name:<24} {moved} changed since {path.name}; running", flush=True)
 
 
 if __name__ == "__main__":

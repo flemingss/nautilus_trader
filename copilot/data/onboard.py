@@ -51,7 +51,6 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from decimal import InvalidOperation
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from copilot.calibration.cost_model import CostModel
@@ -63,6 +62,9 @@ from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
 from copilot.data.marketstack import MarketstackClient
 from copilot.strategies.activations import REGISTRY_DIR
+from copilot.strategies.activations import find_activation
+from copilot.strategies.fingerprint import fingerprint_for
+from copilot.strategies.fingerprint import unchanged_since
 from copilot.validation.holdout import EVALUATION_END
 from copilot.validation.holdout import MAX_HOLDOUT_SHARE
 from copilot.validation.holdout import MIN_HOLDOUT_SHARE
@@ -93,8 +95,6 @@ gate has no room for the sessions the vendor has not published yet, and a backfi
 refuses after the survey said it would pass is worse than no survey.
 
 """
-
-VERDICTS_DIR = Path(__file__).resolve().parent.parent / "strategies" / "verdicts"
 
 PENNY = Decimal("0.01")
 
@@ -396,18 +396,28 @@ def steps_for(catalog_path: str, symbol: str, venue: str, coverage: Coverage | N
         ),
     )
 
-    filed = [name for name in names if any(VERDICTS_DIR.glob(f"{name}_*.json"))]
+    current: list[str] = []
+    stale: list[str] = []
+    if names and bars:
+        cost_model = CostModel.from_snapshot()
+        for name in names:
+            activation = find_activation(name)
+            fingerprint = fingerprint_for(activation, bars, cost_model)
+            (current if unchanged_since(name, fingerprint) else stale).append(name)
     steps.append(
         Step(
             "validated",
-            done=bool(filed) and len(filed) == len(names),
-            detail=f"{len(filed)}/{len(names)} activations have a filed verdict"
-            if names
-            else "nothing to validate yet",
+            done=bool(names) and not stale,
+            detail=(
+                f"{len(current)}/{len(names)} verdicts computed from the current inputs"
+                + (f"; stale or unfiled: {', '.join(stale)}" if stale else "")
+                if names
+                else "nothing to validate yet"
+            ),
             command=(
                 ""
-                if not names or len(filed) == len(names)
-                else "python -m copilot.strategies.validate --all --write"
+                if not names or not stale
+                else "python -m copilot.strategies.validate --changed --write"
             ),
         ),
     )

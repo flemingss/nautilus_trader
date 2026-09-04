@@ -51,11 +51,11 @@ and, as of 2026-09-03, the three scheduled early closes - on which the market sh
 
 The US close was about two hours ago. Nothing is urgent; this is the thinking part.
 
-| Step                                      | Command                                              | Walked 2026-09-04   |
-| ----------------------------------------- | ---------------------------------------------------- | ------------------- |
-| Ingest yesterday's bar                    | `python -m copilot.data.append`                      | **3s**, exit 0      |
-| Check corporate actions on anything new   | `python -m copilot.data.corporate_actions AAPL,MSFT` | **1s**, 0 to add    |
-| Recompute the verdict if anything changed | `python -m copilot.strategies.validate --all`        | **123s**, unchanged |
+| Step                                      | Command                                              | Walked 2026-09-04          |
+| ----------------------------------------- | ---------------------------------------------------- | -------------------------- |
+| Ingest yesterday's bar                    | `python -m copilot.data.append`                      | **3s**, exit 0             |
+| Check corporate actions on anything new   | `python -m copilot.data.corporate_actions AAPL,MSFT` | **1s**, 0 to add           |
+| Recompute the verdict if anything changed | `python -m copilot.strategies.validate --changed`    | **<5s** when nothing moved |
 
 The data gap closed on 2026-09-04. The evaluation window is pinned at both ends
 ([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)), so the same
@@ -63,12 +63,14 @@ catalog is frozen for research and fresh for execution, and `append` keeps it cu
 without moving a verdict. The first pass framed this as "the strategy warms from a frozen
 catalog"; it did not warm from anything, which is a different and worse problem.
 
-**GAP - "if anything changed" has no answer.** The verdict recompute is two minutes and
-it was run here for nothing: the catalog gained no bars, so no fold could have moved.
-`append` already knows - it printed `+0` - and nothing connects the two, so the operator
-either burns the two minutes daily or decides by memory whether to bother. A morning
-command that appends, and only then validates what actually changed, is the missing
-piece rather than a faster gate.
+~~**GAP - "if anything changed" has no answer.**~~ **Closed 2026-09-04.** The verdict
+recompute was two minutes, then five with twelve activations, and it was run here for
+nothing: the catalog gained no bars, so no fold could have moved. Every verdict now
+carries the four digests it was computed from, and `validate --changed` reads them
+against the world - the bars inside the window, the activation's identity, the cost
+basis, the code - and skips what cannot have moved, naming what did when it runs. The
+append lands past the window and so cannot change the data digest, which is the whole
+reason the morning is now cheap.
 
 ### Daytime - nothing
 
