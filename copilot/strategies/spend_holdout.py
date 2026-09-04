@@ -161,7 +161,7 @@ def run(
     if not bars:
         raise ValueError(f"no bars in the catalog for {instrument.id}")
 
-    carved = carve(bars)
+    carved = carve(bars, holdout_start=activation.validation.holdout_boundary)
     settings = activation.validation
     replay = make_replay(
         instrument=instrument,
@@ -229,7 +229,9 @@ def holdout_record(
             ],
             "purge_bars": result.purge_bars,
             "warmup_bars": result.warmup_bars,
-            "holdout_start": HOLDOUT_START.date().isoformat(),
+            "holdout_start": (
+                activation.validation.holdout_start or HOLDOUT_START.date().isoformat()
+            ),
             "holdout_bars": result.holdout_bars,
             "holdout_range": [fold.test_from.date().isoformat(), fold.test_to.date().isoformat()],
         },
@@ -305,7 +307,8 @@ def main(argv: list[str] | None = None) -> int:
     cost_model = CostModel.from_snapshot()
     print(
         f"Spending the holdout for {activation.name} ({activation.symbol}.{activation.venue}), "
-        f"bars from {HOLDOUT_START.date().isoformat()}.\n"
+        f"bars from "
+        f"{activation.validation.holdout_start or HOLDOUT_START.date().isoformat()}.\n"
         f"Net of costs: spread at {cost_model.percentile} per side from "
         f"{cost_model.snapshot}, plus IB commission.\n",
     )
