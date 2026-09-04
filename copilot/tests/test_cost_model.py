@@ -9,13 +9,16 @@ out to be gross. Each test pins one of those shut.
 
 from __future__ import annotations
 
+import tempfile
 from datetime import UTC
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
 from copilot.calibration.cost_model import CANONICAL_SNAPSHOT
+from copilot.calibration.cost_model import SNAPSHOT_DIR
 from copilot.calibration.cost_model import CostModel
 from copilot.calibration.cost_model import UncalibratedSymbolError
 from copilot.calibration.cost_model import commission
@@ -130,13 +133,50 @@ def test_the_canonical_snapshot_loads_and_covers_the_universe() -> None:
         assert model.spread_bps_for(symbol) > 0
 
 
+def test_the_pin_is_the_measured_basis_not_the_broker_snapshot() -> None:
+    # ADR-0019 moved the source. This failing means the pin was changed without the
+    # argument that goes with it.
+    assert CANONICAL_SNAPSHOT.startswith("spread_history_")
+
+
+def test_the_superseded_broker_snapshot_still_reads() -> None:
+    # ADR-0011's own record has to stay reproducible; a superseded decision whose
+    # numbers can no longer be recomputed is a claim rather than a record.
+    old = SNAPSHOT_DIR / "spread_snapshot_20260901T154744Z.json"
+    model = CostModel.from_snapshot(path=old)
+    assert model.spread_bps_for("SPY") == Decimal("0.5238")
+
+
+def test_a_snapshot_measured_at_another_percentile_refuses() -> None:
+    # Reinterpreting a p95 file as a p75 one would silently change every verdict's cost.
+    import json
+
+    source = json.loads((SNAPSHOT_DIR / CANONICAL_SNAPSHOT).read_text())
+    source["basis"]["percentile"] = "p75"
+    path = Path(tempfile.mkdtemp()) / "wrong_percentile.json"
+    path.write_text(json.dumps(source))
+    with pytest.raises(ValueError, match="re-measure"):
+        CostModel.from_snapshot(path=path)
+
+
 def test_an_uncalibrated_symbol_refuses_rather_than_guesses(tmp_path) -> None:
+    # NVDA rather than GOOGL: the repin to measured history (ADR-0019) calibrated the
+    # whole 20-symbol store, so GOOGL now has a coefficient and no longer tests this.
     model = CostModel.from_snapshot()
-    with pytest.raises(UncalibratedSymbolError, match="GOOGL"):
-        model.spread_bps_for("GOOGL")
+    with pytest.raises(UncalibratedSymbolError, match="NVDA"):
+        model.spread_bps_for("NVDA")
     # And the objective refuses at build time, before any replay has run.
-    with pytest.raises(UncalibratedSymbolError, match="GOOGL"):
-        model.net_expectancy_for("GOOGL")
+    with pytest.raises(UncalibratedSymbolError, match="NVDA"):
+        model.net_expectancy_for("NVDA")
+
+
+def test_the_repin_calibrated_the_whole_store_not_just_the_traded_three() -> None:
+    # The broker snapshot covered AAPL, MSFT and SPY because those were the instruments
+    # a live session could subscribe to. The measured history covers everything bought,
+    # which is what the universe correction will need and could not have had before.
+    model = CostModel.from_snapshot()
+    for symbol in ("AAPL", "MSFT", "SPY", "GOOGL", "JPM", "XOM"):
+        assert model.spread_bps_for(symbol) > 0
 
 
 def test_the_net_objective_subtracts_exactly_the_round_trip_cost() -> None:
@@ -160,7 +200,7 @@ def test_the_record_names_its_exact_basis() -> None:
     record = CostModel.from_snapshot().as_record("SPY")
     assert record["snapshot"] == CANONICAL_SNAPSHOT
     assert record["percentile"] == "p95"
-    assert Decimal(record["bps_per_side"]) == Decimal("0.5238")
+    assert Decimal(record["bps_per_side"]) == Decimal("0.5466")
     assert "1.00" in record["commission"]
 
 

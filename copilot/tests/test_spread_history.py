@@ -16,10 +16,15 @@ from datetime import UTC
 from datetime import date
 from datetime import datetime
 
+from copilot.calibration.spread_history import EXECUTION_PREFIX
+from copilot.calibration.spread_history import EXECUTION_WINDOW_MINUTES
 from copilot.calibration.spread_history import UNDEFINED
 from copilot.calibration.spread_history import bucket_for
+from copilot.calibration.spread_history import execution_key
+from copilot.calibration.spread_history import execution_years
 from copilot.calibration.spread_history import resolve
 from copilot.calibration.spread_history import summarise
+from copilot.calibration.spread_history import worst_execution_year
 
 
 def eastern(month: int, day: int, hour: int, minute: int) -> datetime:
@@ -167,3 +172,69 @@ def test_an_id_outside_every_range_resolves_to_nothing() -> None:
 
     assert resolve(mapping, 13, date(2020, 1, 2)) is None
     assert resolve(mapping, 9999, date(2018, 6, 1)) is None
+
+
+# --- the execution window, and the year it charges from ------------------------------
+
+
+def dist(p95: float, samples: int = 1_000):
+    """
+    Build a distribution with only the field the charge reads.
+    """
+    from copilot.calibration.spread_history import Distribution
+
+    return Distribution(samples=samples, median=p95 / 2, p75=p95, p95=p95, p99=p95, maximum=p95)
+
+
+def test_the_execution_window_starts_at_the_open() -> None:
+    # It includes the first five minutes, which are the widest of the day. Excluding
+    # them understates the charge on exactly the moment the order is most likely to
+    # cross, and did - the first attempt at this cut returned early on an "open" bucket.
+    assert execution_key(eastern(6, 3, 9, 30)) == f"{EXECUTION_PREFIX}:2024"
+    assert execution_key(eastern(6, 3, 9, 29)) is None
+
+
+def test_the_execution_window_is_two_hours_long() -> None:
+    assert EXECUTION_WINDOW_MINUTES == 120
+    assert execution_key(eastern(6, 3, 11, 29)) is not None
+    assert execution_key(eastern(6, 3, 11, 30)) is None
+
+
+def test_the_execution_window_is_not_part_of_the_partition() -> None:
+    # It overlaps open and session on purpose; a cost is not a census.
+    moment = eastern(6, 3, 9, 31)
+    assert bucket_for(moment) == "open"
+    assert execution_key(moment) is not None
+
+
+def test_the_execution_key_carries_the_eastern_year() -> None:
+    # 2025-01-01 00:30 UTC is still 2024 in New York, and a quote is filed under the
+    # session's own calendar rather than under UTC's.
+    from datetime import UTC
+    from datetime import datetime
+
+    moment = datetime(2025, 1, 1, 0, 30, tzinfo=UTC)
+    assert execution_key(moment) is None  # outside regular hours either way
+
+
+def test_execution_years_ignores_the_partition_buckets() -> None:
+    windows = {"open": dist(9.0), "session": dist(2.0), f"{EXECUTION_PREFIX}:2024": dist(3.0)}
+    assert sorted(execution_years(windows)) == [2024]
+
+
+def test_the_charge_takes_the_widest_year_not_the_average() -> None:
+    # Spreads here are set by volatility regime rather than by a trend, so the pooled
+    # number prices a year that did not happen.
+    windows = {
+        f"{EXECUTION_PREFIX}:2021": dist(1.0),
+        f"{EXECUTION_PREFIX}:2020": dist(4.0),
+        f"{EXECUTION_PREFIX}:2023": dist(2.0),
+    }
+    year, chosen = worst_execution_year(windows)
+    assert year == 2020
+    assert chosen.p95 == 4.0
+
+
+def test_a_symbol_with_no_execution_samples_charges_nothing() -> None:
+    # Absent rather than defaulted: the cost model turns that into a refusal to score.
+    assert worst_execution_year({"session": dist(2.0)}) is None

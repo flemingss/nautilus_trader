@@ -42,6 +42,7 @@ import json
 import sys
 from array import array
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
@@ -71,6 +72,33 @@ PRICE_SCALE = 1e-9
 # its gap at the open, so those two windows are reported separately from the session.
 OPEN_MINUTES = 5
 CLOSE_MINUTES = 5
+
+EXECUTION_WINDOW_MINUTES = 2 * 60
+"""
+Length of the charter's predeclared execution window, from the open.
+
+**This, not the close, is where a real order crosses.** The replay fills at a bar close
+because a daily bar has nothing else to fill against, and [ADR-0013] makes that a bracket
+rather than a claim about the world: the charter puts the order into the first one to two
+hours of the next session. Charging the closing spread would price a window no order uses.
+
+It overlaps ``open`` and ``session`` deliberately and is therefore not part of the
+three-way partition. A cost is not a census; the right cut for a coefficient is the window
+the order goes into, whatever else that window is also counted in.
+
+[ADR-0013]: ../docs/decisions/0013-entry-timing-is-evaluated-as-a-bracket.md
+
+"""
+
+EXECUTION_PREFIX = "execution"
+"""
+Key prefix for the per-year execution-window buckets, as ``execution:2024``.
+
+Carried in the same map as the partition buckets so the whole measurement is one pass
+over the files. At roughly twenty minutes a pass on the stored quotes, a second one to
+compute a second cut is not a detail.
+
+"""
 
 
 @dataclass(frozen=True)
@@ -144,6 +172,24 @@ def bucket_for(moment: datetime) -> str | None:
     return "session"
 
 
+def execution_key(moment: datetime) -> str | None:
+    """
+    Return the per-year execution-window key for an instant, or None if outside it.
+
+    Keyed by year because one number over 7.6 years hides what the cost model most needs
+    to know. Measured on AAPL, the window's p95 runs 0.70 bps per side in 2023 and 1.76
+    in 2020 - a single pooled figure is wrong in most individual years, and wrong
+    cheaply in the ones that matter.
+
+    """
+    local = moment.astimezone(EASTERN)
+    minutes = local.hour * 60 + local.minute
+    open_at = 9 * 60 + 30
+    if not (open_at <= minutes < open_at + EXECUTION_WINDOW_MINUTES):
+        return None
+    return f"{EXECUTION_PREFIX}:{local.year}"
+
+
 def read_quotes(path: Path, symbols: Symbology) -> dict[tuple[str, str], array[float]]:
     """
     Stream one stored quote file, returning spreads in bps per symbol and window.
@@ -171,7 +217,11 @@ def read_quotes(path: Path, symbols: Symbology) -> dict[tuple[str, str], array[f
             if symbol is None:
                 continue
             mid = (bid + ask) / 2
-            out[(symbol, window)].append((ask - bid) / mid * 10000)
+            bps = (ask - bid) / mid * 10000
+            out[(symbol, window)].append(bps)
+            execution = execution_key(moment)
+            if execution is not None:
+                out[(symbol, execution)].append(bps)
     return out
 
 
@@ -247,6 +297,42 @@ def measure(store: str, schema: str = "bbo-1m") -> dict[str, dict[str, Distribut
     return dict(out)
 
 
+def execution_years(windows: Mapping[str, Distribution]) -> dict[int, Distribution]:
+    """
+    Return only the per-year execution-window buckets from one symbol's measurement.
+    """
+    out: dict[int, Distribution] = {}
+    for key, dist in windows.items():
+        prefix, _, year = key.partition(":")
+        if prefix == EXECUTION_PREFIX and year:
+            out[int(year)] = dist
+    return out
+
+
+def worst_execution_year(windows: Mapping[str, Distribution]) -> tuple[int, Distribution] | None:
+    """
+    Return the execution-window year the model charges from: the widest p95.
+
+    The widest rather than the pooled figure, and deliberately: spreads here are set by
+    volatility regime rather than by a trend, so the pooled number prices a year that did
+    not happen. Charging the worst measured year is the same conservatism [ADR-0011]
+    chose when it took p95 over the median, applied to the axis the measurement exposed.
+
+    It is also the honest stand-in for the years there is no data for. The record begins
+    2018-05 and the gate scores from 2005; large-cap spreads were wider in the earlier
+    span and nothing here measures by how much, so the charge is the worst thing that was
+    seen rather than the average of what was.
+
+    [ADR-0011]: ../docs/decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md
+
+    """
+    years = execution_years(windows)
+    if not years:
+        return None
+    year = max(years, key=lambda y: years[y].p95)
+    return year, years[year]
+
+
 def as_record(measured: dict[str, dict[str, Distribution]], store: str) -> dict[str, object]:
     """
     Return the snapshot written to disk, in the shape a cost model can pin.
@@ -260,19 +346,55 @@ def as_record(measured: dict[str, dict[str, Distribution]], store: str) -> dict[
             "open": f"first {OPEN_MINUTES} minutes of regular hours",
             "close": f"last {CLOSE_MINUTES} minutes of regular hours",
             "session": "the rest of regular hours",
+            "execution": (
+                f"first {EXECUTION_WINDOW_MINUTES // 60} hours of regular hours, per year - "
+                f"the charter's predeclared execution window, and the one a cost is charged "
+                f"from. Overlaps open and session; not part of the partition."
+            ),
+        },
+        "basis": {
+            "window": "execution",
+            "rule": "worst measured year, p95 of the full spread, halved to per side",
+            "percentile": "p95",
         },
         "symbols": [
-            {
-                "symbol": symbol,
-                "full_spread_bps": {w: d.as_record() for w, d in sorted(windows.items())},
-                "per_side_bps": {
-                    w: {"median": round(d.median / 2, 4), "p95": round(d.p95 / 2, 4)}
-                    for w, d in sorted(windows.items())
-                },
-            }
-            for symbol, windows in sorted(measured.items())
+            _symbol_record(symbol, windows) for symbol, windows in sorted(measured.items())
         ],
     }
+
+
+def _symbol_record(symbol: str, windows: Mapping[str, Distribution]) -> dict[str, object]:
+    """
+    Return one symbol's block: the partition, the per-year window, and the charge.
+    """
+    partition = {w: d for w, d in windows.items() if not w.startswith(EXECUTION_PREFIX)}
+    years = execution_years(windows)
+    worst = worst_execution_year(windows)
+    record: dict[str, object] = {
+        "symbol": symbol,
+        "full_spread_bps": {w: d.as_record() for w, d in sorted(partition.items())},
+        "per_side_bps": {
+            w: {"median": round(d.median / 2, 4), "p95": round(d.p95 / 2, 4)}
+            for w, d in sorted(partition.items())
+        },
+        "execution_by_year": {
+            str(year): {
+                "samples": d.samples,
+                "p95_full_bps": round(d.p95, 4),
+                "p95_per_side_bps": round(d.p95 / 2, 4),
+            }
+            for year, d in sorted(years.items())
+        },
+    }
+    if worst is not None:
+        year, dist = worst
+        record["charged"] = {
+            "worst_year": year,
+            "samples": dist.samples,
+            "p95_full_bps": round(dist.p95, 4),
+            "p95_per_side_bps": round(dist.p95 / 2, 4),
+        }
+    return record
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -303,6 +425,23 @@ def main(argv: list[str] | None = None) -> int:
                 f"  {symbol:<7}{window:<9}{d.samples:>10,}"
                 f"{d.median:>9.3f}{d.p95:>9.3f}{d.p99:>9.3f}",
             )
+
+    years = sorted({y for w in measured.values() for y in execution_years(w)})
+    if years:
+        span = EXECUTION_WINDOW_MINUTES // 60
+        print(f"\n  Execution window, first {span} hours, p95 bps per side by year")
+        print(
+            f"  {'symbol':<7}" + "".join(f"{y:>8}" for y in years) + f"{'charged':>10}{'from':>7}",
+        )
+        for symbol, windows in sorted(measured.items()):
+            by_year = execution_years(windows)
+            worst = worst_execution_year(windows)
+            if worst is None:
+                continue
+            cells = "".join(
+                f"{by_year[y].p95 / 2:>8.3f}" if y in by_year else f"{'-':>8}" for y in years
+            )
+            print(f"  {symbol:<7}{cells}{worst[1].p95 / 2:>10.4f}{worst[0]:>7}")
 
     if args.write:
         OUT_DIR.mkdir(parents=True, exist_ok=True)

@@ -64,21 +64,30 @@ if TYPE_CHECKING:
 
 SNAPSHOT_DIR = Path(__file__).parent / "out"
 
-CANONICAL_SNAPSHOT = "spread_snapshot_20260901T154744Z.json"
+CANONICAL_SNAPSHOT = "spread_history_20260904T085055Z.json"
 """
-The pinned calibration source: the first snapshot reproducible from a commit.
+The pinned calibration source: measured historical top of book, charged per [ADR-0019].
+
+**7.6 years of real quotes, ~750,000 samples per symbol**, cut to the charter's
+predeclared execution window and charged at the worst measured year's p95. It replaces
+`spread_snapshot_20260901T154744Z.json` - 248 to 301 **delayed** quotes from one
+27-minute session, sampled mid-session while the order goes in near the open - which was
+the weakest input in this model by some distance.
 
 Pinned by name rather than "the newest file" so that re-running the calibrator cannot
 silently change what every verdict is charged. Moving the pin is a deliberate act that
 belongs in a commit touching this line.
 
+[ADR-0019]: ../docs/decisions/0019-spread-is-charged-from-measured-history.md
+
 """
 
 PERCENTILE = "p95"
 """
-The coefficient chosen in [ADR-0011].
+The coefficient chosen in [ADR-0011] and kept by [ADR-0019].
 
-``full_spread_bps`` key in the snapshot.
+The repin changed the *source* of the number and not the conservatism of it. Read from
+the snapshot's ``basis`` block, which refuses if the file was measured at anything else.
 
 """
 
@@ -163,6 +172,47 @@ def round_trip_cost_r(
     return (spread + fees) / risk_amount
 
 
+def _from_measured(data: dict, percentile: str) -> dict[str, Decimal]:
+    """
+    Read the charged coefficient from a measured-history snapshot.
+
+    The ``charged`` block is the file's own answer, not a percentile picked here: the
+    measurement decides which year is worst and states it, so this cannot silently take
+    a different one. A symbol the measurement could not price has no block and is
+    absent, which is what makes an uncalibrated symbol refuse rather than guess.
+
+    """
+    if data["basis"]["percentile"] != percentile:
+        raise ValueError(
+            f"snapshot is measured at {data['basis']['percentile']} and the model asked "
+            f"for {percentile}; re-measure rather than reinterpreting the file",
+        )
+    return {
+        row["symbol"]: Decimal(str(row["charged"]["p95_per_side_bps"]))
+        for row in data["symbols"]
+        if row.get("charged")
+    }
+
+
+def _from_broker_snapshot(data: dict, percentile: str) -> dict[str, Decimal]:
+    """
+    Read the coefficient from a live broker snapshot, the basis [ADR-0011] pinned.
+
+    Kept after the repin so that ADR-0011's own record stays reproducible. A superseded
+    decision whose numbers can no longer be recomputed is a claim rather than a record.
+
+    [ADR-0011]: ../docs/decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md
+
+    """
+    bps: dict[str, Decimal] = {}
+    for summary in data["symbols"]:
+        if not summary.get("samples"):
+            continue
+        symbol = summary["instrument_id"].split("=")[0].split(".")[0]
+        bps[symbol] = Decimal(str(summary["full_spread_bps"][percentile])) / 2
+    return bps
+
+
 @dataclass(frozen=True)
 class CostModel:
     """
@@ -184,13 +234,12 @@ class CostModel:
         """
         resolved = path if path is not None else SNAPSHOT_DIR / CANONICAL_SNAPSHOT
         data = json.loads(resolved.read_text())
-        bps: dict[str, Decimal] = {}
-        for summary in data["symbols"]:
-            if not summary.get("samples"):
-                continue
-            symbol = summary["instrument_id"].split("=")[0].split(".")[0]
-            bps[symbol] = Decimal(str(summary["full_spread_bps"][percentile])) / 2
-        return cls(bps_per_side=bps, snapshot=resolved.name, percentile=percentile)
+        reader = _from_measured if "basis" in data else _from_broker_snapshot
+        return cls(
+            bps_per_side=reader(data, percentile),
+            snapshot=resolved.name,
+            percentile=percentile,
+        )
 
     def spread_bps_for(self, symbol: str) -> Decimal:
         """
