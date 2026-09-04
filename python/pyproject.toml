@@ -405,6 +405,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/preflight.py" = [
   "T201",
 ] # Operator CLI: the check table it prints is the product
+"copilot/live/warmup.py" = [
+  "T201",
+] # Operator CLI: the readiness table it prints is the product
 "copilot/live/controlled_order.py" = [
   "ANN401",
   "T201",
