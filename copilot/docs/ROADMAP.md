@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Seventeen items. Grouped by blocking condition rather than by component, because that is
+Eighteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -236,15 +236,16 @@ distinguishable without guessing, and the rejection itself is unchanged. `shutdo
 is no longer blocked by this class of noise. One test drives an orphan fill both ways and
 was verified to fail on the unfixed engine; registered in the delta.
 
-### Waiting on a decision (3)
+### Waiting on a decision (4)
 
 Investigated as far as they can be. **No further work is useful until each is called.**
 
-| Item                                                             | Stage  | The decision                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ---------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Buy consolidated US equity data, or not                          | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, and [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) now covers intraday from 2018 at near-zero cost, which removes most of the reason to buy.                                                                                                                                                      |
-| Replace Marketstack with EODHD, or keep it                       | 00     | EODHD is roughly $30/month against Marketstack's $49.99 for strictly more: 30+ years of EOD, corporate actions, and delisted securities. Not adoptable until it passes the same coherence probe that caught Marketstack's fake intraday. **Cancel nothing first** - only Marketstack reaches the 2005-2018 daily series.                                                                                           |
-| Repin the spread basis to measured history, or keep the snapshot | 00     | `spread_history` measures p95 spread from 7.6 years of real top-of-book, ~750,000 samples per symbol against the pinned snapshot's 248-301 delayed ones. The snapshot overcharges the closing window by 1.5-2.5x, which is the direction [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) intended. **Repinning moves every filed verdict**, so it is a decision rather than an edit. |
+| Item                                                             | Stage  | The decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| ---------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Buy consolidated US equity data, or not                          | 00, 10 | Prices confirmed in Client Portal, then buy or skip. Marketstack already covers daily bars, and [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) now covers intraday from 2018 at near-zero cost, which removes most of the reason to buy.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Replace Marketstack with EODHD, or keep it                       | 00     | EODHD is roughly $30/month against Marketstack's $49.99 for strictly more: 30+ years of EOD, corporate actions, and delisted securities. Not adoptable until it passes the same coherence probe that caught Marketstack's fake intraday. **Cancel nothing first** - only Marketstack reaches the 2005-2018 daily series.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| Fill the 2026 holes in the daily series, or wait for the vendor  | 00     | Marketstack's 2026 rows carry **11 unusable symbol-days across 3 symbols**, persistent across a re-fetch: null closes on 2026-06-09, 06-10 and 06-15, a close of exactly **0.0** for SPY on 2026-04-07 and 04-08, and an incoherent OHLC for MSFT on 2026-01-15 where the high sits below the open. The ingest gate refuses the batch at a 2.17% rejection ratio, so **the catalog cannot be brought current until this is called**. Databento's `EQUS.SUMMARY` covers 2024-07 onward and its `statistics` schema carries the official auction close, which would fill them for cents - but [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) says Databento is the intraday source *only*, so using it here is a new decision about mixed provenance in one series, not an edit. |
+| Repin the spread basis to measured history, or keep the snapshot | 00     | `spread_history` measures p95 spread from 7.6 years of real top-of-book, ~750,000 samples per symbol against the pinned snapshot's 248-301 delayed ones. The snapshot overcharges the closing window by 1.5-2.5x, which is the direction [ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) intended. **Repinning moves every filed verdict**, so it is a decision rather than an edit.                                                                                                                                                                                                                                                                                                                                                                                  |
 
 **Resolved 2026-09-02:** the two items that needed a live session are settled - realtime
 quotes are still not entitled, and the sibling-subscription stall does not reproduce. Both
@@ -296,7 +297,8 @@ No code closes these.
 | ~~Pull intraday, and verify the daily bars against it~~ **Done 2026-09-03**                                                  | 00    | $19.54 bought 7.6 years of per-minute bars and quotes. 38,539 sessions checked: **99.91% of daily bars contain the listing venue's own range within 20 bps**. The 33 that do not concentrate on 2023-01-24, the NYSE opening-auction failure, where the venue printed trades that were later busted and the consolidated bar correctly excludes.                                                                                |
 
 | **Iterate the operator-day draft** | 08 | [`DRAFT_OPERATOR_DAY.md`](DRAFT_OPERATOR_DAY.md) walks the JST clock from the close through the execution window to the next morning, with the command for each step and the gaps in sequence. A working draft to be argued with a few times, not governance. Its own open questions are listed at the end of it. |
-| **Give the live path a source of today's bar** | 08 | The strategy warms indicators from the catalog, and the catalog is **frozen at 2025-12-31**: extending it pushes the holdout past the charter's 20% band and every `validate` run raises `HoldoutCarveError` ([ADR-0012](decisions/0012-the-holdout-is-carved-at-2022-01-01.md)). Research needs the freeze and execution needs freshness, and today one catalog serves both. `supervised_session` already works around it by pricing from a live quote, which is fine for a plumbing check and not for a signal. **Nothing decides this yet.** |
+| ~~Give the live path a source of today's bar~~ **Done 2026-09-04** | 08 | This row's premise was wrong, and the correction was the substance. The live path never read the catalog at all: `on_start` subscribes and nothing else, so an unwarmed strategy needs **sixteen real sessions** before it can fire, which reads as "no setups triggered". The window is now pinned at both ends ([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)) so one catalog serves research frozen and execution fresh, and `copilot/live/warmup.py` loads the warm-up or refuses, naming the missing sessions. All six verdicts re-run bit-identical. **The mechanism is built; the catalog is still at 2025-12-31** until the vendor holes above are called. |
+| **Append the catalog daily** | 08 | Both halves now need it and neither has it: the warm-up refuses a catalog older than the last session, and nothing runs `backfill` on a schedule. The same missing limb - something that runs unattended on a clock - is what the alerting row needs, so they are one piece of operational work wearing two hats. Cannot complete while the 2026 holes stand, but the appender that refuses them is the same appender. |
 | **Build an alerting path** | 08 | The playbook makes alerting a gate for unattended paper and a required limb of the kill switch - *preserve state and alert*, *acknowledge critical alerts within the deadline*. **No code sends an alert anywhere.** `failure_injection` proves the system notices, not that anyone is told. An operator asleep in Japan while the US session runs is the whole reason this matters. |
 | **Compare live decisions against offline replay** | 08 | The playbook's After checklist requires it and no tool does it. Without it, a live session that silently decided differently from the backtest looks identical to one that agreed. |
 | **Size from settled cash, not headline equity** | 06 | The charter requires it for a cash account and no code reads a settled figure. The paper account is MARGIN with USD 1M, so it **cannot** surface the bug ([paper fidelity limits](PAPER_CAMPAIGN.md)). Pairs with the settlement-rules item under the account group. |
@@ -436,6 +438,32 @@ sessions, zero extra, zero missing - and flags only SPY's two phantom rows.
 That test earned its keep immediately. The first version closed 31 December when
 1 January fell on a Saturday, following the federal observance rule; the exchanges stay
 open, and all three symbols traded on 2010-12-31 and 2021-12-31.
+
+### The vendor's 2026 rows are holed, and the gate refused them
+
+Measured 2026-09-04, attempting to bring the catalog current for the live warm-up. Of 507
+rows fetched for AAPL, MSFT and SPY over 2026-01-01 to 2026-09-04, **11 are unusable**:
+
+| Defect           | Rows | Detail                                                     |
+| ---------------- | ---- | ---------------------------------------------------------- |
+| `close` is null  | 8    | 2026-06-09 and 06-10 for all three; 06-15 for MSFT and SPY |
+| `close` is `0.0` | 2    | SPY 2026-04-07 and 04-08, with open, high and low all sane |
+| Incoherent OHLC  | 1    | MSFT 2026-01-15, high 464.12 below open 466.345            |
+
+That is a 2.17% rejection ratio against `backfill`'s 2% threshold, so **nothing was
+written** - which is the gate working. A half-ingested history is worse than none,
+because later runs treat whatever landed as complete.
+
+**It is not transient.** A narrow re-fetch of the exact dates returns the identical
+nulls, so this is the vendor's stored data rather than a bulk-query artefact. AAPL has a
+close on 2026-06-15 while MSFT and SPY do not, so it is per-symbol-per-day rather than a
+market-wide outage. The zero closes are the more dangerous shape: a null is refused by
+any schema check, while `0.0` is a number, and a gate that only tested for presence would
+have written it.
+
+The 2005-2025 series is untouched and every filed verdict stands. What is blocked is
+bringing the catalog current, which the live warm-up now requires - tracked under
+"waiting on a decision" above.
 
 ### Other findings worth keeping
 
