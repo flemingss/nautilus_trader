@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "SPY.ARCX",
-  "run_at": "2026-09-04T13:32:08.867467+00:00",
-  "runtime_seconds": 19.9,
+  "run_at": "2026-09-04T14:58:06.694257+00:00",
+  "runtime_seconds": 21.9,
   "bars": 4280,
   "bar_range": [
     "2005-01-03",
@@ -63,8 +63,8 @@
     "data": "e34c0522b3c298a9ac58609336e99e40faa51c79374129b56aed832d0e3ec975",
     "identity": "ecf45fcf0961a7639fde3d8a2a534934be494ada3111b1d450a16013c83bc8b8",
     "cost": "1198ecf3433ac8a8e172f651b23b2252de5b22244c810e44a188a7ec739895b8",
-    "code": "c5919264a10d27cfb783cd661dfd5ebf30ed7c74351c9ec03eb80ea31717ae65",
-    "combined": "1fe560c63ed4fd4e20b31a9b46af5f3d10a03fd4c080a57279a69f3b252c7b24"
+    "code": "e056fe8a278ea7387594bf6096384062b78a03fc8f2be4039047bb298f0c1285",
+    "combined": "8c0e869ca6526ed94e18eae8da236a2dae00f7aed2b13d10a7ea08613da67c73"
   },
   "holdout_spent": false,
   "folds": 31,

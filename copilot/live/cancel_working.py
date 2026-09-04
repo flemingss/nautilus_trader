@@ -52,13 +52,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 from datetime import UTC
 from datetime import datetime
 from typing import Any
 
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
+from copilot.live.session import add_broker_arguments
 from copilot.live.symbology import broker_instrument_id
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.trading import Strategy
@@ -152,14 +152,10 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.cancel_working",
         description="Cancel every working order for an instrument and verify the broker agrees.",
     )
-    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
-    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
+    add_broker_arguments(parser, data_client_id=821, exec_client_id=822)
     parser.add_argument("--symbol", default="AAPL")
     parser.add_argument("--venue", default="XNAS")
     parser.add_argument("--settle-secs", type=int, default=30)
-    parser.add_argument("--data-client-id", type=int, default=821)
-    parser.add_argument("--exec-client-id", type=int, default=822)
     args = parser.parse_args(argv)
 
     if not args.account:

@@ -390,9 +390,8 @@ def _report(catalog_path: str, symbols: Sequence[str], start: date, end: date) -
             print(f"  {f.symbol:<7}{'-':<13}{'-':>8}{'-':>14}   {f.status}")
         else:
             when = f.action.effective.date()
-            print(
-                f"  {f.symbol:<7}{when!s:<13}{f.action.factor:>8}{f.action.kind.value:>14}   {f.status}",
-            )
+            factor, kind = f.action.factor, f.action.kind.value
+            print(f"  {f.symbol:<7}{when!s:<13}{factor:>8}{kind:>14}   {f.status}")
     missing = sum(1 for f in findings if f.blocks)
     if missing:
         print(f"\n  {missing} action(s) need an ACTIONS entry before these symbols are used")

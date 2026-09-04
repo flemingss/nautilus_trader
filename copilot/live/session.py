@@ -35,6 +35,8 @@ wrong-but-plausible account; the exact match catches a right-shaped wrong one.
 
 from __future__ import annotations
 
+import argparse
+import os
 from dataclasses import dataclass
 from dataclasses import field
 
@@ -165,6 +167,26 @@ def verify_paper_session(
         )
 
 
+def add_broker_arguments(
+    parser: argparse.ArgumentParser,
+    *,
+    data_client_id: int,
+    exec_client_id: int,
+) -> None:
+    """
+    Add the five flags every broker-connected command takes, worded once.
+
+    The client ids are per command and required here rather than defaulted, because IB
+    partitions order-id space by client id and two commands sharing one collide.
+
+    """
+    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
+    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
+    parser.add_argument("--data-client-id", type=int, default=data_client_id)
+    parser.add_argument("--exec-client-id", type=int, default=exec_client_id)
+
+
 __all__ = [
     "CLIENT_ID_PARTITION",
     "GATEWAY_LIVE_PORT",
@@ -176,6 +198,7 @@ __all__ = [
     "TWS_PAPER_PORT",
     "NotAPaperSessionError",
     "PaperSession",
+    "add_broker_arguments",
     "verify_client_id",
     "verify_paper_session",
 ]

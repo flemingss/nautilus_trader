@@ -30,15 +30,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 from dataclasses import asdict
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 
+from copilot.live.account import EXEC_CLIENT_VENUE
+from copilot.live.account import find_account
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
+from copilot.live.session import add_broker_arguments
 from copilot.live.symbology import broker_instrument_id
 from copilot.strategies.activations import load_activations
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
@@ -79,14 +81,6 @@ papered over by quietly using one form everywhere.
 """
 DEFAULT_SETTLE_SECS = 30
 
-EXEC_CLIENT_VENUE = "IB"
-"""
-The venue the execution client registers its account under.
-
-Not the instrument venue. Instruments resolve on ``SMART``; the account reads
-``IB-DUT067974``, so a venue-keyed lookup has to search both.
-
-"""
 
 NO_ACCOUNT_HINT = (
     " - no account reached the cache. Observed cause on 2026-09-01: TWS had "
@@ -221,14 +215,14 @@ def observe_environment(cache: object, session: PaperSession) -> list[Check]:
     # name, so the account id reads `IB-DUT067974`. Searching only the instrument venues
     # finds nothing, which is how the first run reported a missing account that was
     # sitting in the cache the whole time.
-    venues = sorted({i.id.venue for i in instruments} | {Venue(EXEC_CLIENT_VENUE)}, key=str)
-    found = [(v, a) for v in venues if (a := cache.account_id(v)) is not None]
+    venues = tuple(sorted({i.id.venue for i in instruments} | {Venue(EXEC_CLIENT_VENUE)}, key=str))
+    found = find_account(cache, venues)
 
     # An account id we supplied and printed back proves nothing. This is the only check
     # that can tell us whether the IB paper *login* is the same string as the account id.
-    account_id = str(found[0][1]) if found else ""
+    account_id = found[1] if found else ""
     reported = account_id.split("-", 1)[-1] if account_id else ""
-    account = cache.account_for_venue(found[0][0]) if found else None
+    account = cache.account_for_venue(found[0]) if found else None
     balances = account.balances() if account is not None else {}
 
     checks.append(
@@ -269,11 +263,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.preflight",
         description="Paper stages one and two: connect with orders disabled, confirm environment.",
     )
-    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
-    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
-    parser.add_argument("--data-client-id", type=int, default=801)
-    parser.add_argument("--exec-client-id", type=int, default=802)
+    add_broker_arguments(parser, data_client_id=801, exec_client_id=802)
     parser.add_argument("--settle-secs", type=int, default=DEFAULT_SETTLE_SECS)
     parser.add_argument(
         "--instruments",

@@ -2,7 +2,7 @@
 Paper stage five: a full supervised round trip, sized as the real account will be.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.supervised_session --account DUT067974 --capital 1000
+    python -m copilot.live.probes.supervised_session --account DUT067974 --capital 1000
 
 **This fills.** Everything before it was priced where the market could not reach it. Stage
 five exists to test the parts that a fill is the only way to reach: the bracket's market
@@ -362,7 +362,7 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     parser = argparse.ArgumentParser(
-        prog="python -m copilot.live.supervised_session",
+        prog="python -m copilot.live.probes.supervised_session",
         description="Paper stage five: a supervised round trip, sized for the real account.",
     )
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))

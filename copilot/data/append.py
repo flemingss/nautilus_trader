@@ -65,10 +65,8 @@ from typing import TYPE_CHECKING
 
 from copilot.data.calendar import session_close
 from copilot.data.calendar import trading_days
-from copilot.data.catalog import bar_type_for
-from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
-from copilot.data.catalog import read_daily_bars
+from copilot.data.catalog import read_series
 from copilot.data.catalog import write_ingestion
 from copilot.data.marketstack import IngestionResult
 from copilot.data.marketstack import MarketstackClient
@@ -159,11 +157,10 @@ def last_stored_session(catalog_path: str, symbol: str, venue: str) -> date:
     to is a backfill, and quietly turning into one would pull twenty years on a schedule.
 
     """
-    instrument = equity_for(symbol, venue)
-    bars = read_daily_bars(open_catalog(catalog_path), bar_type_for(instrument.id))
+    bars = read_series(catalog_path, symbol, venue)
     if not bars:
         raise NotBackfilledError(
-            f"the catalog holds no bars for {instrument.id}. This appends to a history, "
+            f"the catalog holds no bars for {symbol}.{venue}. This appends to a history, "
             f"it does not create one: python -m copilot.data.backfill --symbols {symbol} "
             f"--from 2005-01-01",
         )

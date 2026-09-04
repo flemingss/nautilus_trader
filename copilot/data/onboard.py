@@ -376,7 +376,8 @@ def steps_for(
                         if f.action
                     )
                     if blocking
-                    else f"{sum(1 for f in findings if f.action)} vendor action(s), all registered or adjusted"
+                    else f"{sum(1 for f in findings if f.action)} vendor action(s), "
+                    "all registered or adjusted"
                 ),
                 command=(
                     f"add the action(s) to ACTIONS in copilot/data/corporate_actions.py, then "

@@ -2,6 +2,23 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-04, later (the shape, before it compounded)
+
+### Reshaped
+
+- **`live/probes/`** holds the six investigations that produced a finding -
+  `controlled_order`, `order_types`, `supervised_session`, `subscription_interference`,
+  `failure_injection`, `strand_recovery` - kept runnable because two of them are how the
+  adapter fixes get re-verified. `live/` is now the operator's day and what it stands on.
+- **`databento.py` split by question**: the client, its wire format and the pull stay;
+  `databento_probe.py` is the intraday-fidelity probe and `databento_audit.py` the
+  catalog audit. One CLI entry still dispatches to all of them.
+- **One of each**: `catalog.read_series` replaces four readers of a stored series;
+  `live/account.py` replaces two searches for the account, carrying the venue trap the
+  first preflight fell into; `session.add_broker_arguments` replaces five flags worded
+  three times. `validate`'s selection is a function, and tested.
+- `MAINTENANCE.md` has a layout section, so the map has one place to be wrong.
+
 ## 2026-09-04 (a strategy on a broker connection; six symbols onboarded; the morning made cheap)
 
 ### Built

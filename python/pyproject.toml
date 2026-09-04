@@ -376,6 +376,8 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: the append report it prints is the product, and a scheduler reads its exit code
 "copilot/data/backfill.py" = ["T201"]
+"copilot/data/databento_audit.py" = ["T201"]
+"copilot/data/databento_probe.py" = ["T201"]
 "copilot/risk/sizing.py" = [
   "PLR0913",
 ] # position_size takes the playbook's sizing inputs by keyword; folding them into an object would hide which cap bound
@@ -431,26 +433,26 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/warmup.py" = [
   "T201",
 ] # Operator CLI: the readiness table it prints is the product
-"copilot/live/controlled_order.py" = [
+"copilot/live/probes/controlled_order.py" = [
   "ANN401",
   "T201",
 ] # Operator CLI; ANN401 for the pyo3 event objects it receives
 "copilot/live/cancel_working.py" = ["ANN401", "T201", "TRY400"]
-"copilot/live/order_types.py" = ["ANN401", "T201", "TRY400"]
-"copilot/live/supervised_session.py" = ["ANN401", "T201", "TRY400"]
-"copilot/live/subscription_interference.py" = [
+"copilot/live/probes/order_types.py" = ["ANN401", "T201", "TRY400"]
+"copilot/live/probes/supervised_session.py" = ["ANN401", "T201", "TRY400"]
+"copilot/live/probes/subscription_interference.py" = [
   "ANN401",
   "PLR0913",
   "T201",
 ] # Operator CLI: the verdict it prints is the product
-"copilot/live/strand_recovery.py" = [
+"copilot/live/probes/strand_recovery.py" = [
   "ANN202",
   "ANN401",
   "PLR0913",
   "T201",
   "TRY400",
 ] # Operator CLI; ANN401 for the pyo3 event objects it receives
-"copilot/live/failure_injection.py" = [
+"copilot/live/probes/failure_injection.py" = [
   "ANN401",
   "E501",
   "PLR0913",

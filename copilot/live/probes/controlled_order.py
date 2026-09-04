@@ -2,7 +2,7 @@
 Paper stage three: submit one controlled order through the strategy path, and cancel it.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.controlled_order --account DUT067974 --reference-price 271.86
+    python -m copilot.live.probes.controlled_order --account DUT067974 --reference-price 271.86
 
 **This is the first code in the project that places an order.** Everything before it either
 ran offline or ran with the risk engine halted.
@@ -291,7 +291,7 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     parser = argparse.ArgumentParser(
-        prog="python -m copilot.live.controlled_order",
+        prog="python -m copilot.live.probes.controlled_order",
         description="Paper stage three: one controlled order, submitted and cancelled.",
     )
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))

@@ -2,7 +2,7 @@
 Confirm unknown-working-order recovery against the broker, by stranding one on purpose.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.strand_recovery --account DUT067974 --reference-price 326
+    python -m copilot.live.probes.strand_recovery --account DUT067974 --reference-price 326
 
 The engine fix this confirms landed 2026-09-01: reconciliation adopts an external order
 reported as ``SUBMITTED`` (`crates/execution/src/reconciliation/orders.rs`), and the
@@ -383,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     parser = argparse.ArgumentParser(
-        prog="python -m copilot.live.strand_recovery",
+        prog="python -m copilot.live.probes.strand_recovery",
         description="Strand a working order on purpose; confirm a fresh node recovers it.",
     )
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))

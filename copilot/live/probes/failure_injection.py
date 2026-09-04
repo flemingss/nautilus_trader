@@ -2,7 +2,7 @@
 Paper stage six: make things go wrong on purpose, and check the system notices.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.failure_injection --account DUT067974
+    python -m copilot.live.probes.failure_injection --account DUT067974
 
 Stages one to five confirmed the happy path, which was never seriously in doubt. **This is
 the stage worth the eight weeks.** An unattended system is not defined by what it does when
@@ -119,7 +119,7 @@ UNCONFIRMED_CASE = {
     "name": "recover_unknown_working_order",
     "status": "HALF",
     "detail": (
-        "Measured 2026-09-02 by live/strand_recovery.py, which strands an order on purpose. "
+        "Measured 2026-09-02 by live/probes/strand_recovery.py, which strands an order on purpose. "
         "Adoption is CONFIRMED: a fresh node on different client ids receives the external "
         "SUBMITTED order through reconciliation into its cache. The cancel is a KNOWN "
         "FAILURE: the IB adapter cannot cancel an adopted order whose IB order id belongs "
@@ -447,7 +447,7 @@ def main(argv: list[str] | None = None) -> int:
 
     """
     parser = argparse.ArgumentParser(
-        prog="python -m copilot.live.failure_injection",
+        prog="python -m copilot.live.probes.failure_injection",
         description="Paper stage six: injected faults, and whether the system notices.",
     )
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))

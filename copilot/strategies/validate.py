@@ -49,8 +49,7 @@ from typing import Any
 from copilot.calibration.cost_model import CostModel
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
-from copilot.data.catalog import open_catalog
-from copilot.data.catalog import read_daily_bars
+from copilot.data.catalog import read_series
 from copilot.paths import DEFAULT_CATALOG
 from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import Activation
@@ -172,19 +171,17 @@ class Verdict:
 
 def stored_bars(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> tuple:
     """
-    Read the bars the gate would run this activation on, as the gate reads them.
+    Read the bars the gate would run this activation on, refusing an empty series.
 
-    Split out so the fingerprint and the run see the same bars through the same call:
-    a digest taken over a different read path would answer a different question.
+    The fingerprint and the run see the same bars through the same call: a digest taken
+    over a different read path would answer a different question.
 
     """
-    catalog = open_catalog(catalog_path)
-    instrument = equity_for(activation.symbol, activation.venue)
-    bars = read_daily_bars(catalog, bar_type_for(instrument.id))
+    bars = read_series(catalog_path, activation.symbol, activation.venue)
     if not bars:
         raise ValueError(
-            f"no bars in the catalog for {instrument.id}. Backfill it first: "
-            f"python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
+            f"no bars in the catalog for {activation.symbol}.{activation.venue}. Backfill it "
+            f"first: python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
         )
     return bars
 
@@ -273,6 +270,28 @@ def _print(verdict: Verdict) -> None:
     )
 
 
+def selected_activations(
+    name: str | None,
+    *,
+    all_: bool,
+    changed: bool,
+) -> tuple[Activation, ...]:
+    """
+    Return the activations a `validate` invocation means.
+
+    `--changed` on its own is the morning command: every activation, recomputing only
+    what moved. Making it also require `--all` would be one more flag whose absence
+    fails after the operator thought the step was done. Empty means the invocation named
+    nothing, and the CLI says so.
+
+    """
+    if all_ or (changed and not name):
+        return tuple(load_activations())
+    if name:
+        return (find_activation(name),)
+    return ()
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Validate one activation or all of them.
@@ -300,14 +319,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.all or (args.changed and not args.activation):
-        # `--changed` on its own is the morning command: every activation, recomputing
-        # only what moved. Making it also require `--all` would be one more flag whose
-        # absence fails after the operator thought the step was done.
-        activations = load_activations()
-    elif args.activation:
-        activations = (find_activation(args.activation),)
-    else:
+    activations = selected_activations(args.activation, all_=args.all, changed=args.changed)
+    if not activations:
         parser.error("name an activation, or pass --all or --changed")
 
     cost_model = CostModel.from_snapshot()

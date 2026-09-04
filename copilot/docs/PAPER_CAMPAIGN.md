@@ -369,7 +369,7 @@ unpassable for a reason that has nothing to do with our system. **The rejection 
 verified on the live account before any size increase.**
 
 **`recover_unknown_working_order` - measured 2026-09-02, and the verdict splits.**
-`live/strand_recovery.py` stranded a one-share far-from-market GTC limit on purpose
+`live/probes/strand_recovery.py` stranded a one-share far-from-market GTC limit on purpose
 (client ids 831/832), then started a fresh node on different ids (841/842) with an empty
 cache. **Adoption is confirmed**: the external `SUBMITTED` order arrived in the fresh
 node's cache through reconciliation - the 2026-09-01 engine fix watched working at the

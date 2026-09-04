@@ -218,6 +218,21 @@ def write_ingestion(
     return tuple(reports)
 
 
+def read_series(catalog_path: str, symbol: str, venue: str) -> tuple[DailyBar, ...]:
+    """
+    Read one instrument's stored daily series, as every consumer reads it.
+
+    The four modules that read a series - the gate, the live runner, the patch and the
+    append - each opened the catalog and built the bar type themselves, in four slightly
+    different ways. One read path means a digest, a warm-up and a verdict see the same
+    bars by construction. Empty when nothing is stored; what that means is the caller's
+    to say, because it differs - an append refuses, a patch reports, a gate raises.
+
+    """
+    instrument = equity_for(symbol, venue)
+    return tuple(read_daily_bars(open_catalog(catalog_path), bar_type_for(instrument.id)))
+
+
 def read_daily_bars(
     catalog: ParquetDataCatalog,
     bar_type: BarType,
@@ -329,6 +344,7 @@ __all__ = [
     "equity_for",
     "open_catalog",
     "read_daily_bars",
+    "read_series",
     "to_nautilus_bars",
     "venues_from_rows",
     "write_ingestion",

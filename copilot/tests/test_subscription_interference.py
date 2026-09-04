@@ -11,10 +11,10 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from copilot.live.subscription_interference import BASELINE
-from copilot.live.subscription_interference import TREATED
-from copilot.live.subscription_interference import PhaseCounts
-from copilot.live.subscription_interference import verdict
+from copilot.live.probes.subscription_interference import BASELINE
+from copilot.live.probes.subscription_interference import TREATED
+from copilot.live.probes.subscription_interference import PhaseCounts
+from copilot.live.probes.subscription_interference import verdict
 
 
 def probe(
