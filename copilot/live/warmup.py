@@ -51,6 +51,9 @@ from datetime import datetime
 from datetime import timedelta
 from typing import TYPE_CHECKING
 
+from copilot.data.calendar import EASTERN
+from copilot.data.calendar import is_trading_day
+from copilot.data.calendar import session_open
 from copilot.data.calendar import trading_days
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
@@ -345,17 +348,31 @@ def main(argv: list[str] | None = None) -> int:
     if args.session:
         first_session = date.fromisoformat(args.session)
     else:
-        first_session = _next_trading_day(date.today())  # noqa: DTZ011 - a local calendar day
+        first_session = session_to_prepare(datetime.now(tz=UTC))
     return report(args.catalog, load_activations(), first_session=first_session)
 
 
-def _next_trading_day(after: date) -> date:
+def session_to_prepare(now: datetime) -> date:
     """
-    Return the first trading session strictly after ``after``.
+    Return the session an operator running this check is preparing for.
+
+    **Today's session, when today's session has not opened yet.** The playbook's Before
+    checklist runs about an hour before the open, and at that moment the session to be
+    ready for is the one about to start - not the next one. Answering "the next trading
+    day after today" was the first version, and it was wrong in the direction that
+    matters: it reported BLOCKED for a catalog that was in fact ready, which trains an
+    operator to disregard the check.
+
+    The anchor is the Eastern date, because a session is named by the exchange's day and
+    the operator's is a different one - 21:30 JST is 08:30 the same morning in New York.
+
     """
-    ahead = trading_days(after + timedelta(days=1), after + timedelta(days=CALENDAR_MARGIN_DAYS))
+    today = now.astimezone(EASTERN).date()
+    if is_trading_day(today) and now < session_open(today):
+        return today
+    ahead = trading_days(today + timedelta(days=1), today + timedelta(days=CALENDAR_MARGIN_DAYS))
     if not ahead:
-        raise ValueError(f"no trading session within {CALENDAR_MARGIN_DAYS} days of {after}")
+        raise ValueError(f"no trading session within {CALENDAR_MARGIN_DAYS} days of {today}")
     return ahead[0]
 
 
@@ -367,6 +384,7 @@ __all__ = [
     "inspect",
     "load",
     "report",
+    "session_to_prepare",
 ]
 
 

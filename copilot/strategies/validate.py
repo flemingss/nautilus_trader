@@ -227,6 +227,16 @@ def _print(verdict: Verdict) -> None:
         f"majority={record['majority_passed']}  ({record['runtime_seconds']}s)",
         flush=True,
     )
+    # The catalog is kept current for the live path, so a run over a 2026 catalog scores
+    # 2005-2021 and says so here rather than only in the filed record. Reading a verdict
+    # as a run over everything available is the whole failure ADR-0017 guards against.
+    if verdict.unevaluated_bars:
+        print(
+            f"{'':<24} scored {record['bar_range'][0]}..{record['bar_range'][1]}; "
+            f"{verdict.unevaluated_bars} bars past "
+            f"{record['evaluation_window']['end']} not evaluated",
+            flush=True,
+        )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -262,7 +272,9 @@ def main(argv: list[str] | None = None) -> int:
         f"Net of costs: spread at {cost_model.percentile} per side from "
         f"{cost_model.snapshot}, plus IB commission.\n"
         f"Development window only: bars from {HOLDOUT_START.date().isoformat()} are the "
-        f"locked, unspent holdout (ADR-0012).\n",
+        f"locked, unspent holdout (ADR-0012), and bars from "
+        f"{EVALUATION_END.date().isoformat()} are outside the evaluation window "
+        f"entirely (ADR-0017).\n",
     )
     for activation in activations:
         verdict = run(activation, args.catalog, cost_model)
