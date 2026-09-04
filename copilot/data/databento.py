@@ -94,8 +94,12 @@ from urllib.parse import urlencode
 from urllib.request import Request
 from urllib.request import urlopen
 
+from copilot.paths import DATABENTO_API_KEY_ENV
+from copilot.paths import DEFAULT_STORE
+from copilot.paths import add_catalog_argument
 
-API_KEY_ENV = "DATABENTO_API_KEY"
+
+API_KEY_ENV = DATABENTO_API_KEY_ENV
 DATASET_ENV = "DATABENTO_DATASET"
 
 DEFAULT_BASE_URL = "https://hist.databento.com/v0"
@@ -117,11 +121,9 @@ DEFAULT_BASE_URL = "https://hist.databento.com/v0"
 # back to 2018.
 DEFAULT_DATASET = "EQUS.MINI"
 
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 # Bulk pulls land here, outside the repository and beside the catalog, because they are
 # machine state rather than source. Same backup obligation as the catalog.
-DEFAULT_STORE = "~/.nautilus_copilot/databento"
 
 # The venue datasets reach 2018-05-01, six years deeper than the consolidated summary,
 # and their `statistics` schema carries the **official closing auction print** rather
@@ -1021,7 +1023,7 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Check the catalog's closes against the daily series (spends)",
     )
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     parser.add_argument("--pull", action="store_true", help="Buy one schema in bulk")
     parser.add_argument(
         "--only",

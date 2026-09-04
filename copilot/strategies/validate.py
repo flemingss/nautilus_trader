@@ -51,6 +51,8 @@ from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
+from copilot.paths import DEFAULT_CATALOG
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
@@ -67,7 +69,6 @@ from copilot.validation.walkforward import walk_forward
 
 
 OUT_DIR = Path(__file__).parent / "verdicts"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 
 @dataclass(frozen=True)
@@ -285,7 +286,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("activation", nargs="?", help="Activation name, or use --all")
     parser.add_argument("--all", action="store_true", help="Validate every activation")
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     parser.add_argument(
         "--write",
         action="store_true",

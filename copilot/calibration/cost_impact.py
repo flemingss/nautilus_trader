@@ -59,13 +59,13 @@ from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import load_activations
 from copilot.validation.nautilus_replay import make_replay
 from copilot.validation.walkforward import walk_forward
 
 
 OUT_DIR = Path(__file__).parent / "out"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 
 def measured_spreads(path: Path) -> dict[str, dict[str, Decimal]]:
@@ -232,7 +232,7 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.calibration.cost_impact",
         description="Price the gate's scored trades at each candidate spread coefficient.",
     )
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG)
+    add_catalog_argument(parser)
     parser.add_argument(
         "--calibration",
         type=Path,

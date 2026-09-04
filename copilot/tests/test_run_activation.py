@@ -197,3 +197,14 @@ def test_a_record_carries_its_place_in_the_basket_and_the_ledger_after_it() -> N
     assert entry.basket_position == 3
     assert entry.exposure_after["entries"] == 2
     assert record().exposure_after == {}
+
+
+def test_preflight_follows_the_registry() -> None:
+    # The list the preflight resolves is derived, not written: it had passed three
+    # hard-coded instruments over a registry of nine, six of them unverified.
+    from copilot.live.preflight import registered_instruments
+    from copilot.strategies.activations import load_activations
+
+    expected = {str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()}
+    assert set(registered_instruments()) == expected
+    assert len(registered_instruments()) == len(expected)

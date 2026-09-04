@@ -70,12 +70,12 @@ scores every trade at ``r_multiple == 0`` and reports no edge anywhere.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
 
 from copilot.risk.exposure import ExposureLedger
+from copilot.risk.sizing import Sizing
 from copilot.risk.sizing import size_from_levels
 from copilot.validation.types import Direction
 from nautilus_trader.indicators import AverageTrueRange
@@ -151,16 +151,6 @@ requirement; sized to the ATR window anyway so a warm-up taken from this figure 
 shorter than the indicator needs.
 
 """
-
-
-@dataclass(frozen=True)
-class Sizing:
-    """
-    The two numbers a position is sized with, kept together so they cannot come apart.
-    """
-
-    risk_budget: Decimal
-    max_notional: Decimal | None = None
 
 
 class GapReversalConfig(StrategyConfig):

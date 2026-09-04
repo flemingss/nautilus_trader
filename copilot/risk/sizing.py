@@ -23,10 +23,26 @@ position.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import ROUND_FLOOR
 from decimal import Decimal
 
 from copilot.validation.types import Direction
+
+
+@dataclass(frozen=True)
+class Sizing:
+    """
+    The two numbers a position is sized with, kept together so they cannot come apart.
+
+    A strategy holds exactly one of these. Research seeds it from config; the live path
+    replaces it with numbers derived from the account. Either way ``on_bar`` reads one
+    object, so the research budget cannot survive into a live decision by default.
+
+    """
+
+    risk_budget: Decimal
+    max_notional: Decimal | None = None
 
 
 def stop_distance(
@@ -145,6 +161,7 @@ def size_from_levels(
 
 
 __all__ = [
+    "Sizing",
     "position_size",
     "risk_amount",
     "size_from_levels",

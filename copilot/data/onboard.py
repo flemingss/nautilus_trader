@@ -61,6 +61,8 @@ from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
 from copilot.data.marketstack import MarketstackClient
+from copilot.paths import MARKETSTACK_API_KEY_ENV
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import REGISTRY_DIR
 from copilot.strategies.activations import find_activation
 from copilot.strategies.fingerprint import fingerprint_for
@@ -74,9 +76,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 
-API_KEY_ENV = "MARKETSTACK_API_KEY"
-CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
+API_KEY_ENV = MARKETSTACK_API_KEY_ENV
 
 EARLIEST_START = date(2005, 1, 1)
 """
@@ -458,11 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Report and advance a symbol's path to a filed verdict.",
     )
     parser.add_argument("--symbols", required=True, help="Comma-separated SYMBOL.VENUE pairs")
-    parser.add_argument(
-        "--catalog",
-        default=os.environ.get(CATALOG_PATH_ENV, DEFAULT_CATALOG),
-        help=f"Catalog directory (default: ${CATALOG_PATH_ENV} or {DEFAULT_CATALOG})",
-    )
+    add_catalog_argument(parser)
     parser.add_argument(
         "--survey",
         action="store_true",

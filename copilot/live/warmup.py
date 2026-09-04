@@ -42,7 +42,6 @@ warms from a hole still trades; it trades on a gap that did not happen.
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from dataclasses import dataclass
 from datetime import UTC
@@ -60,6 +59,7 @@ from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
 from copilot.data.catalog import to_nautilus_bars
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import load_activations
 from nautilus_trader.model import Equity
 
@@ -71,9 +71,6 @@ if TYPE_CHECKING:
     from copilot.validation.types import DailyBar
     from nautilus_trader.model import Bar
 
-
-CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 MISSING_SESSIONS_SHOWN = 5
 """
@@ -334,11 +331,7 @@ def main(argv: list[str] | None = None) -> int:
     Report whether the catalog can warm each activation for a given session.
     """
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument(
-        "--catalog",
-        default=os.environ.get(CATALOG_PATH_ENV, DEFAULT_CATALOG),
-        help=f"Catalog directory (default: ${CATALOG_PATH_ENV} or {DEFAULT_CATALOG})",
-    )
+    add_catalog_argument(parser)
     parser.add_argument(
         "--session",
         help="Session to warm for, YYYY-MM-DD (default: the next trading day)",

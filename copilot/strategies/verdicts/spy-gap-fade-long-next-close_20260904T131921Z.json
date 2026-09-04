@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "SPY.ARCX",
-  "run_at": "2026-09-04T11:34:05.303959+00:00",
-  "runtime_seconds": 20.5,
+  "run_at": "2026-09-04T13:19:21.540488+00:00",
+  "runtime_seconds": 20.9,
   "bars": 4280,
   "bar_range": [
     "2005-01-03",
@@ -58,6 +58,13 @@
     "percentile": "p95",
     "bps_per_side": "0.5466",
     "commission": "IB Pro fixed tier: max(1.00, 0.005/share) per order, capped at 1.00% of notional, split-corrected share counts"
+  },
+  "inputs": {
+    "data": "e34c0522b3c298a9ac58609336e99e40faa51c79374129b56aed832d0e3ec975",
+    "identity": "ecf45fcf0961a7639fde3d8a2a534934be494ada3111b1d450a16013c83bc8b8",
+    "cost": "1198ecf3433ac8a8e172f651b23b2252de5b22244c810e44a188a7ec739895b8",
+    "code": "114376228784189e855976d641c3740a1d1e122e6a6750fb7ee436e356afb56f",
+    "combined": "cd2c991074dd0d7030d8b7f8e4b4bc5238cef56d27c322a209def0eec7b07399"
   },
   "holdout_spent": false,
   "folds": 31,

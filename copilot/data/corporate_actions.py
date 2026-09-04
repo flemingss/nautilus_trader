@@ -59,6 +59,8 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from copilot.paths import add_catalog_argument
+
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -349,7 +351,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Check vendor corporate actions against the adjustment table.",
     )
     parser.add_argument("symbols", help="Comma-separated symbols")
-    parser.add_argument("--catalog", default="~/.nautilus_copilot/catalog")
+    add_catalog_argument(parser)
     parser.add_argument("--from", dest="start", default="2005-01-01")
     parser.add_argument("--to", dest="end", default="2025-12-31")
     args = parser.parse_args(argv)

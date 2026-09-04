@@ -74,6 +74,8 @@ from copilot.data.marketstack import IngestionResult
 from copilot.data.marketstack import MarketstackClient
 from copilot.data.marketstack import normalize
 from copilot.data.substitutions import apply_to
+from copilot.paths import MARKETSTACK_API_KEY_ENV
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import load_activations
 
 
@@ -83,9 +85,7 @@ if TYPE_CHECKING:
     from copilot.data.substitutions import Substitution
 
 
-API_KEY_ENV = "MARKETSTACK_API_KEY"
-CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
+API_KEY_ENV = MARKETSTACK_API_KEY_ENV
 
 PUBLICATION_GRACE_HOURS = 18
 """
@@ -278,11 +278,7 @@ def main(argv: list[str] | None = None) -> int:
     Append every activation's instrument, and report.
     """
     parser = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
-    parser.add_argument(
-        "--catalog",
-        default=os.environ.get(CATALOG_PATH_ENV, DEFAULT_CATALOG),
-        help=f"Catalog directory (default: ${CATALOG_PATH_ENV} or {DEFAULT_CATALOG})",
-    )
+    add_catalog_argument(parser)
     parser.add_argument(
         "--symbols",
         help="Comma-separated SYMBOL.VENUE pairs; default is every registered activation",

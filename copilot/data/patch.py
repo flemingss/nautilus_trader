@@ -45,7 +45,6 @@ from __future__ import annotations
 import argparse
 import csv
 import io
-import os
 import shutil
 import sys
 from dataclasses import dataclass
@@ -71,15 +70,13 @@ from copilot.data.databento import DEFAULT_STORE
 from copilot.data.databento import LISTING_DATASETS
 from copilot.data.databento import STAT_CLOSING_PRICE
 from copilot.data.marketstack import IngestionResult
+from copilot.paths import add_catalog_argument
 from copilot.validation.types import DailyBar
 
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-
-CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 PRICE_SCALE = Decimal(10) ** 9
 """
@@ -346,11 +343,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Fill catalog holes from the Databento store.",
     )
     parser.add_argument("--symbols", required=True, help="Comma-separated SYMBOL.VENUE pairs")
-    parser.add_argument(
-        "--catalog",
-        default=os.environ.get(CATALOG_PATH_ENV, DEFAULT_CATALOG),
-        help=f"Catalog directory (default: ${CATALOG_PATH_ENV} or {DEFAULT_CATALOG})",
-    )
+    add_catalog_argument(parser)
     parser.add_argument("--store", default=DEFAULT_STORE, help="Where bulk pulls landed")
     parser.add_argument("--write", action="store_true", help="Rewrite the series (default: report)")
     args = parser.parse_args(argv)

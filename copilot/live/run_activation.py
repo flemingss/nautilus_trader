@@ -78,6 +78,7 @@ from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
 from copilot.live.warmup import load as load_warmup
 from copilot.live.warmup import session_to_prepare
+from copilot.paths import add_catalog_argument
 from copilot.risk.budget import DEFAULT_RISK_FRACTION
 from copilot.risk.budget import RiskPolicy
 from copilot.risk.budget import budget_for
@@ -97,7 +98,6 @@ from nautilus_trader.trading import Strategy
 
 
 OUT_DIR = Path(__file__).parent / "out"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 SETTLE_SECS = 30
 """
@@ -507,7 +507,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
     parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     parser.add_argument("--session", help="Session to run for, YYYY-MM-DD (default: the next)")
     parser.add_argument("--settle-secs", type=int, default=SETTLE_SECS)
     parser.add_argument(

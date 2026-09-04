@@ -51,6 +51,8 @@ from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
+from copilot.paths import DEFAULT_CATALOG
+from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.validation.holdout import HOLDOUT_START
@@ -74,7 +76,6 @@ Existence is the single-use guard.
 """
 
 VERDICTS_DIR = Path(__file__).parent / "verdicts"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 SPENDABLE_ENTRY_TIMING = "next_close"
 """
@@ -405,7 +406,7 @@ def main(argv: list[str] | None = None) -> int:
         required=True,
         help="The activation name again, retyped. Irreversible measurements are not tab-completed.",
     )
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     args = parser.parse_args(argv)
 
     if args.confirm != args.activation:
