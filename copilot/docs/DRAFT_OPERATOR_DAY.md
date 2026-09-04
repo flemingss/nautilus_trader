@@ -1,25 +1,26 @@
 # Draft: a day in the life of the operator
 
-**Status: working draft, third pass 2026-09-04 (evening). Not governance.** The [charter](CHARTER.md), the
+**Status: working draft, fourth pass 2026-09-05. Not governance.** The [charter](CHARTER.md), the
 [playbook](playbook/README.md) and the ADRs decide things; this file does not. It exists
 to be argued with and rewritten a few times, and its job is to force the question the
 other documents do not ask: *what does the person actually do, at what hour, with which
 command, and what happens when the answer is "nothing exists yet"?*
 
 First pass was an end-to-end *read* of the playbook against the code, 2026-09-03. Second
-pass **ran it** on the morning of 2026-09-04. Third pass ran it again that evening, after
-a day in which six symbols were onboarded and ten roadmap rows closed - every command
-below was executed in order, against the real catalog and a live TWS, and the timings are
-from that walk. Five gaps closed between the second and third passes. **One defect was
-found that the whole day's work had missed**, by the one morning command nobody had
-thought to re-run - which is, again, the argument for doing this every time.
+pass **ran it** on the morning of 2026-09-04. Third pass ran it again that evening and
+found a defect the whole day's work had missed. Fourth pass, 2026-09-05 JST, ran the day
+as **two commands** - the sequence this file had been carrying in prose now lives in
+`copilot/live/day.py` - and the first replay comparison found a second defect that nine
+sessions had run on without anyone noticing.
 
 Every **GAP** is tracked in [`ROADMAP.md`](ROADMAP.md); this file is where they are seen
 in sequence rather than as a list.
 
 ## What the day needs exported
 
-Not a detail. Two of these are not in any `.env`, and one of them fails opaquely.
+Not a detail. Two of these are not in any `.env`, and one of them fails opaquely. As of
+the fourth pass the day command checks for them before it runs a step and refuses by
+name; the exports are still the operator's to make.
 
 ```bash
 set -a; . trade-copilot/.env; set +a          # MARKETSTACK_API_KEY, DATABENTO_API_KEY
@@ -36,6 +37,7 @@ The operator is in Japan. The market is not.
 | Session opens 09:30 ET               | **22:30 JST**           | **23:30 JST**           |
 | Charter execution window, first 1-2h | 22:30-00:30 JST         | 23:30-01:30 JST         |
 | Session closes 16:00 ET              | **05:00 JST**, next day | **06:00 JST**, next day |
+| Scheduled early close, 13:00 ET      | 02:00 JST, next day     | **03:00 JST**, next day |
 
 Two consequences that shape everything else. **The decision and the execution are on
 opposite ends of the operator's day** - the signal is fixed by a close that happens while
@@ -44,8 +46,10 @@ session ends after the operator has gone to bed**, which is why the playbook's
 monitoring-end policy is not optional and why an alerting path is not a nicety.
 
 Never hard-code these. `copilot/data/calendar.py` holds the trading days, the holidays
-and, as of 2026-09-03, the three scheduled early closes - on which the market shuts at
-13:00 ET and the evening ends three hours sooner.
+and the three scheduled early closes; `day evening` prints the session it is preparing
+for on both clocks and says **EARLY CLOSE** when the calendar does. All three early closes
+fall in standard time, so an early evening ends at 03:00 JST, not 02:00 - the third pass
+had that wrong.
 
 ## The day, in order
 
@@ -53,37 +57,33 @@ and, as of 2026-09-03, the three scheduled early closes - on which the market sh
 
 The US close was about two hours ago. Nothing is urgent; this is the thinking part.
 
-| Step                                      | Command                                           | Walked 2026-09-04                                         |
-| ----------------------------------------- | ------------------------------------------------- | --------------------------------------------------------- |
-| Ingest yesterday's bar                    | `python -m copilot.data.append`                   | **4.8s**, exit 0, `+0` on all nine, today pending         |
-| Check corporate actions on anything new   | `python -m copilot.data.corporate_actions <new>`  | **2.9s**, **exit 1 - three splits sitting in the prices** |
-| Recompute the verdict if anything changed | `python -m copilot.strategies.validate --changed` | **0.5s**, 0 recomputed, 12 unchanged                      |
+```bash
+python -m copilot.live.day morning
+```
 
-The data gap closed on 2026-09-04. The evaluation window is pinned at both ends
-([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md)), so the same
-catalog is frozen for research and fresh for execution, and `append` keeps it current
-without moving a verdict. The first pass framed this as "the strategy warms from a frozen
-catalog"; it did not warm from anything, which is a different and worse problem.
+| Step                                      | Command                                           | Walked 2026-09-05 (JST)                                    |
+| ----------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
+| Ingest yesterday's bar                    | `copilot.data.append`                             | **5.4s**, `+0` on all nine, today pending; continues       |
+| Check corporate actions on the registry   | `copilot.data.corporate_actions <all> --to today` | **4.8s**, nothing to add; a finding here **stops the day** |
+| Recompute the verdict if anything changed | `copilot.strategies.validate --changed --write`   | **168.7s**, 12 recomputed - the code had changed           |
+| Compare last night against the replay     | `copilot.live.compare`                            | **0.6s**, **8 of 9 DISAGREE** - see below                  |
 
-~~**GAP - "if anything changed" has no answer.**~~ **Closed 2026-09-04.** The verdict
-recompute was two minutes, then five with twelve activations, and it was run here for
-nothing: the catalog gained no bars, so no fold could have moved. Every verdict now
-carries the four digests it was computed from, and `validate --changed` reads them
-against the world - the bars inside the window, the activation's identity, the cost
-basis, the code - and skips what cannot have moved, naming what did when it runs. The
-append lands past the window and so cannot change the data digest, which is the whole
-reason the morning is now cheap.
+Three minutes, one command, and the order is no longer knowledge that lives in this
+file. The scan now runs over every registered symbol and up to today: its default window
+ended 2025-12-31, so the command written to catch a split would have missed a 2026 one
+every morning.
 
-**FOUND - the onboarding drill never ran this.** `corporate_actions SCHX,TLT,GLDM,XLF,HYG,EEM`
-returned three actions "NOT IN ACTIONS and sitting in the prices": SCHX's 2:1 of
-2022-03-11 and 3:1 of 2024-10-11, and GLDM's 2022-02-23. Verified in the stored series:
-101.31 to 49.97, 68.17 to 22.88, 18.88 to 37.95. The 3:1 sat **inside SCHX's holdout
-window** as a -67% gap-down. SCHX was the one symbol of six to pass the walk-forward
-gate, and its holdout was spent and failed on four trades - on a series that did not
-exist. The scan that catches this has been in the morning table since the first pass;
-`onboard`'s five stages did not include it, and nothing in the drill's sequence did
-either. Registered the same evening; the series now reads continuous across all three
-dates; what the spend is now is the owner's call and is tracked as one.
+**FOUND - the live ATR stood one bar behind the replay's.** The first run of the
+comparison took the record of 2026-09-04's basket and recomputed each decision through
+the gate's own `BacktestEngine`, over the same sixteen warm-up bars and the same decision
+bar. Eight of nine disagreed on the ATR by more than the session's own rounding: AAPL
+6.7257 live against 6.9763 offline, MSFT 9.55 against 10.46. The cause was the order of
+two calls. The engine updates a strategy's registered indicators *before* it calls
+`on_bar`; the live path, which cannot publish a bar into the node, handed the decision bar
+to `on_bar` directly, so the rule decided with the ATR of the last warm-up bar. Nine
+sessions had run that way and every one of them read as a clean decision. Fixed the same
+hour (`GapReversalStrategy.decide`), and the evening below compared **9 of 9**. That is
+what the comparison is for, and it is now a morning step.
 
 ### Daytime - nothing
 
@@ -92,35 +92,32 @@ weeks. A design that needs attention here is the wrong design for this operator.
 
 ### ~21:30 JST - one hour before the open
 
-The playbook's **Before** checklist. This is the densest hour of the day and most of it
-is built.
+```bash
+python -m copilot.live.day evening
+```
 
-| Check                                                          | Command                                 | Walked 2026-09-04                                                    |
-| -------------------------------------------------------------- | --------------------------------------- | -------------------------------------------------------------------- |
-| Strategy id, commit, config hash, data hash                    | in every verdict's `inputs` block       | Narrowed: the four digests exist per verdict; no single manifest yet |
-| Broker connection, account, permissions, data type, cash       | `python -m copilot.live.preflight`      | **42.8s**, 6/6 PASS, **9/9 instruments**                             |
-| Holiday, early close, DST, allowed session                     | `copilot.data.calendar`                 | Wired - `warmup` picks the session                                   |
-| Reconcile positions, cash, working orders                      | `python -m copilot.live.cancel_working` | **41.5s per symbol**, still one per run                              |
-| Indicator warm-up from the local catalog                       | `python -m copilot.live.warmup`         | **0.1s**, 12/12 ready, exit 0                                        |
-| Fresh, non-crossed, correctly timestamped quote per instrument | -                                       | **GAP** - not in `preflight`, see below                              |
-| Kill switch and remote broker access verified                  | -                                       | **GAP** - no operator kill command                                   |
+| Check                                                          | Command                                        | Walked 2026-09-05 (JST)                                                       |
+| -------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------- |
+| Strategy id, commit, config hash, data hash                    | in every verdict's `inputs` block              | Narrowed: the four digests exist per verdict; no single manifest yet          |
+| Broker connection, account, permissions, data type, cash       | `copilot.live.preflight`                       | **40.3s**, **15/15 PASS**, 9/9 instruments                                    |
+| Fresh, non-crossed, correctly timestamped quote per instrument | `copilot.live.preflight`, the nine quote lines | **Closed**: 5 quotes each, 2.3s old, bid < ask, delayed feed                  |
+| Holiday, early close, DST, allowed session                     | `day evening` prints the clock                 | Closed: both zones, early close named                                         |
+| Reconcile positions, cash, working orders                      | `copilot.live.cancel_working --all`            | **40.3s for nine**, one node, was 41.5s each                                  |
+| Indicator warm-up from the local catalog                       | `copilot.live.warmup`                          | **0.1s**, 12/12 ready                                                         |
+| Parameters are the ones the gate scored                        | `copilot.strategies.promotion`, in the basket  | Closed: every session labelled `seeded identity ... not the gate's selection` |
+| Kill switch and remote broker access verified                  | -                                              | **GAP** - no operator kill command                                            |
 
-**GAP - `preflight` does not check quotes, and the first pass said it did.** Its six
-checks are the halt before start, the halt through startup, instruments resolved, the
-account reported by the broker, balances present, and a clean shutdown. Not one of them
-looks at a price. The playbook asks for a fresh, non-crossed, correctly timestamped quote
-per instrument before the session, and nothing provides it - which matters more than it
-sounds, because a stale or crossed quote is how a bracket gets placed around the wrong
-level and the account is on delayed data anyway.
+**What the gating did on its first run.** The evening was first run for the session of
+2026-09-08 while Friday's session was still open, and the warm-up **blocked** all twelve
+activations on Friday's missing bar - correctly, and the basket never ran. Run for the
+session of 2026-09-04 instead, everything passed: preflight 40.3s, warm-up 0.1s, basket
+50.6s, sweep 40.3s, **2m11s** for the evening. A stopping failure stops; the sweep runs
+regardless.
 
-**GAP - the monitoring-end sweep is one symbol at a time.** `cancel_working` takes one
-instrument per invocation at 41.5s each, so a nine-instrument sweep is **six minutes of
-commands** and a forgotten one leaves an order working overnight. That is precisely
-the failure the monitoring-end policy exists to prevent, and it is currently prevented by
-the operator remembering.
-
-Every one of these needs `IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"` exported first. It is
-not optional and its absence fails opaquely.
+**Unverified - the quote check before the open.** The nine quotes were read at 11:32 ET
+with the session open. The evening runs the check at 08:30 ET on a delayed feed, and IB's
+delayed data may not quote pre-market. If it does not, the check blocks every evening,
+and the first honest reading is Tuesday 2026-09-08 at 21:30 JST.
 
 ### 22:30-00:30 JST - the execution window
 
@@ -133,14 +130,21 @@ conservative against the window an order really goes into. The **first five minu
 a different animal, 6.2x the closing spread on AAPL and 23x on PEP, which is an argument
 for the window being an hour wide rather than a moment.
 
-~~**GAP - no strategy has ever run in a live or paper node.**~~ **Closed 2026-09-04.**
-`python -m copilot.live.run_activation --all --allocation 1000` ran all nine next-close
-activations **in one node in 68.1s**: equity 1,000,253.87 reported, sized against 1,000,
-risk budget 1.00 per position, notional cap 100.00, session cap 5.00 with two entries.
-No rule fired - 2026-09-03 was a broad gap-up morning and these are long-only fades - so
-the ledger read `0 of 5.00 reserved, entries 0/2` after every decision. Orders stay
-denied: nothing is frozen, and the one holdout among the nine that was spent is the one
-above.
+`python -m copilot.live.run_activation --all` ran nine next-close activations in one
+node: equity 1,000,253.87 reported, sized against 1,000, risk budget 1.00 per position,
+notional cap 100.00, session cap 5.00 with two entries. No rule fired on 2026-09-03's bar,
+so the ledger read `0 of 5.00 reserved, entries 0/2` after every decision. Orders stay
+denied: nothing is frozen.
+
+**FOUND - a triggered `next_close` decision goes nowhere.** The rule decides on bar *t*
+and enters on bar *t+1*, which live is the session opening an hour after the evening
+command runs. The strategy sets a deferral on the trigger; the process ends; tomorrow's
+warm-up never calls `on_bar` on bar *t*. So the entry is never made, and until the
+fourth pass the record could not show a trigger at all - no skip, no order, a quiet bar.
+It now records `deferred_atr` and prints **DEFERRED**. Carrying the decision into its
+session is a real design question (the replay fills at *t+1*'s close, the charter's
+window is its first hours, and the bracket's levels need a price the fill has not yet
+given) and is stage-seven work that needs a frozen candidate to be worth deciding.
 
 ### 00:30 JST - monitoring end
 
@@ -153,9 +157,10 @@ nothing working - an order held by a TWS precautionary setting never reaches the
 and no API call can see it. And a cancel takes effect **from the client id that placed
 the order**, not from a foreign one.
 
-The sweep ran: `cancel_working --symbol SCHX` in **42.9s**, `RESULT: CACHE CLEAR`, with
-its caveat that a TWS-held order is invisible to the API. One symbol. The other eight are
-eight more invocations, which is the gap above wearing its evening clothes.
+`cancel_working --all` swept nine instruments in one node in 40.3s, `RESULT: CACHE
+CLEAR`, each instrument on its own line. While orders are denied the sweep runs as the
+evening's last step; once they are enabled it is the 00:30 command, and the day will
+need a third phase for it.
 
 **GAP - nothing alerts.** The playbook makes alerting a limb of the kill switch and a
 gate for unattended paper. No code in this repository notifies anyone of anything.
@@ -164,39 +169,38 @@ The operator is asleep in ninety minutes.
 
 ### Next morning - the After checklist
 
-| Step                                                                    | State                                   |
-| ----------------------------------------------------------------------- | --------------------------------------- |
-| Reconcile positions, cash, commissions, executions, open orders         | Partly built                            |
-| **Compare live decisions against offline replay**                       | **GAP** - no tool                       |
-| Archive logs, config, data manifest, identifier map                     | Partial - sessions write to `live/out/` |
-| Attribute P&L to move, signal, spread, slippage, fees, FX, intervention | **GAP**                                 |
-
-Without the replay comparison, a session that silently decided differently from the
-backtest looks exactly like one that agreed.
+| Step                                                                    | State                                                 |
+| ----------------------------------------------------------------------- | ----------------------------------------------------- |
+| Reconcile positions, cash, commissions, executions, open orders         | Partly built                                          |
+| Compare live decisions against offline replay                           | **Closed** - `compare`, in `day morning`; 9/9 tonight |
+| Archive logs, config, data manifest, identifier map                     | Partial - sessions and days write to `live/out/`      |
+| Attribute P&L to move, signal, spread, slippage, fees, FX, intervention | **GAP**                                               |
 
 ## What running it exposed that reading it did not
 
 **A check that is wrong at the hour it is used trains you to ignore it.** The first
-version of `warmup` defaulted to "the next trading day after today", which at 21:30 JST -
-an hour before tonight's open - reported BLOCKED for a catalog that was completely ready.
-The correct answer is today's session while today's session has not opened, and the walk
-is the only thing that would have caught it: every unit test passed, because they all
-passed an explicit date. Fixed 2026-09-04.
+version of `warmup` defaulted to "the next trading day after today", which at 21:30 JST
+reported BLOCKED for a catalog that was completely ready. Fixed 2026-09-04.
 
-**A verdict now needs to say what it did not score.** With the catalog running to
-2026-09-03 and the window ending 2026-01-01, `validate` was reporting folds over
-2005-2021 with nothing on screen saying 169 bars were clipped. The record carried it; the
-console did not, and the console is what the operator reads. Fixed the same day.
-
-**The machine time is not the problem.** The morning is now **8.2s** and the pre-open
-block **84s**; the whole day is under four minutes of wall clock. What costs is that it
-is eight commands in an order that exists only in this document.
+**A verdict now needs to say what it did not score.** With the catalog running past the
+window's end, `validate` reported folds over 2005-2021 with nothing on screen saying 169
+bars were clipped. Fixed 2026-09-04.
 
 **A tool that exists is not a tool that runs.** The corporate-actions scan was built on
-2026-09-03, listed in this table on the first pass, and would have refused the SCHX
-verdict before it was ever filed. It was not in the sequence the drill followed, so it
-did not run, and a symbol passed the gate on a fake gap. The fix is not a better scan; it
-is that the onboarding command owns the sequence, and the sequence includes the scan.
+2026-09-03, listed in the morning table on the first pass, and did not run during the
+onboarding drill, so a symbol passed the gate on a fake gap. The fix was not a better
+scan; it was that a command owns the sequence. Done 2026-09-05.
+
+**Agreement you have not measured is a claim.** Nine sessions decided with an ATR one bar
+stale, every record read cleanly, and the defect was invisible until something recomputed
+the decision independently and compared. The comparison found it in 0.6 seconds on its
+first run. Everything the live path does that the replay also does should be compared
+this way, and the comparison should run every morning whether or not anyone expects a
+difference.
+
+**Gating has to be run to be believed.** The first evening blocked on a missing bar that
+was missing because the session was still open. Right answer, and the kind of answer a
+draft cannot give.
 
 ## What this walk exposes that a list does not
 
@@ -204,34 +208,32 @@ is that the onboarding command owns the sequence, and the sequence includes the 
 not produced a frozen candidate. Two holdouts are spent: AAPL passed thinly and its
 decision is unfilled; SCHX failed, on a series that turned out to contain an unregistered
 split. Nothing is frozen, so paper stages seven and eight cannot honestly begin, and
-everything in the evening column - now built and measured - is machinery waiting for a
-premise that has earned its way through the first gate.
+everything in the evening column - built, gated, and measured at two minutes - is
+machinery waiting for a premise that has earned its way through the first gate. The
+promotion check makes that visible on every session: `seeded identity ... not the gate's
+selection`, nine times a night, until someone freezes something.
 
-**And the premise is sitting on the boundary.** The account-size sweep built on
-2026-09-03 puts the best crossing at **USD 10,000** for `aapl-gap-fade-long-next-close`,
-against a charter that describes an account *under* USD 10,000. Not comfortably clear,
-and worth remembering before any of the evening's plumbing is treated as urgent.
+**And the premise is sitting on the boundary.** The account-size sweep puts the best
+crossing at **USD 10,000** for `aapl-gap-fade-long-next-close`, against a charter that
+describes an account *under* USD 10,000.
 
 **Two gaps can only be found in live.** Sizing from settled cash cannot be tested on the
 paper account, which is margin with a million dollars in it. Neither can the cash
-account's real buying-power behaviour. Those are the two places where the first real
-failure is most likely, and the rehearsal cannot rehearse them.
+account's real buying-power behaviour.
 
 ## To argue with next time
 
 - Does the execution window want to be a window at all, or a single time? The spread
   evidence says the first five minutes are expensive and the rest of the two hours is not.
-- ~~Is one catalog for research and execution ever going to work?~~ **Answered
-  2026-09-04:** yes, with the window pinned at both ends. The freeze was telling us the
-  *carve* had one end, not that the products differ.
-  ([ADR-0017](decisions/0017-the-evaluation-window-is-pinned-at-both-ends.md))
-- Should the day have two commands instead of eight? The walk took eight invocations
-  with three separate exports, and the ordering is knowledge that lives only in this file
-  - which is exactly how the corporate-actions scan got skipped.
-- Should `run_activation --all` run the morning too? It already reads the catalog, the
-  registry and the account; `append` and `validate --changed` in front of it would make
-  the evening one command and the morning zero.
+- ~~Should the day have two commands instead of eight?~~ **Done 2026-09-05.** Two, and
+  the ordering is code.
+- ~~Should `run_activation --all` run the morning too?~~ **Answered:** no - the morning
+  and the evening are separated by the vendor's publication lag and by the operator's
+  sleep, and `day` makes each one command without merging them.
+- How does a `next_close` trigger become a live order? The deferral is now visible; the
+  execution of it is not designed.
 - What is the smallest alerting path that satisfies the playbook - a phone push on a
   handful of conditions is probably enough, and probably an evening's work.
-- What does the operator do on a scheduled early close, when the evening ends at 02:00
-  JST instead of 05:00?
+- Does the delayed feed quote before the open? Tuesday answers it.
+- When orders are enabled, the sweep becomes its own phase at 00:30 JST; on an early
+  close it is 03:00 JST at the latest, not a moment later.

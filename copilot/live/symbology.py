@@ -33,6 +33,7 @@ venues this fork has actually reasoned about, and an unlisted one raises.
 
 from __future__ import annotations
 
+from copilot.strategies.activations import load_activations
 from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import Symbol
 from nautilus_trader.model import Venue
@@ -118,12 +119,32 @@ def same_instrument(left: InstrumentId, right: InstrumentId) -> bool:
     return symbol_of(left) == symbol_of(right)
 
 
+def registered_instruments() -> tuple[str, ...]:
+    """
+    Return the broker id of every instrument a registered activation names, once each.
+
+    Derived rather than listed. The literal three this replaced were written when the
+    universe was three, and onboarding six ETFs on 2026-09-04 did not extend them: the
+    preflight reported ``instruments_resolved PASS 3`` over a registry holding eight
+    instruments, so six of them reached the evening unverified behind a green line.
+
+    A check whose coverage does not follow the thing it checks is worse than no check,
+    because it is read as one. The same applies to the monitoring-end sweep, which is
+    why this lives here rather than in either command.
+
+    """
+    return tuple(
+        dict.fromkeys(str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()),
+    )
+
+
 __all__ = [
     "IB_SEC_TYPE_EQUITY",
     "ROUTING_BY_VENUE",
     "SMART",
     "UnmappedVenueError",
     "broker_instrument_id",
+    "registered_instruments",
     "research_instrument_id",
     "same_instrument",
     "symbol_of",

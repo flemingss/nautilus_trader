@@ -125,6 +125,21 @@ SEARCH_SPACE: dict[str, tuple[Decimal, ...]] = {
     "target_1_atr": (Decimal("1.0"), Decimal("1.5")),
 }
 
+AXIS_DEFAULTS: dict[str, Decimal] = {
+    "min_gap_atr": Decimal(DEFAULT_MIN_GAP_ATR),
+    "target_1_atr": Decimal(DEFAULT_TARGET_ATR),
+}
+"""
+What each searched axis runs at when an activation leaves it unfixed.
+
+Named so the live path can say so. An activation's ``[parameters]`` seed the search but
+need not fix the searched axes, and a strategy built from them alone runs at these
+values - which are the module's defaults and not anything a walk-forward selected. That
+was invisible until 2026-09-05: a RESEARCH session reported a decision without saying
+the rule that decided was not the rule the gate scored.
+
+"""
+
 MAX_SEARCHABLE_MIN_GAP_ATR = Decimal("0.40")
 """
 Loosest threshold that still clears the eligibility floor.
@@ -132,6 +147,16 @@ Loosest threshold that still clears the eligibility floor.
 Widening past this produces folds with too few trades to score, which the gate reports
 as no verdict rather than a weak one - the failure that looks like a bug.
 
+"""
+
+DEFERRED = "deferred"
+"""
+The outcome of a ``next_close`` trigger: decided now, entered on the next session.
+"""
+
+ENTRY_SUBMITTED = "entry_submitted"
+"""
+The outcome of a bar on which a bracket was submitted.
 """
 
 ENTRY_TIMINGS = ("signal_close", "next_close")
@@ -256,6 +281,15 @@ class GapReversalStrategy(Strategy):
         input the deferral has to carry across.
 
         """
+        self.last_outcome: str | None = None
+        """
+        What the most recent bar did: a skip reason, ``deferred``, or an entry.
+
+        One bar has exactly one outcome, and the live path hands the strategy exactly one
+        decision bar, so this is the decision - the thing a replay over the same bars
+        has to reproduce. ``skips`` counts; this names.
+
+        """
         self.skips: dict[str, int] = {}
         """
         Why the rule declined, counted by reason.
@@ -336,6 +370,22 @@ class GapReversalStrategy(Strategy):
             self._atr.handle_bar(bar)
             self._previous_close = Decimal(str(bar.close))
 
+    def decide(self, bar: Bar) -> None:
+        """
+        Hand the rule one bar the way the engine would: indicator first, then the rule.
+
+        The live path cannot publish a bar into the node (see ``live/run_activation``),
+        and this build does not expose the actor's ``handle_bar`` to Python, so a bar
+        handed to the strategy directly reached ``on_bar`` with the ATR still standing
+        at the last warm-up bar - one bar behind the value the gate's replay decides
+        with, because the engine updates registered indicators before it calls
+        ``on_bar``. Found on 2026-09-05 by building the replay comparison, which is
+        what such a comparison is for. This is the engine's order, in one place.
+
+        """
+        self._atr.handle_bar(bar)
+        self.on_bar(bar)
+
     def on_start(self) -> None:
         """
         Subscribe and let the engine feed the indicator.
@@ -381,6 +431,7 @@ class GapReversalStrategy(Strategy):
                 # last bar of a window simply never fills, the same trade the charter's
                 # own rule would have left on the table.
                 self._deferred_atr = atr
+                self.last_outcome = DEFERRED
             else:
                 self._enter(bar, atr)
 
@@ -480,6 +531,7 @@ class GapReversalStrategy(Strategy):
         # A plain list on this build, entry first: the bracket builder returns its legs
         # in submission order and the entry is what a denial or cancel must release.
         self._entry_order_id = str(orders[0].client_order_id)
+        self.last_outcome = ENTRY_SUBMITTED
         self.submit_order_list(orders)
 
     def on_position_closed(self, _event: Any) -> None:
@@ -538,6 +590,28 @@ class GapReversalStrategy(Strategy):
 
     def _skip(self, reason: str) -> None:
         self.skips[reason] = self.skips.get(reason, 0) + 1
+        self.last_outcome = reason
+
+    def decision_record(self) -> dict[str, object]:
+        """
+        Return what the rule holds after its last bar, in a form two runs can compare.
+
+        The live session files this and the offline replay recomputes it over the same
+        bars; the playbook's *compare live decisions against offline replay* is a
+        comparison of two of these. Everything in it is derived from bars and parameters
+        alone, so the two sides have no reason to differ except a defect - or the
+        broker's price precision, which the comparison tolerates by the amount the
+        session recorded rounding.
+
+        """
+        return {
+            "atr_initialized": bool(self._atr.initialized),
+            "atr_value": str(self._atr.value) if self._atr.initialized else None,
+            "previous_close": str(self._previous_close) if self._previous_close else None,
+            "deferred_atr": str(self._deferred_atr) if self._deferred_atr is not None else None,
+            "outcome": self.last_outcome,
+            "skips": dict(self.skips),
+        }
 
 
 def strategy_factory(
@@ -584,11 +658,14 @@ def strategy_factory(
 
 
 __all__ = [
+    "AXIS_DEFAULTS",
     "DEFAULT_ATR_PERIOD",
     "DEFAULT_MIN_GAP_ATR",
     "DEFAULT_RISK_BUDGET",
     "DEFAULT_STOP_ATR",
     "DEFAULT_TARGET_ATR",
+    "DEFERRED",
+    "ENTRY_SUBMITTED",
     "ENTRY_TIMINGS",
     "MAX_SEARCHABLE_MIN_GAP_ATR",
     "SEARCH_SPACE",

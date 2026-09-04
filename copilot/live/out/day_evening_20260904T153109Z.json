@@ -1,0 +1,88 @@
+{
+  "phase": "evening",
+  "run_at": "2026-09-04T15:31:09.156036+00:00",
+  "session": "2026-09-08",
+  "dry_run": false,
+  "clock": [
+    "open          09:30 EDT   22:30 JST",
+    "window ends   11:30 EDT   00:30 JST (next day)",
+    "close         16:00 EDT   05:00 JST (next day)"
+  ],
+  "steps": [
+    {
+      "name": "preflight",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.17.112.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 1,
+      "seconds": 40.33865932399931,
+      "skipped": false
+    },
+    {
+      "name": "warmup",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.warmup",
+        "--catalog",
+        "~/.nautilus_copilot/catalog",
+        "--session",
+        "2026-09-08"
+      ],
+      "exit_code": null,
+      "seconds": 0.0,
+      "skipped": true
+    },
+    {
+      "name": "basket",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.run_activation",
+        "--all",
+        "--catalog",
+        "~/.nautilus_copilot/catalog",
+        "--session",
+        "2026-09-08",
+        "--host",
+        "172.17.112.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--allocation",
+        "1000"
+      ],
+      "exit_code": null,
+      "seconds": 0.0,
+      "skipped": true
+    },
+    {
+      "name": "sweep",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.cancel_working",
+        "--all",
+        "--host",
+        "172.17.112.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": null,
+      "seconds": 0.0,
+      "skipped": true
+    }
+  ],
+  "exit_code": 1
+}

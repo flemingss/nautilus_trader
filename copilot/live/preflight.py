@@ -21,6 +21,23 @@ the identifier the broker reports against the configured one and fails on a mism
 is also the only way to learn whether an IB paper *login* name is the same string as its
 *account* id.
 
+The quote check, added 2026-09-05
+---------------------------------
+The playbook's Before list asks for *a fresh, correctly timestamped, non-crossed bid and
+ask for every tradable instrument*, and the operator-day draft claimed this command
+provided it until the walk ran it and found that none of the six checks looked at a price.
+A stale or crossed quote is how a bracket gets placed around the wrong level, and this
+account is on delayed data. So the node now carries a quote watcher, and one check per
+instrument asks for at least :data:`MIN_QUOTES` quotes, the last of them within
+:data:`MAX_QUOTE_AGE_SECS`, with a positive bid strictly below the ask.
+
+Delayed data suffices for the check and shapes it. IB's delayed feed carries no exchange
+timestamp for a quote, so age is measured from arrival rather than from the print, and
+the note on each check says under which feed and market state it was read. Outside a
+session - and, if the walk shows so, before the open - there are no quotes to read, and
+the check fails as it should: the operator learns the feed is silent before an order
+depends on it.
+
 Every check is recorded pass or fail, and the process exit code is non-zero if any failed,
 so this can gate the next stage rather than merely inform it.
 """
@@ -30,20 +47,30 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import time
+from collections.abc import Mapping
 from dataclasses import asdict
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
+from datetime import timedelta
+from decimal import Decimal
 from pathlib import Path
 
+from copilot.data.calendar import EASTERN
+from copilot.data.calendar import is_trading_day
+from copilot.data.calendar import session_close
+from copilot.data.calendar import session_open
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import find_account
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.session import add_broker_arguments
-from copilot.live.symbology import broker_instrument_id
-from copilot.strategies.activations import load_activations
+from copilot.live.symbology import registered_instruments
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
+from nautilus_trader.common import DataActor
+from nautilus_trader.common import DataActorConfig
+from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import TradingState
 from nautilus_trader.model import Venue
 
@@ -51,35 +78,33 @@ from nautilus_trader.model import Venue
 OUT_DIR = Path(__file__).parent / "out"
 
 
-def registered_instruments() -> tuple[str, ...]:
-    """
-    Return the broker id of every instrument a registered activation names.
-
-    Derived rather than listed. The literal three this replaced were written when the
-    universe was three, and onboarding six ETFs on 2026-09-04 did not extend them: the
-    check reported ``instruments_resolved PASS 3`` over a registry holding eight
-    instruments, so six of them reached the evening unverified behind a green line.
-
-    A pre-open check whose coverage does not follow the thing it checks is worse than no
-    check, because it is read as one.
-
-    """
-    return tuple(
-        dict.fromkeys(str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()),
-    )
-
-
-"""
-Broker-side ids, in the ``SymbologyMethod.RAW`` form the IB adapter resolves.
-
-Deliberately **not** the catalog ids. Research names the same instrument
-``AAPL.XNAS`` (MIC venue, via ``data/catalog.equity_for``) and the broker will not
-resolve that string. Nothing in the overlay maps between the two, which is a real gap
-that has to close before stage three places an order; it is recorded here rather than
-papered over by quietly using one form everywhere.
-
-"""
 DEFAULT_SETTLE_SECS = 30
+
+MAX_QUOTE_AGE_SECS = 300
+"""
+How old the newest quote may be, measured from arrival, before the feed counts as stale.
+
+Five minutes rather than five seconds because the check runs on a delayed feed an hour
+before the open, when a quiet instrument may legitimately not tick for a while; what it
+guards against is a feed that stopped, not one that is slow.
+
+"""
+
+MIN_QUOTES = 2
+"""
+Quotes an instrument must have delivered; *one isolated quote is not sufficient*.
+"""
+
+PREMARKET_LEAD = timedelta(hours=5, minutes=30)
+"""
+How long before the open US pre-market quoting begins (04:00 Eastern).
+
+Used only to describe the market's state on the check's note, so a failed quote check at
+03:00 Eastern reads as "no quotes expected" rather than as a silent feed.
+
+"""
+
+NANOS_PER_SECOND = 1_000_000_000
 
 
 NO_ACCOUNT_HINT = (
@@ -110,6 +135,124 @@ class Check:
     note: str = ""
 
 
+@dataclass(frozen=True)
+class QuoteSample:
+    """
+    The newest quote seen for one instrument, and how many preceded it.
+    """
+
+    instrument_id: str
+    bid: Decimal
+    ask: Decimal
+    ts_event: int
+    ts_init: int
+    count: int
+
+
+class QuoteWatch(DataActor):
+    """
+    Subscribes to quotes for the session's instruments and keeps the newest of each.
+
+    ``DataActor`` is a pyo3 class whose ``__new__`` accepts only the config, so the
+    instruments are attached after construction by :meth:`configure`.
+
+    """
+
+    def configure(self, instrument_ids: tuple[str, ...]) -> None:
+        """
+        Attach the instruments to watch, after pyo3 construction.
+        """
+        self._instrument_ids = tuple(InstrumentId.from_str(i) for i in instrument_ids)
+        self.samples: dict[str, QuoteSample | None] = dict.fromkeys(instrument_ids)
+
+    def on_start(self) -> None:
+        """
+        Subscribe to quotes for every configured instrument.
+        """
+        for instrument_id in self._instrument_ids:
+            self.subscribe_quotes(instrument_id)
+
+    def on_quote(self, quote) -> None:  # noqa: ANN001 - QuoteTick from the engine
+        """
+        Keep the newest quote and count the ones before it.
+        """
+        key = str(quote.instrument_id)
+        if key not in self.samples:
+            return
+        previous = self.samples[key]
+        self.samples[key] = QuoteSample(
+            instrument_id=key,
+            bid=Decimal(str(quote.bid_price)),
+            ask=Decimal(str(quote.ask_price)),
+            ts_event=int(quote.ts_event),
+            ts_init=int(quote.ts_init),
+            count=(previous.count if previous else 0) + 1,
+        )
+
+
+def market_status(now: datetime) -> str:
+    """
+    Describe where the US session stands at ``now``, for the note on a quote check.
+    """
+    today = now.astimezone(EASTERN).date()
+    if not is_trading_day(today):
+        return "market closed: not a trading day"
+    opens, closes = session_open(today), session_close(today)
+    if now < opens - PREMARKET_LEAD:
+        return "market closed: before pre-market"
+    if now < opens:
+        return "pre-market"
+    if now < closes:
+        return "session open"
+    return "market closed: after the close"
+
+
+def quote_checks(
+    samples: Mapping[str, QuoteSample | None],
+    *,
+    now_ns: int,
+    max_age_secs: int = MAX_QUOTE_AGE_SECS,
+    min_quotes: int = MIN_QUOTES,
+    note: str = "",
+) -> list[Check]:
+    """
+    One check per instrument: enough quotes, the newest fresh, bid positive and below ask.
+
+    Pure, so the rules can be tested without a feed. Age is measured from ``ts_init``,
+    the instant the quote reached us, because a delayed feed carries no exchange time.
+
+    """
+    expected = f">={min_quotes} quotes, <={max_age_secs}s old, 0<bid<ask"
+    checks: list[Check] = []
+    for instrument_id, sample in samples.items():
+        symbol = instrument_id.split("=")[0].split(".")[0]
+        if sample is None:
+            checks.append(
+                Check(
+                    name=f"quote_{symbol}",
+                    passed=False,
+                    observed="none",
+                    expected=expected,
+                    note=note,
+                ),
+            )
+            continue
+        age = Decimal(now_ns - sample.ts_init) / NANOS_PER_SECOND
+        fresh = age <= max_age_secs
+        enough = sample.count >= min_quotes
+        uncrossed = 0 < sample.bid < sample.ask
+        checks.append(
+            Check(
+                name=f"quote_{symbol}",
+                passed=fresh and enough and uncrossed,
+                observed=f"{sample.count} quotes, last {age:.1f}s ago, {sample.bid}/{sample.ask}",
+                expected=expected,
+                note=note,
+            ),
+        )
+    return checks
+
+
 def check(name: str, *, observed: object, expected: object, note: str = "") -> Check:
     """
     Compare an observation against an expectation, as strings so the record is flat.
@@ -135,7 +278,13 @@ async def run_preflight(
     Returns every check in the order it was made.
 
     """
-    node, risk_engine = build_paper_node(session, market_data_type=market_data_type)
+    watch = QuoteWatch(DataActorConfig())
+    watch.configure(session.instrument_ids)
+    node, risk_engine = build_paper_node(
+        session,
+        market_data_type=market_data_type,
+        actors=(watch,),
+    )
 
     # Captured before the run for the same reason the risk engine handle is: a hosted run
     # takes ownership of the node, and `node.cache` then raises rather than returning a
@@ -167,6 +316,16 @@ async def run_preflight(
             ),
         )
         checks.extend(observe_environment(cache, session))
+        checks.extend(
+            quote_checks(
+                watch.samples,
+                now_ns=time.time_ns(),
+                note=(
+                    f"{market_status(datetime.now(UTC))}; "
+                    f"{str(market_data_type).rsplit('.', 1)[-1]} feed, age measured from arrival"
+                ),
+            ),
+        )
     finally:
         handle.stop()
         try:
@@ -296,9 +455,12 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
 
-    print(f"\n{'check':<32}{'result':<8}{'observed':<24}expected")
+    print(f"\n{'check':<32}{'result':<8}{'observed':<40}expected")
     for c in checks:
-        print(f"{c.name:<32}{'PASS' if c.passed else 'FAIL':<8}{c.observed[:23]:<24}{c.expected}")
+        print(f"{c.name:<32}{'PASS' if c.passed else 'FAIL':<8}{c.observed[:39]:<40}{c.expected}")
+    quotes = [c for c in checks if c.name.startswith("quote_")]
+    if quotes:
+        print(f"\nquotes: {quotes[0].note}")
 
     failed = [c.name for c in checks if not c.passed]
     report = {

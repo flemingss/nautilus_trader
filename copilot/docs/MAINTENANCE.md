@@ -144,18 +144,18 @@ for environment setup.
 when deciding what to run. Kept here rather than in a README per directory so there is
 one place that can be wrong.
 
-| Package        | Question it answers                                                                                                                            |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `paths.py`     | Where machine state lives and what the environment must export                                                                                 |
-| `data/`        | Getting bars in and keeping them honest: vendors, catalog, calendar, actions, patch, onboard                                                   |
-| `strategies/`  | The rules, their activations, the gate that judges them, the spend, the fingerprint                                                            |
-| `validation/`  | The walk-forward machinery the gate is built from                                                                                              |
-| `risk/`        | Sizing, the account budget, the session-wide ledger, engine protections                                                                        |
-| `calibration/` | What a trade costs, measured                                                                                                                   |
-| `live/`        | The operator's day: `preflight`, `warmup`, `run_activation`, `cancel_working`, and the `session`, `node`, `account`, `symbology` they stand on |
-| `live/probes/` | Investigations that produced a finding, kept runnable as evidence                                                                              |
-| `tests/`       | One file per module it tests, named for it                                                                                                     |
-| `docs/`        | Charter, playbook, decisions, roadmap, changelog, this file                                                                                    |
+| Package        | Question it answers                                                                                                                                                             |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `paths.py`     | Where machine state lives and what the environment must export                                                                                                                  |
+| `data/`        | Getting bars in and keeping them honest: vendors, catalog, calendar, actions, patch, onboard                                                                                    |
+| `strategies/`  | The rules, their activations, the gate that judges them, the spend, the fingerprint                                                                                             |
+| `validation/`  | The walk-forward machinery the gate is built from                                                                                                                               |
+| `risk/`        | Sizing, the account budget, the session-wide ledger, engine protections                                                                                                         |
+| `calibration/` | What a trade costs, measured                                                                                                                                                    |
+| `live/`        | The operator's day: `day` runs `preflight`, `warmup`, `run_activation`, `cancel_working` and `compare` in order, on the `session`, `node`, `account`, `symbology` they stand on |
+| `live/probes/` | Investigations that produced a finding, kept runnable as evidence                                                                                                               |
+| `tests/`       | One file per module it tests, named for it                                                                                                                                      |
+| `docs/`        | Charter, playbook, decisions, roadmap, changelog, this file                                                                                                                     |
 
 Two rules keep it that shape. A constant that more than one module needs lives in
 `paths.py` or the module that owns the concept, never copied - a source-scan test

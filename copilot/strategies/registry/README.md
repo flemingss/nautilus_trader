@@ -47,6 +47,13 @@ and expect the spend to refuse a window too short to score.
 `RESEARCH` never trades. `PAPER` trades a paper account. `LIVE` trades real capital and
 nothing reaches it without a spent holdout. Promotion is a diff someone reviewed.
 
+**And the live path checks the diff was made.** `copilot/strategies/promotion.py` refuses
+a `PAPER` or `LIVE` activation unless its holdout record carries `owner_decision:
+"freeze"` and the activation's `[parameters]` equal that record's `frozen_parameters`, key
+for key - a searched axis left unfixed runs at the strategy's default, which no fold
+selected. A `RESEARCH` activation always runs, and its session record says `seeded` and
+names every axis it left to the default.
+
 ## Why every activation here is long-only
 
 Not a coincidence, and as of 2026-09-01 not only a preference. The broker account is

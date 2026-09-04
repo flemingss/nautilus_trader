@@ -148,6 +148,29 @@ def test_a_session_that_placed_nothing_did_not_decide_to_trade() -> None:
     assert not record(skips={"setup_not_triggered": 1}).decided_to_trade
 
 
+def test_a_deferred_next_close_trigger_is_a_decision_to_trade() -> None:
+    # A next_close rule that fires places nothing on the decision bar. Read only its
+    # orders and a trigger looks like a quiet bar - which is how the record read until
+    # the replay comparison needed to know.
+    assert record(deferred_atr="6.72").decided_to_trade
+    assert not record().decided_to_trade
+
+
+def test_the_record_carries_where_its_parameters_came_from() -> None:
+    from copilot.strategies.promotion import provenance
+
+    entry = record(parameters_source=provenance(ACTIVATION).as_record())
+    assert entry.parameters_source["source"] == "seeded"
+    assert "min_gap_atr" in entry.parameters_source["unfixed_axes"]
+
+
+def test_the_records_decision_has_the_strategys_own_shape() -> None:
+    # The offline replay recomputes exactly these fields; a record that named them
+    # differently would need a translation nobody would keep current.
+    strategy = build_strategy(ACTIVATION, BROKER_ID)
+    assert set(record().decision) == set(strategy.decision_record())
+
+
 def test_a_denied_order_still_counts_as_a_decision() -> None:
     # The risk engine halt means an order is denied rather than absent. Reading a denial
     # as "no signal" would make orders-disabled sessions useless as evidence.
@@ -199,10 +222,10 @@ def test_a_record_carries_its_place_in_the_basket_and_the_ledger_after_it() -> N
     assert record().exposure_after == {}
 
 
-def test_preflight_follows_the_registry() -> None:
-    # The list the preflight resolves is derived, not written: it had passed three
+def test_the_preflight_and_the_sweep_follow_the_registry() -> None:
+    # The list both resolve is derived, not written: the preflight had passed three
     # hard-coded instruments over a registry of nine, six of them unverified.
-    from copilot.live.preflight import registered_instruments
+    from copilot.live.symbology import registered_instruments
     from copilot.strategies.activations import load_activations
 
     expected = {str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()}

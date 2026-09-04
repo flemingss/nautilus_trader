@@ -2,6 +2,47 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-05 (the day as two commands, and what the replay comparison found)
+
+### Built
+
+- **`live/day.py` owns the sequence.** `python -m copilot.live.day morning` runs append,
+  the corporate-actions scan over the registry to today, `validate --changed --write`,
+  and the replay comparison; `day evening` runs preflight, warm-up, the basket, and the
+  sweep, printing the session's clock on both sides of the Pacific and naming an early
+  close. The scan blocks the verdict, the preflight blocks the basket, and the sweep runs
+  whatever happened before it. It checks what the day needs exported before it starts a
+  step. Walked 2026-09-04 (JST 2026-09-05): morning 3m00s, evening 2m11s.
+- **`cancel_working --all`** sweeps every registered instrument in one node: nine in
+  40.3s where the walk had measured 41.5s *each*. Naming nothing is an error, not AAPL.
+- **`preflight` checks a quote per instrument**: at least two, the newest within five
+  minutes of arrival, a positive bid strictly below the ask. Passed 9/9 with the session
+  open on a delayed feed; pre-market is unverified until Tuesday.
+- **`live/compare.py`** recomputes every decision in a session record through the gate's
+  own engine, over the same bars, warmed the same way, and compares field by field
+  within the session's own recorded rounding. The playbook's *compare live decisions
+  against offline replay*, as a morning step.
+- **`strategies/promotion.py`**: a PAPER or LIVE activation runs only when its registry
+  parameters equal the frozen set of a holdout the owner decided to `freeze`, key for
+  key; a RESEARCH activation is labelled `seeded identity; min_gap_atr=0.25,
+  target_1_atr=1.0 are strategy defaults, not the gate's selection` in the record and on
+  the console. Nothing is frozen, so every session today is labelled.
+
+### Found
+
+- **The live ATR stood one bar behind the replay's.** The first comparison, over the
+  record of 2026-09-04's basket, disagreed on eight activations of nine: the live path
+  handed the decision bar to `on_bar`, and the engine updates registered indicators
+  *before* `on_bar`. `GapReversalStrategy.decide` now does what the engine does; the
+  next session compared 9/9. Nine sessions had run on the lagged value and nothing said
+  so.
+- **A triggered `next_close` decision goes nowhere live.** The deferral the rule sets
+  dies with the process, and the next evening's warm-up never replays the bar. Recorded
+  as `deferred_atr` so a trigger is visible; carrying it into its session is a roadmap
+  row and a stage-seven question.
+- **The scan's default window ended 2025-12-31**, so a 2026 split would have been missed
+  by the morning command written to catch it. The day passes `--to` today.
+
 ## 2026-09-04, later (the shape, before it compounded)
 
 ### Reshaped
@@ -66,7 +107,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 - The AAPL next-close holdout passed thinly (+0.035 R over 111 trades); crossing equity
   moved to USD 25,000. `owner_decision` is unfilled in both spent records.
 
-### Measured
+### Confirmed against the broker
 
 - **The adopted-order cancel fix is confirmed against IB.** `live/strand_recovery.py`
   re-run twice on a rebuilt extension: the stranded order is adopted through

@@ -21,20 +21,25 @@ import pytest
 from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.risk.exposure import ExposureLedger
+from copilot.strategies.gap_reversal import DEFERRED
+from copilot.strategies.gap_reversal import ENTRY_SUBMITTED
 from copilot.strategies.gap_reversal import ENTRY_TIMINGS
 from copilot.strategies.gap_reversal import MAX_SEARCHABLE_MIN_GAP_ATR
 from copilot.strategies.gap_reversal import SEARCH_SPACE
+from copilot.strategies.gap_reversal import WARMUP_BARS
 from copilot.strategies.gap_reversal import GapReversalConfig
 from copilot.strategies.gap_reversal import GapReversalStrategy
 from copilot.strategies.gap_reversal import strategy_factory
 from copilot.validation.nautilus_replay import RiskAmountRegistry
 from copilot.validation.nautilus_replay import run_nautilus_replay
+from copilot.validation.nautilus_replay import run_to_decision
 from copilot.validation.types import DailyBar
 
 
 INSTRUMENT = equity_for("AAPL", "XNAS")
 BAR_TYPE = bar_type_for(INSTRUMENT.id)
 START = datetime(2024, 1, 2, tzinfo=UTC)
+WARMUP_BARS_FOR_TEST = WARMUP_BARS
 
 
 def bars_from(specs: list[tuple[str, str, str, str]]) -> list[DailyBar]:
@@ -599,3 +604,81 @@ def test_without_a_ledger_the_strategy_sizes_alone():
     specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
     result = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000")
     assert len(result.trades) == 1
+
+
+class TestDecisionRecord:
+    """
+    What one bar did, named, so a live session and a replay can be compared.
+    """
+
+    def test_a_skip_names_itself(self) -> None:
+        strategy = strategy_factory(
+            {},
+            instrument_id=INSTRUMENT.id,
+            bar_type=BAR_TYPE,
+            risk_registry=None,
+        )
+        strategy._skip("setup_not_triggered")
+        decided = strategy.decision_record()
+        assert decided["outcome"] == "setup_not_triggered"
+        assert decided["skips"] == {"setup_not_triggered": 1}
+        assert decided["deferred_atr"] is None
+
+    def test_before_any_bar_nothing_is_recorded(self) -> None:
+        strategy = strategy_factory(
+            {},
+            instrument_id=INSTRUMENT.id,
+            bar_type=BAR_TYPE,
+            risk_registry=None,
+        )
+        decided = strategy.decision_record()
+        assert decided["outcome"] is None
+        assert decided["atr_initialized"] is False
+        assert decided["atr_value"] is None
+        assert decided["previous_close"] is None
+
+    def test_a_next_close_trigger_records_the_deferral_and_the_atr_it_froze(self) -> None:
+        # The gap-down on the last bar triggers under next_close: no order, no skip, and
+        # until this existed nothing in the record said the rule had fired.
+        series = [*flat_series(WARMUP_BARS_FOR_TEST), ("94", "95", "93", "94.5")]
+        decided = run_to_decision(
+            bars_from(series),
+            {"long": True, "entry_timing": "next_close", "min_gap_atr": "0.25"},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            warmup=WARMUP_BARS_FOR_TEST,
+            inspect=lambda s: s.decision_record(),
+        )
+        assert decided["outcome"] == DEFERRED
+        assert decided["deferred_atr"] is not None
+        assert decided["skips"] == {}
+        # The strategy's "previous close" after a bar is that bar's close: the level the
+        # *next* decision compares against, and what the live record files.
+        assert decided["previous_close"] == "94.5000"
+
+    def test_a_quiet_bar_declines_and_says_why(self) -> None:
+        series = [*flat_series(WARMUP_BARS_FOR_TEST), ("100", "101", "99", "100")]
+        decided = run_to_decision(
+            bars_from(series),
+            {"long": True, "entry_timing": "next_close"},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            warmup=WARMUP_BARS_FOR_TEST,
+            inspect=lambda s: s.decision_record(),
+        )
+        assert decided["outcome"] == "setup_not_triggered"
+
+    def test_a_signal_close_trigger_records_the_submission(self) -> None:
+        series = [*flat_series(WARMUP_BARS_FOR_TEST), ("94", "95", "93", "94.5")]
+        decided = run_to_decision(
+            bars_from(series),
+            {"long": True, "entry_timing": "signal_close", "min_gap_atr": "0.25"},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            warmup=WARMUP_BARS_FOR_TEST,
+            inspect=lambda s: s.decision_record(),
+        )
+        assert decided["outcome"] == ENTRY_SUBMITTED

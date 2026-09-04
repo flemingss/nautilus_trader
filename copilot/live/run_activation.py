@@ -25,11 +25,14 @@ merely similar.
 
 **What this skips, stated plainly.** There is no Python route into the engine's data path
 on this build - no message bus, no data engine, and ``publish_data`` reaches a custom-data
-topic rather than the bars topic. So the bar is handed to the strategy directly. The engine's
-cache therefore does not see it, and anything that marks from the last bar - unrealised PnL,
-in particular - will not. With orders denied and no position open that is inert. **It stops
-being inert the moment orders are enabled**, and closing it properly means exposing a bar
-publish on the node, which is a Rust change.
+topic rather than the bars topic. So the bar is handed to the strategy directly, through
+``decide``, which updates the indicator before the rule the way the engine does; handing it
+to ``on_bar`` alone left the ATR one bar behind the replay's, found 2026-09-05 by the
+comparison in :mod:`copilot.live.compare`. The engine's cache still does not see the bar,
+and anything that marks from the last bar - unrealised PnL, in particular - will not. With
+orders denied and no position open that is inert. **It stops being inert the moment orders
+are enabled**, and closing it properly means exposing a bar publish on the node, which is a
+Rust change.
 
 Orders are denied, deliberately
 -------------------------------
@@ -88,6 +91,9 @@ from copilot.risk.exposure import ExposureLedger
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
+from copilot.strategies.promotion import Provenance
+from copilot.strategies.promotion import UnscoredParametersError
+from copilot.strategies.promotion import provenance
 from copilot.validation.types import DailyBar
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import Bar
@@ -126,6 +132,14 @@ class Plan:
     activation: Activation
     warmup: tuple[DailyBar, ...]
     decision: DailyBar
+    provenance: Provenance
+    """
+    Where the parameters came from, checked before the plan exists.
+
+    A trading activation whose parameters are not its frozen set has no plan; the check
+    raises and the session is refused before a connection is opened.
+
+    """
 
 
 class NoBrokerInstrumentError(RuntimeError):
@@ -162,9 +176,27 @@ class SessionRecord:
     warmup_from: str
     warmup_to: str
     parameters: dict[str, str]
+    parameters_source: dict[str, object] = field(default_factory=dict)
+    """
+    Whether these parameters are a seeded identity or a frozen set, and what was
+    unfixed.
+    """
     atr_initialized: bool = False
     atr_value: str | None = None
     previous_close: str | None = None
+    deferred_atr: str | None = None
+    """
+    Set when a ``next_close`` rule triggered: the decision is made, the entry is not.
+
+    Recorded because a triggered next-close decision produced neither a skip nor an
+    order, and until 2026-09-05 the record could not tell it from a bar the rule never
+    looked at.
+
+    """
+    outcome: str | None = None
+    """
+    The one thing the decision bar did, in the strategy's own words.
+    """
     skips: dict[str, int] = field(default_factory=dict)
     orders: list[OrderRecord] = field(default_factory=list)
     largest_rounding: str = "0"
@@ -186,9 +218,27 @@ class SessionRecord:
     @property
     def decided_to_trade(self) -> bool:
         """
-        Whether the rule produced an order, denied or not.
+        Whether the rule decided to enter: an order, denied or not, or a deferred entry.
+
+        A ``next_close`` rule that triggers places nothing on the decision bar, so a
+        session that reads only its orders reports a trigger as a quiet bar.
+
         """
-        return bool(self.orders)
+        return bool(self.orders) or self.deferred_atr is not None
+
+    @property
+    def decision(self) -> dict[str, object]:
+        """
+        Return the fields the offline replay recomputes, in the strategy's own shape.
+        """
+        return {
+            "atr_initialized": self.atr_initialized,
+            "atr_value": self.atr_value,
+            "previous_close": self.previous_close,
+            "deferred_atr": self.deferred_atr,
+            "outcome": self.outcome,
+            "skips": dict(self.skips),
+        }
 
 
 def broker_bar_type(instrument_id: InstrumentId) -> BarType:
@@ -246,9 +296,12 @@ def build_strategy(activation: Activation, instrument_id: InstrumentId) -> Strat
     Build the activation's strategy against the broker's instrument id.
 
     The parameters are the activation's own - its seeded identity plus whatever the
-    registry fixes - and **not** a holdout's frozen set. Reading frozen parameters back
-    into a live run is a promotion, and a promotion is a diff someone reviewed rather
-    than a default this module reaches for.
+    registry fixes - and **not** read from a holdout's frozen set. Reading frozen
+    parameters into a live run is a promotion, and a promotion is a diff someone
+    reviewed rather than a default this module reaches for. What the module does
+    instead is check the diff was made: :func:`copilot.strategies.promotion.provenance`
+    refuses a PAPER or LIVE activation whose parameters are not its frozen set, and
+    labels a RESEARCH one as seeded.
 
     """
     return activation.setup.factory(
@@ -313,6 +366,7 @@ async def run_session(
             warmup_from=plan.warmup[0].closed_at.date().isoformat(),
             warmup_to=plan.warmup[-1].closed_at.date().isoformat(),
             parameters={k: str(v) for k, v in plan.activation.parameters.items()},
+            parameters_source=plan.provenance.as_record(),
             basket_position=index + 1,
         )
         for index, plan in enumerate(plans)
@@ -372,8 +426,8 @@ async def run_session(
             record.largest_rounding = str(max(warm_rounding, decision_rounding))
 
             strategy.warm_up(warm_bars)
-            record.atr_initialized = bool(strategy._atr.initialized)
-            strategy.on_bar(decision_bars[0])
+            record.atr_initialized = bool(strategy.decision_record()["atr_initialized"])
+            strategy.decide(decision_bars[0])
             record.exposure_after = ledger.as_record()
 
         await asyncio.sleep(drain_secs)
@@ -381,9 +435,12 @@ async def run_session(
         for plan in plans:
             name = plan.activation.name
             strategy, record = strategies[name], records[name]
-            record.atr_value = str(strategy._atr.value)
-            record.previous_close = str(strategy._previous_close)
-            record.skips = dict(strategy.skips)
+            decided = strategy.decision_record()
+            record.atr_value = decided["atr_value"]
+            record.previous_close = decided["previous_close"]
+            record.deferred_atr = decided["deferred_atr"]
+            record.outcome = decided["outcome"]
+            record.skips = dict(decided["skips"])
             record.orders = [
                 OrderRecord(
                     client_order_id=str(order.client_order_id),
@@ -414,8 +471,22 @@ def _report(record: SessionRecord) -> None:
     print(f"  instrument      {record.broker_instrument}  (research {record.research_instrument})")
     print(f"  warm-up         {record.warmup_bars} bars, {record.warmup_from}..{record.warmup_to}")
     print(f"  decision bar    {record.decision_bar}")
+    if record.parameters_source:
+        print(f"  parameters      {Provenance.from_record(record.parameters_source).label}")
     print(f"  indicator       initialized={record.atr_initialized}  atr={record.atr_value}")
     print(f"  previous close  {record.previous_close}")
+    _report_sizing(record)
+    if record.largest_rounding != "0":
+        print(f"  rounding        {record.largest_rounding} to the broker's precision")
+    _report_outcome(record)
+    if record.note:
+        print(f"  note            {record.note}")
+
+
+def _report_sizing(record: SessionRecord) -> None:
+    """
+    Print what the session sized against and where the shared ledger stood after it.
+    """
     if record.budget:
         b = record.budget
         capped = (
@@ -433,21 +504,28 @@ def _report(record: SessionRecord) -> None:
             f"decision; entries {x['entries']}/{x['max_new_entries']}  "
             f"(basket position {record.basket_position})",
         )
-    if record.largest_rounding != "0":
-        print(f"  rounding        {record.largest_rounding} to the broker's precision")
-    if record.skips:
-        for reason, count in sorted(record.skips.items()):
-            print(f"  declined        {reason} x{count}")
+
+
+def _report_outcome(record: SessionRecord) -> None:
+    """
+    Print the one thing the decision bar did: declined, ordered, or deferred.
+    """
+    for reason, count in sorted(record.skips.items()):
+        print(f"  declined        {reason} x{count}")
     if record.orders:
         for order in record.orders:
             print(
                 f"  ORDER           {order.side} {order.quantity} {order.order_type} "
                 f"-> {order.status}",
             )
+    elif record.deferred_atr is not None:
+        print(
+            f"  DEFERRED        triggered at atr={record.deferred_atr}; a next_close entry "
+            f"belongs to the session now opening, and the live path does not yet carry "
+            f"it there (ROADMAP)",
+        )
     else:
         print("  no order        the rule did not fire on this bar")
-    if record.note:
-        print(f"  note            {record.note}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -509,6 +587,13 @@ def main(argv: list[str] | None = None) -> int:
 
     plans = []
     for activation in activations:
+        # Before any bar is read: a trading activation whose parameters the gate never
+        # scored has no session, and a research one is labelled as seeded.
+        try:
+            source = provenance(activation)
+        except UnscoredParametersError as e:
+            print(f"refused: {e}")
+            return 2
         # The warm-up loader is used as the gate and not as the source. It refuses a
         # stale or holed window - the same refusal the operator's morning check makes -
         # but it returns bars built at the catalog's precision, and what reaches the
@@ -527,6 +612,7 @@ def main(argv: list[str] | None = None) -> int:
                 activation=activation,
                 warmup=catalog_bars[-(needed + 1) : -1],
                 decision=catalog_bars[-1],
+                provenance=source,
             ),
         )
 
