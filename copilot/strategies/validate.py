@@ -112,6 +112,12 @@ class Verdict:
             # read, to anyone comparing it against a later catalog, as a run over
             # everything available.
             "evaluation_window": {
+                # Named per verdict rather than implied by the module constant: the
+                # boundary is the activation's own (ADR-0020), so two verdicts carved at
+                # different dates would otherwise be indistinguishable in the record.
+                "holdout_start": (
+                    self.activation.validation.holdout_start or HOLDOUT_START.date().isoformat()
+                ),
                 "end": EVALUATION_END.date().isoformat(),
                 "bars_beyond": self.unevaluated_bars,
             },
@@ -178,7 +184,7 @@ def run(
     # The carve happens here, before the gate sees a bar: everything downstream of this
     # line runs on the development window alone (ADR-0012), clipped to the evaluation
     # window (ADR-0017) so a catalog kept fresh for the live path scores nothing new.
-    carved = carve(bars)
+    carved = carve(bars, holdout_start=activation.validation.holdout_boundary)
 
     settings = activation.validation
     replay = make_replay(
@@ -230,13 +236,17 @@ def _print(verdict: Verdict) -> None:
     # The catalog is kept current for the live path, so a run over a 2026 catalog scores
     # 2005-2021 and says so here rather than only in the filed record. Reading a verdict
     # as a run over everything available is the whole failure ADR-0017 guards against.
-    if verdict.unevaluated_bars:
-        print(
-            f"{'':<24} scored {record['bar_range'][0]}..{record['bar_range'][1]}; "
-            f"{verdict.unevaluated_bars} bars past "
-            f"{record['evaluation_window']['end']} not evaluated",
-            flush=True,
-        )
+    window = record["evaluation_window"]
+    clipped = (
+        f"; {verdict.unevaluated_bars} bars past {window['end']} not evaluated"
+        if verdict.unevaluated_bars
+        else ""
+    )
+    print(
+        f"{'':<24} scored {record['bar_range'][0]}..{record['bar_range'][1]}, "
+        f"holdout from {window['holdout_start']}{clipped}",
+        flush=True,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -271,8 +281,8 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"Net of costs: spread at {cost_model.percentile} per side from "
         f"{cost_model.snapshot}, plus IB commission.\n"
-        f"Development window only: bars from {HOLDOUT_START.date().isoformat()} are the "
-        f"locked, unspent holdout (ADR-0012), and bars from "
+        f"Development window only: bars from each activation's own holdout boundary are "
+        f"its locked, unspent holdout (ADR-0012, ADR-0020), and bars from "
         f"{EVALUATION_END.date().isoformat()} are outside the evaluation window "
         f"entirely (ADR-0017).\n",
     )

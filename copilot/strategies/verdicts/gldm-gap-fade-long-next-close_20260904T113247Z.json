@@ -1,0 +1,271 @@
+{
+  "activation": "gldm-gap-fade-long-next-close",
+  "strategy": "gap_reversal",
+  "lifecycle": "RESEARCH",
+  "instrument": "GLDM.ARCX",
+  "run_at": "2026-09-04T11:32:47.183201+00:00",
+  "runtime_seconds": 7.3,
+  "bars": 1562,
+  "bar_range": [
+    "2018-06-27",
+    "2024-09-30"
+  ],
+  "holdout": {
+    "start": "2022-01-01",
+    "bars_reserved": 314,
+    "range": [
+      "2024-10-01",
+      "2025-12-31"
+    ]
+  },
+  "evaluation_window": {
+    "holdout_start": "2024-10-01",
+    "end": "2026-01-01",
+    "bars_beyond": 169
+  },
+  "search_space": {
+    "min_gap_atr": [
+      "0.15",
+      "0.25",
+      "0.40"
+    ],
+    "target_1_atr": [
+      "1.0",
+      "1.5"
+    ]
+  },
+  "seeded_parameters": {
+    "long": "True",
+    "entry_timing": "next_close",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000"
+  },
+  "validation": {
+    "train_bars": 252,
+    "test_bars": 126,
+    "purge_bars": 5,
+    "min_trades": 20,
+    "fold_min_trades": 5,
+    "holdout_start": "2024-10-01"
+  },
+  "warmup_bars": 16,
+  "costs_modelled": true,
+  "cost_model": {
+    "snapshot": "spread_history_20260904T112723Z.json",
+    "percentile": "p95",
+    "bps_per_side": "6.1996",
+    "commission": "IB Pro fixed tier: max(1.00, 0.005/share) per order, capped at 1.00% of notional, split-corrected share counts"
+  },
+  "holdout_spent": false,
+  "folds": 10,
+  "folds_evaluated": 10,
+  "folds_passed": 3,
+  "majority_passed": false,
+  "mean_oos_net_expectancy_r": "0.021268",
+  "total_test_trades": 126,
+  "fold_detail": [
+    {
+      "index": 0,
+      "test_from": "2019-07-24",
+      "test_to": "2020-01-23",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 10,
+      "net_score_r": "-0.119864",
+      "passed": false,
+      "reason": "score -0.1198640447406044429494788283 not above 0"
+    },
+    {
+      "index": 1,
+      "test_from": "2020-01-24",
+      "test_to": "2020-07-23",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "-0.122172",
+      "passed": false,
+      "reason": "score -0.1221715895982000077183966388 not above 0"
+    },
+    {
+      "index": 2,
+      "test_from": "2020-07-24",
+      "test_to": "2021-01-22",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 13,
+      "net_score_r": "-0.046199",
+      "passed": false,
+      "reason": "score -0.04619878637194439462703865936 not above 0"
+    },
+    {
+      "index": 3,
+      "test_from": "2021-01-25",
+      "test_to": "2021-07-23",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 11,
+      "net_score_r": "-0.112039",
+      "passed": false,
+      "reason": "score -0.1120386318543458903287564845 not above 0"
+    },
+    {
+      "index": 4,
+      "test_from": "2021-07-26",
+      "test_to": "2022-01-21",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.15",
+        "target_1_atr": "1.5"
+      },
+      "trades": 15,
+      "net_score_r": "-0.191503",
+      "passed": false,
+      "reason": "score -0.1915030560442873851031888339 not above 0"
+    },
+    {
+      "index": 5,
+      "test_from": "2022-01-24",
+      "test_to": "2022-07-25",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.0"
+      },
+      "trades": 8,
+      "net_score_r": "0.156441",
+      "passed": true,
+      "reason": "score 0.1564405032418972530289126818 above 0"
+    },
+    {
+      "index": 6,
+      "test_from": "2022-07-26",
+      "test_to": "2023-01-24",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.25",
+        "target_1_atr": "1.0"
+      },
+      "trades": 19,
+      "net_score_r": "-0.142477",
+      "passed": false,
+      "reason": "score -0.1424773633665746846736047713 not above 0"
+    },
+    {
+      "index": 7,
+      "test_from": "2023-01-25",
+      "test_to": "2023-07-26",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 11,
+      "net_score_r": "0.181017",
+      "passed": true,
+      "reason": "score 0.1810168923907477901618818965 above 0"
+    },
+    {
+      "index": 8,
+      "test_from": "2023-07-27",
+      "test_to": "2024-01-25",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 14,
+      "net_score_r": "-0.116065",
+      "passed": false,
+      "reason": "score -0.1160651824545145643823195514 not above 0"
+    },
+    {
+      "index": 9,
+      "test_from": "2024-01-26",
+      "test_to": "2024-07-26",
+      "selected": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000",
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
+      },
+      "trades": 11,
+      "net_score_r": "0.725538",
+      "passed": true,
+      "reason": "score 0.7255380702669518651139404276 above 0"
+    }
+  ]
+}

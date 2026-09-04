@@ -376,6 +376,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: the append report it prints is the product, and a scheduler reads its exit code
 "copilot/data/backfill.py" = ["T201"]
+"copilot/data/patch.py" = [
+  "T201",
+  "TRY301",
+] # Operator CLI: the patch report it prints is the product; TRY301 for the rewrite guard, whose raise must stay inside the try that restores the series
 "copilot/data/corporate_actions.py" = [
   "T201",
 ] # Operator CLI: the action table it prints is the product

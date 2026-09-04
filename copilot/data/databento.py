@@ -775,6 +775,20 @@ def catalog_closes(catalog_path: str) -> dict[str, dict[date, tuple[Decimal, int
     return {symbol: series for symbol, (_, series) in catalog_series(catalog_path).items()}
 
 
+def _wanted_symbols(args: argparse.Namespace) -> set[str] | None:
+    """
+    Return the symbols a pull was restricted to, or None for the whole catalog.
+
+    Onboarding a handful of symbols into a catalog that already holds dozens is the
+    common case, and without this every such pull buys the entire universe again. The
+    default stays "everything held" so an unqualified pull still means what it did.
+
+    """
+    if not getattr(args, "only", None):
+        return None
+    return {token.strip().upper() for token in args.only.split(",") if token.strip()}
+
+
 def _pull(client: DatabentoClient, args: argparse.Namespace) -> int:
     """
     Buy one schema over the catalog's universe, routed per listing venue.
@@ -784,6 +798,15 @@ def _pull(client: DatabentoClient, args: argparse.Namespace) -> int:
 
     """
     held = catalog_series(args.catalog)
+    wanted = _wanted_symbols(args)
+    if wanted is not None:
+        missing = sorted(wanted - held.keys())
+        if missing:
+            print(f"  not in the catalog, so not priced: {', '.join(missing)}")
+        held = {s: v for s, v in held.items() if s in wanted}
+        if not held:
+            print("  nothing to pull")
+            return 0
     by_venue: dict[str, list[str]] = {}
     for symbol, (venue, _) in held.items():
         by_venue.setdefault(venue, []).append(symbol)
@@ -864,13 +887,25 @@ def _survey(client: DatabentoClient) -> None:
     print(f"\n  ({len(datasets) - len(equities)} non-equities datasets not listed)")
 
 
-def _cost(client: DatabentoClient, symbols: list[str], start: str, end: str) -> None:
+def _cost(
+    client: DatabentoClient,
+    symbols: list[str],
+    start: str,
+    end: str,
+    schema: str = "ohlcv-1m",
+) -> None:
     """
-    Print what a one-minute pull would cost, without making it.
+    Print what a pull of ``schema`` would cost, without making it.
+
+    The schema is a parameter because pricing the wrong one is the exact mistake
+    [ADR-0015] exists to prevent: quote schemas cost multiples of the bar schemas, and a
+    ``--cost`` that always answered for ``ohlcv-1m`` gave a number for a query the
+    operator was not about to run.
+
     """
-    price = client.cost(symbols, "ohlcv-1m", start, end)
+    price = client.cost(symbols, schema, start, end)
     print(
-        f"\nohlcv-1m, {len(symbols)} symbols, {start} to {end}: ${price} on {client.dataset}",
+        f"\n{schema}, {len(symbols)} symbols, {start} to {end}: ${price} on {client.dataset}",
     )
 
 
@@ -988,6 +1023,10 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
     parser.add_argument("--pull", action="store_true", help="Buy one schema in bulk")
+    parser.add_argument(
+        "--only",
+        help="Restrict --pull to these catalog symbols (default: every symbol held)",
+    )
     parser.add_argument("--schema", default="ohlcv-1m", help="Schema for --pull")
     parser.add_argument("--store", default=DEFAULT_STORE, help="Where bulk pulls land")
     parser.add_argument(
@@ -1017,7 +1056,7 @@ def main(argv: list[str] | None = None) -> int:
         _survey(client)
 
     if args.cost:
-        _cost(client, symbols, args.start, args.end)
+        _cost(client, symbols, args.start, args.end, args.schema)
 
     if args.pull:
         failed = _pull(client, args)

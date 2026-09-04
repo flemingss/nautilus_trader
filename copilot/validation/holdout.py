@@ -143,7 +143,11 @@ class CarvedHistory:
         return Decimal(len(self.holdout)) / Decimal(total)
 
 
-def carve(bars: Sequence[DailyBar]) -> CarvedHistory:
+def carve(
+    bars: Sequence[DailyBar],
+    *,
+    holdout_start: datetime | None = None,
+) -> CarvedHistory:
     """
     Clip to the evaluation window, split at the pin, refuse a carve outside the charter.
 
@@ -159,13 +163,14 @@ def carve(bars: Sequence[DailyBar]) -> CarvedHistory:
     carve.
 
     """
+    start = holdout_start or HOLDOUT_START
     ordered = sorted(bars, key=lambda bar: bar.closed_at)
     within = tuple(bar for bar in ordered if bar.closed_at < EVALUATION_END)
     unevaluated = tuple(bar for bar in ordered if bar.closed_at >= EVALUATION_END)
-    development = tuple(bar for bar in within if bar.closed_at < HOLDOUT_START)
-    holdout = tuple(bar for bar in within if bar.closed_at >= HOLDOUT_START)
+    development = tuple(bar for bar in within if bar.closed_at < start)
+    holdout = tuple(bar for bar in within if bar.closed_at >= start)
 
-    boundary = HOLDOUT_START.date().isoformat()
+    boundary = start.date().isoformat()
     window_end = EVALUATION_END.date().isoformat()
     if not development or not holdout:
         raise HoldoutCarveError(
