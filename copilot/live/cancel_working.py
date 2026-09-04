@@ -191,10 +191,10 @@ def main(argv: list[str] | None = None) -> int:
     print(f"\nRESULT: {'CACHE CLEAR' if not outstanding else 'FAIL'}")
     print(
         "\nThis is not proof the broker has nothing working. An order held by a TWS "
-        "precautionary\nsize setting never reached the broker and is invisible to the API, "
-        "and the reconciliation\nfix behind this sweep is unconfirmed against IB - see the "
-        "module docstring.\nCheck the broker's own order list before calling a session "
-        "closed.",
+        "precautionary\nsize setting never reached the broker and is invisible to the API. "
+        "The reconciliation\nfix behind this sweep was confirmed against IB on 2026-09-03 "
+        "(strand_recovery), which\ndoes not change the first point. Check the broker's own "
+        "order list before calling a\nsession closed.",
     )
     return 0 if not outstanding else 1
 

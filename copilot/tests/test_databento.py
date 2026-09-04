@@ -14,6 +14,7 @@ it was written for.
 
 from __future__ import annotations
 
+import argparse
 from datetime import UTC
 from datetime import date
 from datetime import datetime
@@ -25,7 +26,9 @@ from copilot.data.databento import API_KEY_ENV
 from copilot.data.databento import DatabentoClient
 from copilot.data.databento import DatabentoError
 from copilot.data.databento import Minute
+from copilot.data.databento import _cost
 from copilot.data.databento import _symbol_for
+from copilot.data.databento import _wanted_symbols
 from copilot.data.databento import audit_symbol
 from copilot.data.databento import measure
 from copilot.data.databento import normalize_minute
@@ -244,10 +247,15 @@ def test_an_exact_match_audits_clean() -> None:
 
 def test_trailing_zeros_do_not_count_as_a_mismatch() -> None:
     """
-    The catalog stores 218.3600 and the vendor sends 218.36. Same price.
+    The catalog stores 218.3600 and the vendor sends 218.36.
+
+    Same price.
+
     """
     result = audit_symbol(
-        "AAPL", series({"2024-08-01": "218.36"}), series({"2024-08-01": "218.3600"})
+        "AAPL",
+        series({"2024-08-01": "218.36"}),
+        series({"2024-08-01": "218.3600"}),
     )
 
     assert result.clean
@@ -283,7 +291,9 @@ def test_no_overlap_is_never_clean() -> None:
     Comparing nothing must not read as agreement.
     """
     result = audit_symbol(
-        "AAPL", series({"2023-01-03": "100.00"}), series({"2024-08-01": "100.00"})
+        "AAPL",
+        series({"2023-01-03": "100.00"}),
+        series({"2024-08-01": "100.00"}),
     )
 
     assert result.days_compared == 0
@@ -295,10 +305,12 @@ def test_volume_ratio_is_reported_because_prices_can_agree_while_volume_does_not
     EQUS.MINI matched prices closely and carried ~3% of the tape's volume.
     """
     held = series(
-        {"2024-08-01": "100.00", "2024-08-02": "100.00"}, {"2024-08-01": 100, "2024-08-02": 100}
+        {"2024-08-01": "100.00", "2024-08-02": "100.00"},
+        {"2024-08-01": 100, "2024-08-02": 100},
     )
     vendor = series(
-        {"2024-08-01": "100.00", "2024-08-02": "100.00"}, {"2024-08-01": 3, "2024-08-02": 3}
+        {"2024-08-01": "100.00", "2024-08-02": "100.00"},
+        {"2024-08-01": 3, "2024-08-02": 3},
     )
 
     result = audit_symbol("AAPL", vendor, held)
@@ -310,7 +322,10 @@ def test_volume_ratio_is_reported_because_prices_can_agree_while_volume_does_not
 def test_an_instrument_id_resolves_to_the_symbol_it_stood_for() -> None:
     """
     Rows carry a numeric id and no symbol, so a wrong mapping silently attributes one
-    company's prices to another. That is the worst failure this module can have.
+    company's prices to another.
+
+    That is the worst failure this module can have.
+
     """
     intervals = [
         ("AAPL", 38, date(2024, 7, 1), date(2025, 12, 31)),
@@ -336,3 +351,82 @@ def test_an_unmapped_id_resolves_to_nothing_rather_than_a_guess() -> None:
 
     assert _symbol_for(intervals, 999, date(2024, 8, 1)) == ""
     assert _symbol_for(intervals, 38, date(2019, 1, 1)) == ""
+
+
+class TestPullScope:
+    """
+    Which symbols a bulk pull buys, and which schema a price is quoted for.
+
+    Both were found by the ETF onboarding drill on 2026-09-04 and both cost real money.
+    An unrestricted pull bought the whole catalog when six symbols were wanted - $9.96
+    against $2.40 - and ``--cost`` answered for ``ohlcv-1m`` no matter which schema was
+    about to be bought, which is the one thing [ADR-0015] asks that flag to prevent.
+
+    """
+
+    def args(self, **kwargs: object) -> argparse.Namespace:
+        return argparse.Namespace(**{"only": None, **kwargs})
+
+    def test_no_restriction_means_the_whole_catalog(self) -> None:
+        """
+        The default has to keep meaning what it did, or a scheduled pull changes
+        silently.
+        """
+        assert _wanted_symbols(self.args()) is None
+
+    def test_a_restriction_is_parsed_into_symbols(self) -> None:
+        """
+        The onboarding case: buy the new arrivals, not the universe again.
+        """
+        assert _wanted_symbols(self.args(only="SCHX,TLT,GLDM")) == {"SCHX", "TLT", "GLDM"}
+
+    def test_symbols_are_upper_cased_and_trimmed(self) -> None:
+        """
+        The catalog keys on upper case, and a typed list carries spaces.
+        """
+        assert _wanted_symbols(self.args(only=" schx , tlt ")) == {"SCHX", "TLT"}
+
+    def test_empty_entries_are_dropped(self) -> None:
+        """
+        A trailing comma must not become an empty symbol that matches nothing.
+        """
+        assert _wanted_symbols(self.args(only="SCHX,,TLT,")) == {"SCHX", "TLT"}
+
+    def test_an_empty_restriction_is_no_restriction(self) -> None:
+        """
+        Passing nothing is not the same as asking for nothing.
+        """
+        assert _wanted_symbols(self.args(only="")) is None
+
+    def test_cost_prices_the_schema_it_is_given(self) -> None:
+        """
+        A quote schema costs multiples of a bar schema; quoting the wrong one is the
+        bug.
+        """
+        seen: list[str] = []
+
+        class Recorder:
+            dataset = "ARCX.PILLAR"
+
+            def cost(self, symbols, schema, start, end):
+                seen.append(schema)
+                return Decimal("1.94")
+
+        _cost(Recorder(), ["SCHX"], "2018-05-01", "2026-09-03", "bbo-1m")
+        assert seen == ["bbo-1m"]
+
+    def test_cost_still_defaults_to_one_minute_bars(self) -> None:
+        """
+        The default is the shape the flag has always priced.
+        """
+        seen: list[str] = []
+
+        class Recorder:
+            dataset = "ARCX.PILLAR"
+
+            def cost(self, symbols, schema, start, end):
+                seen.append(schema)
+                return Decimal("0.02")
+
+        _cost(Recorder(), ["SCHX"], "2018-05-01", "2026-09-03")
+        assert seen == ["ohlcv-1m"]

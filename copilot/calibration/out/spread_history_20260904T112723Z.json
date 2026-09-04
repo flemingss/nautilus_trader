@@ -1,0 +1,2415 @@
+{
+  "measured_at": "2026-09-04T11:27:23.563565+00:00",
+  "source": "databento bbo-1m, historical top of book, from ~/.nautilus_copilot/databento",
+  "market_data_type": "HISTORICAL_REALTIME",
+  "delayed_caveat": false,
+  "windows": {
+    "open": "first 5 minutes of regular hours",
+    "close": "last 5 minutes of regular hours",
+    "session": "the rest of regular hours",
+    "execution": "first 2 hours of regular hours, per year - the charter's predeclared execution window, and the one a cost is charged from. Overlaps open and session; not part of the partition."
+  },
+  "basis": {
+    "window": "execution",
+    "rule": "worst measured year, p95 of the full spread, halved to per side",
+    "percentile": "p95"
+  },
+  "symbols": [
+    {
+      "symbol": "AAPL",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9603,
+          "median": 0.67,
+          "p75": 0.9005,
+          "p95": 1.6069,
+          "p99": 3.0959,
+          "max": 19.0589
+        },
+        "open": {
+          "samples": 9635,
+          "median": 2.0389,
+          "p75": 3.356,
+          "p95": 9.9857,
+          "p99": 18.4683,
+          "max": 79.6052
+        },
+        "session": {
+          "samples": 731803,
+          "median": 0.7673,
+          "p75": 1.1456,
+          "p95": 1.9239,
+          "p99": 3.4245,
+          "max": 36.9385
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.335,
+          "p95": 0.8035
+        },
+        "open": {
+          "median": 1.0195,
+          "p95": 4.9928
+        },
+        "session": {
+          "median": 0.3836,
+          "p95": 0.9619
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20279,
+          "p95_full_bps": 3.0386,
+          "p95_per_side_bps": 1.5193
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 2.4643,
+          "p95_per_side_bps": 1.2321
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 3.8213,
+          "p95_per_side_bps": 1.9107
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 1.6649,
+          "p95_per_side_bps": 0.8324
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 1.9106,
+          "p95_per_side_bps": 0.9553
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 1.5235,
+          "p95_per_side_bps": 0.7617
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 1.7578,
+          "p95_per_side_bps": 0.8789
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 2.7784,
+          "p95_per_side_bps": 1.3892
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30315,
+        "p95_full_bps": 3.8213,
+        "p95_per_side_bps": 1.9107
+      }
+    },
+    {
+      "symbol": "AMZN",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9605,
+          "median": 1.187,
+          "p75": 2.2459,
+          "p95": 4.6091,
+          "p99": 7.4826,
+          "max": 27.1881
+        },
+        "open": {
+          "samples": 9636,
+          "median": 4.3823,
+          "p75": 7.6185,
+          "p95": 15.8094,
+          "p99": 26.0852,
+          "max": 137.0778
+        },
+        "session": {
+          "samples": 731574,
+          "median": 1.9109,
+          "p75": 3.3442,
+          "p95": 6.5019,
+          "p99": 10.1955,
+          "max": 48.4989
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.5935,
+          "p95": 2.3046
+        },
+        "open": {
+          "median": 2.1912,
+          "p95": 7.9047
+        },
+        "session": {
+          "median": 0.9555,
+          "p95": 3.251
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 10.5079,
+          "p95_per_side_bps": 5.2539
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 6.3711,
+          "p95_per_side_bps": 3.1855
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 9.8454,
+          "p95_per_side_bps": 4.9227
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 7.5375,
+          "p95_per_side_bps": 3.7688
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 10.6589,
+          "p95_per_side_bps": 5.3294
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 2.3574,
+          "p95_per_side_bps": 1.1787
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 2.0013,
+          "p95_per_side_bps": 1.0006
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 2.7003,
+          "p95_per_side_bps": 1.3501
+        }
+      },
+      "charged": {
+        "worst_year": 2022,
+        "samples": 30116,
+        "p95_full_bps": 10.6589,
+        "p95_per_side_bps": 5.3294
+      }
+    },
+    {
+      "symbol": "CSCO",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9565,
+          "median": 2.0265,
+          "p75": 2.1851,
+          "p95": 2.4688,
+          "p99": 3.1158,
+          "max": 111.4868
+        },
+        "open": {
+          "samples": 9561,
+          "median": 3.8066,
+          "p75": 6.0441,
+          "p95": 49.1501,
+          "p99": 87.8816,
+          "max": 217.2702
+        },
+        "session": {
+          "samples": 730225,
+          "median": 2.0356,
+          "p75": 2.1961,
+          "p95": 2.5449,
+          "p99": 4.2708,
+          "max": 477.8157
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.0133,
+          "p95": 1.2344
+        },
+        "open": {
+          "median": 1.9033,
+          "p95": 24.5751
+        },
+        "session": {
+          "median": 1.0178,
+          "p95": 1.2724
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20275,
+          "p95_full_bps": 2.3961,
+          "p95_per_side_bps": 1.198
+        },
+        "2019": {
+          "samples": 30234,
+          "p95_full_bps": 2.351,
+          "p95_per_side_bps": 1.1755
+        },
+        "2020": {
+          "samples": 30312,
+          "p95_full_bps": 4.8403,
+          "p95_per_side_bps": 2.4201
+        },
+        "2021": {
+          "samples": 30230,
+          "p95_full_bps": 3.6637,
+          "p95_per_side_bps": 1.8318
+        },
+        "2022": {
+          "samples": 30114,
+          "p95_full_bps": 4.4326,
+          "p95_per_side_bps": 2.2163
+        },
+        "2023": {
+          "samples": 29992,
+          "p95_full_bps": 2.168,
+          "p95_per_side_bps": 1.084
+        },
+        "2024": {
+          "samples": 30230,
+          "p95_full_bps": 3.8558,
+          "p95_per_side_bps": 1.9279
+        },
+        "2025": {
+          "samples": 29849,
+          "p95_full_bps": 3.5255,
+          "p95_per_side_bps": 1.7627
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30312,
+        "p95_full_bps": 4.8403,
+        "p95_per_side_bps": 2.4201
+      }
+    },
+    {
+      "symbol": "CVX",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9410,
+          "median": 1.141,
+          "p75": 1.6137,
+          "p95": 2.9011,
+          "p99": 5.9627,
+          "max": 53.267
+        },
+        "open": {
+          "samples": 6691,
+          "median": 7.5566,
+          "p75": 11.5097,
+          "p95": 22.2786,
+          "p99": 39.5678,
+          "max": 120.0343
+        },
+        "session": {
+          "samples": 726224,
+          "median": 1.9879,
+          "p75": 3.05,
+          "p95": 6.3658,
+          "p99": 12.4373,
+          "max": 352.4098
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.5705,
+          "p95": 1.4505
+        },
+        "open": {
+          "median": 3.7783,
+          "p95": 11.1393
+        },
+        "session": {
+          "median": 0.9939,
+          "p95": 3.1829
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19672,
+          "p95_full_bps": 8.8955,
+          "p95_per_side_bps": 4.4477
+        },
+        "2019": {
+          "samples": 29876,
+          "p95_full_bps": 7.6645,
+          "p95_per_side_bps": 3.8322
+        },
+        "2020": {
+          "samples": 29951,
+          "p95_full_bps": 18.7676,
+          "p95_per_side_bps": 9.3838
+        },
+        "2021": {
+          "samples": 29912,
+          "p95_full_bps": 5.3177,
+          "p95_per_side_bps": 2.6589
+        },
+        "2022": {
+          "samples": 29687,
+          "p95_full_bps": 6.2123,
+          "p95_per_side_bps": 3.1062
+        },
+        "2023": {
+          "samples": 29507,
+          "p95_full_bps": 5.7334,
+          "p95_per_side_bps": 2.8667
+        },
+        "2024": {
+          "samples": 29805,
+          "p95_full_bps": 5.9042,
+          "p95_per_side_bps": 2.9521
+        },
+        "2025": {
+          "samples": 29565,
+          "p95_full_bps": 9.7787,
+          "p95_per_side_bps": 4.8893
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 29951,
+        "p95_full_bps": 18.7676,
+        "p95_per_side_bps": 9.3838
+      }
+    },
+    {
+      "symbol": "EEM",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10407,
+          "median": 2.3151,
+          "p75": 2.4829,
+          "p95": 2.6914,
+          "p99": 2.9972,
+          "max": 101.3358
+        },
+        "open": {
+          "samples": 10481,
+          "median": 2.334,
+          "p75": 2.5243,
+          "p95": 3.8918,
+          "p99": 5.7274,
+          "max": 21.2134
+        },
+        "session": {
+          "samples": 794312,
+          "median": 2.3151,
+          "p75": 2.4879,
+          "p95": 2.7148,
+          "p99": 3.2717,
+          "max": 430.945
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.1575,
+          "p95": 1.3457
+        },
+        "open": {
+          "median": 1.167,
+          "p95": 1.9459
+        },
+        "session": {
+          "median": 1.1575,
+          "p95": 1.3574
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 2.5684,
+          "p95_per_side_bps": 1.2842
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 2.53,
+          "p95_per_side_bps": 1.265
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 3.0044,
+          "p95_per_side_bps": 1.5022
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 2.0591,
+          "p95_per_side_bps": 1.0295
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 2.8906,
+          "p95_per_side_bps": 1.4453
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 2.6965,
+          "p95_per_side_bps": 1.3483
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 2.591,
+          "p95_per_side_bps": 1.2955
+        },
+        "2025": {
+          "samples": 30000,
+          "p95_full_bps": 2.3984,
+          "p95_per_side_bps": 1.1992
+        },
+        "2026": {
+          "samples": 20160,
+          "p95_full_bps": 1.8016,
+          "p95_per_side_bps": 0.9008
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30315,
+        "p95_full_bps": 3.0044,
+        "p95_per_side_bps": 1.5022
+      }
+    },
+    {
+      "symbol": "GLDM",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10081,
+          "median": 2.8157,
+          "p75": 5.762,
+          "p95": 8.107,
+          "p99": 9.0992,
+          "max": 106.2699
+        },
+        "open": {
+          "samples": 10268,
+          "median": 4.8936,
+          "p75": 6.0478,
+          "p95": 10.4517,
+          "p99": 17.4672,
+          "max": 110.0917
+        },
+        "session": {
+          "samples": 770856,
+          "median": 2.869,
+          "p75": 5.7787,
+          "p95": 8.14,
+          "p99": 11.6686,
+          "max": 601.9113
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.4079,
+          "p95": 4.0535
+        },
+        "open": {
+          "median": 2.4468,
+          "p95": 5.2258
+        },
+        "session": {
+          "median": 1.4345,
+          "p95": 4.07
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 14709,
+          "p95_full_bps": 8.4353,
+          "p95_per_side_bps": 4.2176
+        },
+        "2019": {
+          "samples": 30149,
+          "p95_full_bps": 7.8462,
+          "p95_per_side_bps": 3.9231
+        },
+        "2020": {
+          "samples": 30310,
+          "p95_full_bps": 12.3993,
+          "p95_per_side_bps": 6.1996
+        },
+        "2021": {
+          "samples": 30239,
+          "p95_full_bps": 5.8462,
+          "p95_per_side_bps": 2.9231
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 5.5913,
+          "p95_per_side_bps": 2.7956
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 2.7674,
+          "p95_per_side_bps": 1.3837
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 2.5281,
+          "p95_per_side_bps": 1.2641
+        },
+        "2025": {
+          "samples": 30000,
+          "p95_full_bps": 3.085,
+          "p95_per_side_bps": 1.5425
+        },
+        "2026": {
+          "samples": 20160,
+          "p95_full_bps": 2.318,
+          "p95_per_side_bps": 1.159
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30310,
+        "p95_full_bps": 12.3993,
+        "p95_per_side_bps": 6.1996
+      }
+    },
+    {
+      "symbol": "GOOGL",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9591,
+          "median": 1.541,
+          "p75": 3.0194,
+          "p95": 5.7306,
+          "p99": 10.6713,
+          "max": 31.554
+        },
+        "open": {
+          "samples": 9632,
+          "median": 5.9207,
+          "p75": 9.9932,
+          "p95": 19.1069,
+          "p99": 32.2808,
+          "max": 139.7746
+        },
+        "session": {
+          "samples": 731125,
+          "median": 2.465,
+          "p75": 4.6731,
+          "p95": 8.5005,
+          "p99": 13.1866,
+          "max": 126.0301
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.7705,
+          "p95": 2.8653
+        },
+        "open": {
+          "median": 2.9603,
+          "p95": 9.5534
+        },
+        "session": {
+          "median": 1.2325,
+          "p95": 4.2502
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20279,
+          "p95_full_bps": 12.7983,
+          "p95_per_side_bps": 6.3992
+        },
+        "2019": {
+          "samples": 30237,
+          "p95_full_bps": 9.6581,
+          "p95_per_side_bps": 4.829
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 14.2205,
+          "p95_per_side_bps": 7.1102
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 9.5279,
+          "p95_per_side_bps": 4.764
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 11.9733,
+          "p95_per_side_bps": 5.9867
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 2.2092,
+          "p95_per_side_bps": 1.1046
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 2.0958,
+          "p95_per_side_bps": 1.0479
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 2.5403,
+          "p95_per_side_bps": 1.2702
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30315,
+        "p95_full_bps": 14.2205,
+        "p95_per_side_bps": 7.1102
+      }
+    },
+    {
+      "symbol": "HYG",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10402,
+          "median": 1.2417,
+          "p75": 1.2926,
+          "p95": 1.358,
+          "p99": 2.3178,
+          "max": 39.7614
+        },
+        "open": {
+          "samples": 10297,
+          "median": 1.2584,
+          "p75": 1.358,
+          "p95": 9.9577,
+          "p99": 23.7753,
+          "max": 101.841
+        },
+        "session": {
+          "samples": 794016,
+          "median": 1.2423,
+          "p75": 1.2931,
+          "p95": 1.3595,
+          "p99": 2.474,
+          "max": 164.4655
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.6208,
+          "p95": 0.679
+        },
+        "open": {
+          "median": 0.6292,
+          "p95": 4.9788
+        },
+        "session": {
+          "median": 0.6212,
+          "p95": 0.6798
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20245,
+          "p95_full_bps": 1.2357,
+          "p95_per_side_bps": 0.6179
+        },
+        "2019": {
+          "samples": 30234,
+          "p95_full_bps": 1.194,
+          "p95_per_side_bps": 0.597
+        },
+        "2020": {
+          "samples": 30287,
+          "p95_full_bps": 2.4137,
+          "p95_per_side_bps": 1.2069
+        },
+        "2021": {
+          "samples": 30203,
+          "p95_full_bps": 1.1634,
+          "p95_per_side_bps": 0.5817
+        },
+        "2022": {
+          "samples": 30119,
+          "p95_full_bps": 1.3997,
+          "p95_per_side_bps": 0.6998
+        },
+        "2023": {
+          "samples": 29994,
+          "p95_full_bps": 1.3821,
+          "p95_per_side_bps": 0.691
+        },
+        "2024": {
+          "samples": 30229,
+          "p95_full_bps": 1.3105,
+          "p95_per_side_bps": 0.6553
+        },
+        "2025": {
+          "samples": 29961,
+          "p95_full_bps": 1.2921,
+          "p95_per_side_bps": 0.646
+        },
+        "2026": {
+          "samples": 20132,
+          "p95_full_bps": 1.2624,
+          "p95_per_side_bps": 0.6312
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30287,
+        "p95_full_bps": 2.4137,
+        "p95_per_side_bps": 1.2069
+      }
+    },
+    {
+      "symbol": "INTC",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9581,
+          "median": 2.1961,
+          "p75": 3.2739,
+          "p95": 4.8984,
+          "p99": 5.207,
+          "max": 68.8468
+        },
+        "open": {
+          "samples": 9623,
+          "median": 3.8543,
+          "p75": 5.7532,
+          "p95": 30.03,
+          "p99": 59.483,
+          "max": 187.3829
+        },
+        "session": {
+          "samples": 730939,
+          "median": 2.2107,
+          "p75": 3.3063,
+          "p95": 4.9176,
+          "p99": 5.2896,
+          "max": 89.542
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.0981,
+          "p95": 2.4492
+        },
+        "open": {
+          "median": 1.9272,
+          "p95": 15.015
+        },
+        "session": {
+          "median": 1.1053,
+          "p95": 2.4588
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20273,
+          "p95_full_bps": 3.775,
+          "p95_per_side_bps": 1.8875
+        },
+        "2019": {
+          "samples": 30236,
+          "p95_full_bps": 2.2709,
+          "p95_per_side_bps": 1.1355
+        },
+        "2020": {
+          "samples": 30314,
+          "p95_full_bps": 4.171,
+          "p95_per_side_bps": 2.0855
+        },
+        "2021": {
+          "samples": 30239,
+          "p95_full_bps": 3.4686,
+          "p95_per_side_bps": 1.7343
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 3.8873,
+          "p95_per_side_bps": 1.9436
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 3.9147,
+          "p95_per_side_bps": 1.9573
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 5.156,
+          "p95_per_side_bps": 2.578
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 5.3405,
+          "p95_per_side_bps": 2.6702
+        }
+      },
+      "charged": {
+        "worst_year": 2025,
+        "samples": 29880,
+        "p95_full_bps": 5.3405,
+        "p95_per_side_bps": 2.6702
+      }
+    },
+    {
+      "symbol": "IWM",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9609,
+          "median": 0.5822,
+          "p75": 0.6929,
+          "p95": 1.3177,
+          "p99": 1.9111,
+          "max": 15.9681
+        },
+        "open": {
+          "samples": 9636,
+          "median": 1.1908,
+          "p75": 1.5651,
+          "p95": 2.533,
+          "p99": 3.5808,
+          "max": 107.6691
+        },
+        "session": {
+          "samples": 731581,
+          "median": 0.6854,
+          "p75": 1.1342,
+          "p95": 1.5994,
+          "p99": 2.3668,
+          "max": 52.0494
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.2911,
+          "p95": 0.6588
+        },
+        "open": {
+          "median": 0.5954,
+          "p95": 1.2665
+        },
+        "session": {
+          "median": 0.3427,
+          "p95": 0.7997
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 1.966,
+          "p95_per_side_bps": 0.983
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 1.4835,
+          "p95_per_side_bps": 0.7417
+        },
+        "2020": {
+          "samples": 30316,
+          "p95_full_bps": 2.7687,
+          "p95_per_side_bps": 1.3844
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 1.4251,
+          "p95_per_side_bps": 0.7126
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 2.0348,
+          "p95_per_side_bps": 1.0174
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 1.1917,
+          "p95_per_side_bps": 0.5958
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 1.4548,
+          "p95_per_side_bps": 0.7274
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 1.4111,
+          "p95_per_side_bps": 0.7056
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30316,
+        "p95_full_bps": 2.7687,
+        "p95_per_side_bps": 1.3844
+      }
+    },
+    {
+      "symbol": "JNJ",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9366,
+          "median": 1.0407,
+          "p75": 1.3648,
+          "p95": 2.8135,
+          "p99": 5.6449,
+          "max": 31.6772
+        },
+        "open": {
+          "samples": 7663,
+          "median": 6.4704,
+          "p75": 9.593,
+          "p95": 16.9571,
+          "p99": 26.3914,
+          "max": 70.7108
+        },
+        "session": {
+          "samples": 724776,
+          "median": 1.7308,
+          "p75": 2.4334,
+          "p95": 4.6773,
+          "p99": 8.3467,
+          "max": 198.9816
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.5203,
+          "p95": 1.4068
+        },
+        "open": {
+          "median": 3.2352,
+          "p95": 8.4786
+        },
+        "session": {
+          "median": 0.8654,
+          "p95": 2.3386
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19707,
+          "p95_full_bps": 6.4839,
+          "p95_per_side_bps": 3.242
+        },
+        "2019": {
+          "samples": 29933,
+          "p95_full_bps": 6.1505,
+          "p95_per_side_bps": 3.0753
+        },
+        "2020": {
+          "samples": 30054,
+          "p95_full_bps": 10.1906,
+          "p95_per_side_bps": 5.0953
+        },
+        "2021": {
+          "samples": 29988,
+          "p95_full_bps": 4.9702,
+          "p95_per_side_bps": 2.4851
+        },
+        "2022": {
+          "samples": 29869,
+          "p95_full_bps": 5.6104,
+          "p95_per_side_bps": 2.8052
+        },
+        "2023": {
+          "samples": 29750,
+          "p95_full_bps": 4.6142,
+          "p95_per_side_bps": 2.3071
+        },
+        "2024": {
+          "samples": 29987,
+          "p95_full_bps": 6.283,
+          "p95_per_side_bps": 3.1415
+        },
+        "2025": {
+          "samples": 29625,
+          "p95_full_bps": 9.56,
+          "p95_per_side_bps": 4.78
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30054,
+        "p95_full_bps": 10.1906,
+        "p95_per_side_bps": 5.0953
+      }
+    },
+    {
+      "symbol": "JPM",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9286,
+          "median": 0.941,
+          "p75": 1.4645,
+          "p95": 2.6434,
+          "p99": 4.4843,
+          "max": 18.0974
+        },
+        "open": {
+          "samples": 7681,
+          "median": 4.9661,
+          "p75": 7.6184,
+          "p95": 15.5159,
+          "p99": 23.1399,
+          "max": 93.5791
+        },
+        "session": {
+          "samples": 720535,
+          "median": 1.7685,
+          "p75": 2.5389,
+          "p95": 5.0584,
+          "p99": 8.6131,
+          "max": 8764.0449
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.4705,
+          "p95": 1.3217
+        },
+        "open": {
+          "median": 2.4831,
+          "p95": 7.758
+        },
+        "session": {
+          "median": 0.8843,
+          "p95": 2.5292
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19406,
+          "p95_full_bps": 3.1035,
+          "p95_per_side_bps": 1.5518
+        },
+        "2019": {
+          "samples": 29732,
+          "p95_full_bps": 3.4545,
+          "p95_per_side_bps": 1.7273
+        },
+        "2020": {
+          "samples": 30060,
+          "p95_full_bps": 8.5792,
+          "p95_per_side_bps": 4.2896
+        },
+        "2021": {
+          "samples": 29987,
+          "p95_full_bps": 4.5664,
+          "p95_per_side_bps": 2.2832
+        },
+        "2022": {
+          "samples": 29860,
+          "p95_full_bps": 5.7351,
+          "p95_per_side_bps": 2.8676
+        },
+        "2023": {
+          "samples": 29748,
+          "p95_full_bps": 4.1762,
+          "p95_per_side_bps": 2.0881
+        },
+        "2024": {
+          "samples": 29982,
+          "p95_full_bps": 6.6756,
+          "p95_per_side_bps": 3.3378
+        },
+        "2025": {
+          "samples": 29629,
+          "p95_full_bps": 11.3118,
+          "p95_per_side_bps": 5.6559
+        }
+      },
+      "charged": {
+        "worst_year": 2025,
+        "samples": 29629,
+        "p95_full_bps": 11.3118,
+        "p95_per_side_bps": 5.6559
+      }
+    },
+    {
+      "symbol": "KO",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9283,
+          "median": 1.7163,
+          "p75": 1.9526,
+          "p95": 2.2334,
+          "p99": 3.9316,
+          "max": 53.0906
+        },
+        "open": {
+          "samples": 7644,
+          "median": 3.5797,
+          "p75": 4.8088,
+          "p95": 7.8808,
+          "p99": 13.0003,
+          "max": 61.3742
+        },
+        "session": {
+          "samples": 720302,
+          "median": 1.7644,
+          "p75": 2.0261,
+          "p95": 3.1471,
+          "p99": 4.3582,
+          "max": 79.4813
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.8581,
+          "p95": 1.1167
+        },
+        "open": {
+          "median": 1.7899,
+          "p95": 3.9404
+        },
+        "session": {
+          "median": 0.8822,
+          "p95": 1.5736
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19348,
+          "p95_full_bps": 2.4076,
+          "p95_per_side_bps": 1.2038
+        },
+        "2019": {
+          "samples": 29773,
+          "p95_full_bps": 3.7566,
+          "p95_per_side_bps": 1.8783
+        },
+        "2020": {
+          "samples": 30054,
+          "p95_full_bps": 4.8555,
+          "p95_per_side_bps": 2.4278
+        },
+        "2021": {
+          "samples": 29983,
+          "p95_full_bps": 3.7058,
+          "p95_per_side_bps": 1.8529
+        },
+        "2022": {
+          "samples": 29857,
+          "p95_full_bps": 3.3306,
+          "p95_per_side_bps": 1.6653
+        },
+        "2023": {
+          "samples": 29743,
+          "p95_full_bps": 3.319,
+          "p95_per_side_bps": 1.6595
+        },
+        "2024": {
+          "samples": 29987,
+          "p95_full_bps": 3.2685,
+          "p95_per_side_bps": 1.6343
+        },
+        "2025": {
+          "samples": 29629,
+          "p95_full_bps": 4.2756,
+          "p95_per_side_bps": 2.1378
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30054,
+        "p95_full_bps": 4.8555,
+        "p95_per_side_bps": 2.4278
+      }
+    },
+    {
+      "symbol": "MRK",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9391,
+          "median": 1.2256,
+          "p75": 1.3454,
+          "p95": 2.5003,
+          "p99": 3.8757,
+          "max": 44.4386
+        },
+        "open": {
+          "samples": 6042,
+          "median": 7.0903,
+          "p75": 11.3144,
+          "p95": 23.3976,
+          "p99": 38.1046,
+          "max": 124.4209
+        },
+        "session": {
+          "samples": 724396,
+          "median": 1.8144,
+          "p75": 2.5773,
+          "p95": 5.0416,
+          "p99": 9.3294,
+          "max": 350.1901
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.6128,
+          "p95": 1.2502
+        },
+        "open": {
+          "median": 3.5452,
+          "p95": 11.6988
+        },
+        "session": {
+          "median": 0.9072,
+          "p95": 2.5208
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19500,
+          "p95_full_bps": 3.8979,
+          "p95_per_side_bps": 1.9489
+        },
+        "2019": {
+          "samples": 29727,
+          "p95_full_bps": 3.9024,
+          "p95_per_side_bps": 1.9512
+        },
+        "2020": {
+          "samples": 29966,
+          "p95_full_bps": 11.2533,
+          "p95_per_side_bps": 5.6267
+        },
+        "2021": {
+          "samples": 29727,
+          "p95_full_bps": 5.0858,
+          "p95_per_side_bps": 2.5429
+        },
+        "2022": {
+          "samples": 29731,
+          "p95_full_bps": 5.0569,
+          "p95_per_side_bps": 2.5284
+        },
+        "2023": {
+          "samples": 29456,
+          "p95_full_bps": 7.2059,
+          "p95_per_side_bps": 3.603
+        },
+        "2024": {
+          "samples": 29675,
+          "p95_full_bps": 8.1892,
+          "p95_per_side_bps": 4.0946
+        },
+        "2025": {
+          "samples": 29405,
+          "p95_full_bps": 12.2026,
+          "p95_per_side_bps": 6.1013
+        }
+      },
+      "charged": {
+        "worst_year": 2025,
+        "samples": 29405,
+        "p95_full_bps": 12.2026,
+        "p95_per_side_bps": 6.1013
+      }
+    },
+    {
+      "symbol": "MSFT",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9590,
+          "median": 0.7455,
+          "p75": 0.9624,
+          "p95": 1.721,
+          "p99": 3.0774,
+          "max": 36.947
+        },
+        "open": {
+          "samples": 9633,
+          "median": 2.4472,
+          "p75": 3.8721,
+          "p95": 14.5018,
+          "p99": 29.8829,
+          "max": 126.2787
+        },
+        "session": {
+          "samples": 731187,
+          "median": 0.9095,
+          "p75": 1.2269,
+          "p95": 2.2725,
+          "p99": 3.9342,
+          "max": 117.724
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.3728,
+          "p95": 0.8605
+        },
+        "open": {
+          "median": 1.2236,
+          "p95": 7.2509
+        },
+        "session": {
+          "median": 0.4547,
+          "p95": 1.1362
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20278,
+          "p95_full_bps": 2.0462,
+          "p95_per_side_bps": 1.0231
+        },
+        "2019": {
+          "samples": 30239,
+          "p95_full_bps": 1.9093,
+          "p95_per_side_bps": 0.9547
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 3.7392,
+          "p95_per_side_bps": 1.8696
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 2.0668,
+          "p95_per_side_bps": 1.0334
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 2.4956,
+          "p95_per_side_bps": 1.2478
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 2.1229,
+          "p95_per_side_bps": 1.0615
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 3.1669,
+          "p95_per_side_bps": 1.5835
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 4.2937,
+          "p95_per_side_bps": 2.1468
+        }
+      },
+      "charged": {
+        "worst_year": 2025,
+        "samples": 29880,
+        "p95_full_bps": 4.2937,
+        "p95_per_side_bps": 2.1468
+      }
+    },
+    {
+      "symbol": "PEP",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9570,
+          "median": 1.1025,
+          "p75": 1.4522,
+          "p95": 2.6718,
+          "p99": 5.938,
+          "max": 95.1363
+        },
+        "open": {
+          "samples": 9554,
+          "median": 6.9792,
+          "p75": 12.0743,
+          "p95": 62.3233,
+          "p99": 119.0872,
+          "max": 512.8205
+        },
+        "session": {
+          "samples": 730070,
+          "median": 1.5032,
+          "p75": 2.2052,
+          "p95": 4.2796,
+          "p99": 7.8108,
+          "max": 176.1145
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.5513,
+          "p95": 1.3359
+        },
+        "open": {
+          "median": 3.4896,
+          "p95": 31.1616
+        },
+        "session": {
+          "median": 0.7516,
+          "p95": 2.1398
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20277,
+          "p95_full_bps": 7.632,
+          "p95_per_side_bps": 3.816
+        },
+        "2019": {
+          "samples": 30238,
+          "p95_full_bps": 6.2236,
+          "p95_per_side_bps": 3.1118
+        },
+        "2020": {
+          "samples": 30304,
+          "p95_full_bps": 12.3273,
+          "p95_per_side_bps": 6.1637
+        },
+        "2021": {
+          "samples": 30222,
+          "p95_full_bps": 4.9131,
+          "p95_per_side_bps": 2.4565
+        },
+        "2022": {
+          "samples": 30111,
+          "p95_full_bps": 4.9969,
+          "p95_per_side_bps": 2.4984
+        },
+        "2023": {
+          "samples": 29994,
+          "p95_full_bps": 4.2046,
+          "p95_per_side_bps": 2.1023
+        },
+        "2024": {
+          "samples": 30227,
+          "p95_full_bps": 5.6741,
+          "p95_per_side_bps": 2.8371
+        },
+        "2025": {
+          "samples": 29856,
+          "p95_full_bps": 6.9842,
+          "p95_per_side_bps": 3.4921
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30304,
+        "p95_full_bps": 12.3273,
+        "p95_per_side_bps": 6.1637
+      }
+    },
+    {
+      "symbol": "PG",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9408,
+          "median": 0.9674,
+          "p75": 1.3641,
+          "p95": 2.3778,
+          "p99": 5.8424,
+          "max": 45.1785
+        },
+        "open": {
+          "samples": 6016,
+          "median": 5.9286,
+          "p75": 9.1288,
+          "p95": 18.3394,
+          "p99": 31.5366,
+          "max": 130.7189
+        },
+        "session": {
+          "samples": 724111,
+          "median": 1.4832,
+          "p75": 2.2823,
+          "p95": 4.8529,
+          "p99": 9.8333,
+          "max": 363.5947
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.4837,
+          "p95": 1.1889
+        },
+        "open": {
+          "median": 2.9643,
+          "p95": 9.1697
+        },
+        "session": {
+          "median": 0.7416,
+          "p95": 2.4264
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19493,
+          "p95_full_bps": 3.6605,
+          "p95_per_side_bps": 1.8303
+        },
+        "2019": {
+          "samples": 29634,
+          "p95_full_bps": 5.0701,
+          "p95_per_side_bps": 2.5351
+        },
+        "2020": {
+          "samples": 29890,
+          "p95_full_bps": 13.0997,
+          "p95_per_side_bps": 6.5499
+        },
+        "2021": {
+          "samples": 29859,
+          "p95_full_bps": 3.9267,
+          "p95_per_side_bps": 1.9633
+        },
+        "2022": {
+          "samples": 29593,
+          "p95_full_bps": 6.9262,
+          "p95_per_side_bps": 3.4631
+        },
+        "2023": {
+          "samples": 29499,
+          "p95_full_bps": 4.4661,
+          "p95_per_side_bps": 2.2331
+        },
+        "2024": {
+          "samples": 29708,
+          "p95_full_bps": 5.3068,
+          "p95_per_side_bps": 2.6534
+        },
+        "2025": {
+          "samples": 29419,
+          "p95_full_bps": 9.9404,
+          "p95_per_side_bps": 4.9702
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 29890,
+        "p95_full_bps": 13.0997,
+        "p95_per_side_bps": 6.5499
+      }
+    },
+    {
+      "symbol": "QQQ",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9610,
+          "median": 0.3794,
+          "p75": 0.5604,
+          "p95": 0.8213,
+          "p99": 1.2353,
+          "max": 11.9493
+        },
+        "open": {
+          "samples": 9636,
+          "median": 0.6462,
+          "p75": 1.0612,
+          "p95": 1.73,
+          "p99": 2.748,
+          "max": 57.0175
+        },
+        "session": {
+          "samples": 731790,
+          "median": 0.5248,
+          "p75": 0.6342,
+          "p95": 1.086,
+          "p99": 1.3808,
+          "max": 58.3676
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.1897,
+          "p95": 0.4107
+        },
+        "open": {
+          "median": 0.3231,
+          "p95": 0.865
+        },
+        "session": {
+          "median": 0.2624,
+          "p95": 0.543
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 1.2425,
+          "p95_per_side_bps": 0.6213
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 1.1035,
+          "p95_per_side_bps": 0.5518
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 1.3855,
+          "p95_per_side_bps": 0.6928
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 0.7838,
+          "p95_per_side_bps": 0.3919
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 1.2354,
+          "p95_per_side_bps": 0.6177
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 0.7805,
+          "p95_per_side_bps": 0.3902
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 0.8638,
+          "p95_per_side_bps": 0.4319
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 1.047,
+          "p95_per_side_bps": 0.5235
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30315,
+        "p95_full_bps": 1.3855,
+        "p95_per_side_bps": 0.6928
+      }
+    },
+    {
+      "symbol": "SCHX",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10397,
+          "median": 1.9986,
+          "p75": 3.3904,
+          "p95": 4.3469,
+          "p99": 5.0766,
+          "max": 106.1056
+        },
+        "open": {
+          "samples": 10482,
+          "median": 4.4277,
+          "p75": 8.6919,
+          "p95": 21.0256,
+          "p99": 34.0072,
+          "max": 177.1654
+        },
+        "session": {
+          "samples": 794036,
+          "median": 2.0672,
+          "p75": 3.5657,
+          "p95": 4.4833,
+          "p99": 6.9573,
+          "max": 842.9119
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.9993,
+          "p95": 2.1734
+        },
+        "open": {
+          "median": 2.2139,
+          "p95": 10.5128
+        },
+        "session": {
+          "median": 1.0336,
+          "p95": 2.2416
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 3.5733,
+          "p95_per_side_bps": 1.7867
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 3.2803,
+          "p95_per_side_bps": 1.6402
+        },
+        "2020": {
+          "samples": 30319,
+          "p95_full_bps": 10.5097,
+          "p95_per_side_bps": 5.2549
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 7.234,
+          "p95_per_side_bps": 3.617
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 6.7072,
+          "p95_per_side_bps": 3.3536
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 4.2526,
+          "p95_per_side_bps": 2.1263
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 4.364,
+          "p95_per_side_bps": 2.182
+        },
+        "2025": {
+          "samples": 29999,
+          "p95_full_bps": 4.8414,
+          "p95_per_side_bps": 2.4207
+        },
+        "2026": {
+          "samples": 20160,
+          "p95_full_bps": 3.8767,
+          "p95_per_side_bps": 1.9384
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30319,
+        "p95_full_bps": 10.5097,
+        "p95_per_side_bps": 5.2549
+      }
+    },
+    {
+      "symbol": "SPY",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9631,
+          "median": 0.3081,
+          "p75": 0.3721,
+          "p95": 0.6871,
+          "p99": 0.9919,
+          "max": 7.3992
+        },
+        "open": {
+          "samples": 9636,
+          "median": 0.4635,
+          "p75": 0.6991,
+          "p95": 1.1656,
+          "p99": 1.7611,
+          "max": 23.6451
+        },
+        "session": {
+          "samples": 732330,
+          "median": 0.3473,
+          "p75": 0.5165,
+          "p95": 0.7605,
+          "p99": 1.1092,
+          "max": 15.7154
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.154,
+          "p95": 0.3435
+        },
+        "open": {
+          "median": 0.2317,
+          "p95": 0.5828
+        },
+        "session": {
+          "median": 0.1737,
+          "p95": 0.3803
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 1.0933,
+          "p95_per_side_bps": 0.5466
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 0.766,
+          "p95_per_side_bps": 0.383
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 1.0077,
+          "p95_per_side_bps": 0.5039
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 0.5273,
+          "p95_per_side_bps": 0.2637
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 0.9387,
+          "p95_per_side_bps": 0.4693
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 0.511,
+          "p95_per_side_bps": 0.2555
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 0.5744,
+          "p95_per_side_bps": 0.2872
+        },
+        "2025": {
+          "samples": 29880,
+          "p95_full_bps": 0.7161,
+          "p95_per_side_bps": 0.3581
+        }
+      },
+      "charged": {
+        "worst_year": 2018,
+        "samples": 20280,
+        "p95_full_bps": 1.0933,
+        "p95_per_side_bps": 0.5466
+      }
+    },
+    {
+      "symbol": "T",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9238,
+          "median": 3.7279,
+          "p75": 5.2342,
+          "p95": 6.521,
+          "p99": 7.0348,
+          "max": 12.9032
+        },
+        "open": {
+          "samples": 6819,
+          "median": 5.259,
+          "p75": 6.93,
+          "p95": 12.1877,
+          "p99": 20.9205,
+          "max": 75.3579
+        },
+        "session": {
+          "samples": 718168,
+          "median": 3.7071,
+          "p75": 5.2315,
+          "p95": 6.5253,
+          "p99": 7.0696,
+          "max": 4815.8203
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.8639,
+          "p95": 3.2605
+        },
+        "open": {
+          "median": 2.6295,
+          "p95": 6.0938
+        },
+        "session": {
+          "median": 1.8536,
+          "p95": 3.2626
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 18695,
+          "p95_full_bps": 3.468,
+          "p95_per_side_bps": 1.734
+        },
+        "2019": {
+          "samples": 29532,
+          "p95_full_bps": 3.3767,
+          "p95_per_side_bps": 1.6883
+        },
+        "2020": {
+          "samples": 29948,
+          "p95_full_bps": 5.571,
+          "p95_per_side_bps": 2.7855
+        },
+        "2021": {
+          "samples": 29911,
+          "p95_full_bps": 4.3318,
+          "p95_per_side_bps": 2.1659
+        },
+        "2022": {
+          "samples": 29762,
+          "p95_full_bps": 6.5638,
+          "p95_per_side_bps": 3.2819
+        },
+        "2023": {
+          "samples": 29560,
+          "p95_full_bps": 7.0897,
+          "p95_per_side_bps": 3.5448
+        },
+        "2024": {
+          "samples": 29859,
+          "p95_full_bps": 6.0994,
+          "p95_per_side_bps": 3.0497
+        },
+        "2025": {
+          "samples": 29583,
+          "p95_full_bps": 4.6328,
+          "p95_per_side_bps": 2.3164
+        }
+      },
+      "charged": {
+        "worst_year": 2023,
+        "samples": 29560,
+        "p95_full_bps": 7.0897,
+        "p95_per_side_bps": 3.5448
+      }
+    },
+    {
+      "symbol": "TLT",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10422,
+          "median": 0.9266,
+          "p75": 1.1075,
+          "p95": 1.1913,
+          "p99": 1.792,
+          "max": 26.5692
+        },
+        "open": {
+          "samples": 10481,
+          "median": 1.1064,
+          "p75": 1.3792,
+          "p95": 2.7671,
+          "p99": 4.763,
+          "max": 72.0814
+        },
+        "session": {
+          "samples": 795019,
+          "median": 0.9785,
+          "p75": 1.1308,
+          "p95": 1.4031,
+          "p99": 2.1381,
+          "max": 75.7139
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.4633,
+          "p95": 0.5956
+        },
+        "open": {
+          "median": 0.5532,
+          "p95": 1.3836
+        },
+        "session": {
+          "median": 0.4893,
+          "p95": 0.7016
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20280,
+          "p95_full_bps": 1.6656,
+          "p95_per_side_bps": 0.8328
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 1.5176,
+          "p95_per_side_bps": 0.7588
+        },
+        "2020": {
+          "samples": 30315,
+          "p95_full_bps": 2.3205,
+          "p95_per_side_bps": 1.1602
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 1.3795,
+          "p95_per_side_bps": 0.6898
+        },
+        "2022": {
+          "samples": 30116,
+          "p95_full_bps": 1.852,
+          "p95_per_side_bps": 0.926
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 1.8672,
+          "p95_per_side_bps": 0.9336
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 1.1366,
+          "p95_per_side_bps": 0.5683
+        },
+        "2025": {
+          "samples": 30000,
+          "p95_full_bps": 1.1725,
+          "p95_per_side_bps": 0.5863
+        },
+        "2026": {
+          "samples": 20160,
+          "p95_full_bps": 1.2165,
+          "p95_per_side_bps": 0.6082
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30315,
+        "p95_full_bps": 2.3205,
+        "p95_per_side_bps": 1.1602
+      }
+    },
+    {
+      "symbol": "VZ",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9374,
+          "median": 2.0553,
+          "p75": 2.4854,
+          "p95": 2.9909,
+          "p99": 3.8842,
+          "max": 46.8209
+        },
+        "open": {
+          "samples": 7656,
+          "median": 4.635,
+          "p75": 5.8806,
+          "p95": 10.3252,
+          "p99": 18.6916,
+          "max": 99.7272
+        },
+        "session": {
+          "samples": 722673,
+          "median": 2.1865,
+          "p75": 2.5141,
+          "p95": 3.4704,
+          "p99": 5.164,
+          "max": 602.8369
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.0276,
+          "p95": 1.4954
+        },
+        "open": {
+          "median": 2.3175,
+          "p95": 5.1626
+        },
+        "session": {
+          "median": 1.0933,
+          "p95": 1.7352
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19529,
+          "p95_full_bps": 3.8865,
+          "p95_per_side_bps": 1.9433
+        },
+        "2019": {
+          "samples": 29718,
+          "p95_full_bps": 3.5486,
+          "p95_per_side_bps": 1.7743
+        },
+        "2020": {
+          "samples": 30057,
+          "p95_full_bps": 5.6534,
+          "p95_per_side_bps": 2.8267
+        },
+        "2021": {
+          "samples": 29988,
+          "p95_full_bps": 3.5881,
+          "p95_per_side_bps": 1.794
+        },
+        "2022": {
+          "samples": 29863,
+          "p95_full_bps": 4.1824,
+          "p95_per_side_bps": 2.0912
+        },
+        "2023": {
+          "samples": 29741,
+          "p95_full_bps": 4.9888,
+          "p95_per_side_bps": 2.4944
+        },
+        "2024": {
+          "samples": 29980,
+          "p95_full_bps": 4.9727,
+          "p95_per_side_bps": 2.4863
+        },
+        "2025": {
+          "samples": 29629,
+          "p95_full_bps": 4.9468,
+          "p95_per_side_bps": 2.4734
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30057,
+        "p95_full_bps": 5.6534,
+        "p95_per_side_bps": 2.8267
+      }
+    },
+    {
+      "symbol": "WMT",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9419,
+          "median": 1.029,
+          "p75": 1.4315,
+          "p95": 2.3764,
+          "p99": 4.6339,
+          "max": 28.8404
+        },
+        "open": {
+          "samples": 7678,
+          "median": 5.8434,
+          "p75": 8.2245,
+          "p95": 14.1423,
+          "p99": 24.4383,
+          "max": 1023.2877
+        },
+        "session": {
+          "samples": 725122,
+          "median": 1.6032,
+          "p75": 2.2646,
+          "p95": 4.2199,
+          "p99": 7.1989,
+          "max": 6703.5586
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.5145,
+          "p95": 1.1882
+        },
+        "open": {
+          "median": 2.9217,
+          "p95": 7.0711
+        },
+        "session": {
+          "median": 0.8016,
+          "p95": 2.1099
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19605,
+          "p95_full_bps": 5.3143,
+          "p95_per_side_bps": 2.6572
+        },
+        "2019": {
+          "samples": 29876,
+          "p95_full_bps": 5.4256,
+          "p95_per_side_bps": 2.7128
+        },
+        "2020": {
+          "samples": 30054,
+          "p95_full_bps": 9.0659,
+          "p95_per_side_bps": 4.5329
+        },
+        "2021": {
+          "samples": 29988,
+          "p95_full_bps": 5.0138,
+          "p95_per_side_bps": 2.5069
+        },
+        "2022": {
+          "samples": 29869,
+          "p95_full_bps": 6.7927,
+          "p95_per_side_bps": 3.3964
+        },
+        "2023": {
+          "samples": 29739,
+          "p95_full_bps": 5.3117,
+          "p95_per_side_bps": 2.6559
+        },
+        "2024": {
+          "samples": 29985,
+          "p95_full_bps": 3.4288,
+          "p95_per_side_bps": 1.7144
+        },
+        "2025": {
+          "samples": 29643,
+          "p95_full_bps": 6.2676,
+          "p95_per_side_bps": 3.1338
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30054,
+        "p95_full_bps": 9.0659,
+        "p95_per_side_bps": 4.5329
+      }
+    },
+    {
+      "symbol": "XLF",
+      "full_spread_bps": {
+        "close": {
+          "samples": 10423,
+          "median": 2.8608,
+          "p75": 3.5467,
+          "p95": 4.1728,
+          "p99": 4.8088,
+          "max": 24.3468
+        },
+        "open": {
+          "samples": 10480,
+          "median": 3.0623,
+          "p75": 3.8366,
+          "p95": 9.6603,
+          "p99": 18.7161,
+          "max": 54.9451
+        },
+        "session": {
+          "samples": 794777,
+          "median": 2.8633,
+          "p75": 3.5455,
+          "p95": 4.185,
+          "p99": 4.8181,
+          "max": 77.7202
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 1.4304,
+          "p95": 2.0864
+        },
+        "open": {
+          "median": 1.5312,
+          "p95": 4.8301
+        },
+        "session": {
+          "median": 1.4316,
+          "p95": 2.0925
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 20279,
+          "p95_full_bps": 4.215,
+          "p95_per_side_bps": 2.1075
+        },
+        "2019": {
+          "samples": 30240,
+          "p95_full_bps": 3.9596,
+          "p95_per_side_bps": 1.9798
+        },
+        "2020": {
+          "samples": 30317,
+          "p95_full_bps": 5.0138,
+          "p95_per_side_bps": 2.5069
+        },
+        "2021": {
+          "samples": 30240,
+          "p95_full_bps": 3.3294,
+          "p95_per_side_bps": 1.6647
+        },
+        "2022": {
+          "samples": 30120,
+          "p95_full_bps": 3.2504,
+          "p95_per_side_bps": 1.6252
+        },
+        "2023": {
+          "samples": 30000,
+          "p95_full_bps": 3.1581,
+          "p95_per_side_bps": 1.579
+        },
+        "2024": {
+          "samples": 30240,
+          "p95_full_bps": 2.6536,
+          "p95_per_side_bps": 1.3268
+        },
+        "2025": {
+          "samples": 30000,
+          "p95_full_bps": 2.1489,
+          "p95_per_side_bps": 1.0745
+        },
+        "2026": {
+          "samples": 20160,
+          "p95_full_bps": 2.0435,
+          "p95_per_side_bps": 1.0218
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 30317,
+        "p95_full_bps": 5.0138,
+        "p95_per_side_bps": 2.5069
+      }
+    },
+    {
+      "symbol": "XOM",
+      "full_spread_bps": {
+        "close": {
+          "samples": 9110,
+          "median": 1.2372,
+          "p75": 1.7014,
+          "p95": 2.5582,
+          "p99": 3.0391,
+          "max": 10.4849
+        },
+        "open": {
+          "samples": 5345,
+          "median": 4.8259,
+          "p75": 6.6752,
+          "p95": 12.9898,
+          "p99": 22.3899,
+          "max": 152.8446
+        },
+        "session": {
+          "samples": 714624,
+          "median": 1.6715,
+          "p75": 2.1517,
+          "p95": 3.3982,
+          "p99": 5.2124,
+          "max": 1772.9393
+        }
+      },
+      "per_side_bps": {
+        "close": {
+          "median": 0.6186,
+          "p95": 1.2791
+        },
+        "open": {
+          "median": 2.4129,
+          "p95": 6.4949
+        },
+        "session": {
+          "median": 0.8358,
+          "p95": 1.6991
+        }
+      },
+      "execution_by_year": {
+        "2018": {
+          "samples": 19004,
+          "p95_full_bps": 3.0783,
+          "p95_per_side_bps": 1.5392
+        },
+        "2019": {
+          "samples": 29460,
+          "p95_full_bps": 2.9485,
+          "p95_per_side_bps": 1.4743
+        },
+        "2020": {
+          "samples": 29892,
+          "p95_full_bps": 5.9773,
+          "p95_per_side_bps": 2.9886
+        },
+        "2021": {
+          "samples": 29853,
+          "p95_full_bps": 3.8491,
+          "p95_per_side_bps": 1.9246
+        },
+        "2022": {
+          "samples": 29601,
+          "p95_full_bps": 3.6907,
+          "p95_per_side_bps": 1.8454
+        },
+        "2023": {
+          "samples": 29298,
+          "p95_full_bps": 3.6437,
+          "p95_per_side_bps": 1.8218
+        },
+        "2024": {
+          "samples": 29398,
+          "p95_full_bps": 3.5932,
+          "p95_per_side_bps": 1.7966
+        },
+        "2025": {
+          "samples": 29110,
+          "p95_full_bps": 5.4117,
+          "p95_per_side_bps": 2.7059
+        }
+      },
+      "charged": {
+        "worst_year": 2020,
+        "samples": 29892,
+        "p95_full_bps": 5.9773,
+        "p95_per_side_bps": 2.9886
+      }
+    }
+  ]
+}

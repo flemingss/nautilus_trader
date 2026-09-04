@@ -59,6 +59,7 @@ from copilot.calibration.cost_impact import scored_trades
 from copilot.calibration.cost_model import CostModel
 from copilot.calibration.cost_model import commission
 from copilot.calibration.cost_model import split_factor
+from copilot.paths import add_catalog_argument
 from copilot.risk.sizing import position_size
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
@@ -68,7 +69,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
 OUT_DIR = Path(__file__).parent / "out"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 # The charter's band, and the research default that has stood in for it.
 RISK_FRACTIONS = (Decimal("0.0010"), Decimal("0.0025"))
@@ -233,7 +233,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("activation", nargs="?", help="Activation name, or use --all")
     parser.add_argument("--all", action="store_true", help="Sweep every activation")
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     parser.add_argument("--write", action="store_true", help="File the report as JSON")
     args = parser.parse_args(argv)
 

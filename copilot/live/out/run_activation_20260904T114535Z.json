@@ -1,0 +1,31 @@
+{
+  "run_at": "2026-09-04T11:45:35.878943+00:00",
+  "session": "2026-09-04",
+  "orders_enabled": false,
+  "activation": "eem-gap-fade-long-next-close",
+  "broker_instrument": "EEM=STK.SMART",
+  "research_instrument": "EEM.ARCX",
+  "decision_bar": "2026-09-03",
+  "warmup_bars": 16,
+  "warmup_from": "2026-08-12",
+  "warmup_to": "2026-09-02",
+  "parameters": {
+    "long": "True",
+    "entry_timing": "next_close",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000"
+  },
+  "atr_initialized": true,
+  "atr_value": "0.9485714285714276",
+  "previous_close": "67.47",
+  "skips": {
+    "setup_not_triggered": 1
+  },
+  "largest_rounding": "0.0050",
+  "instrument_resolved": true,
+  "note": "",
+  "orders": []
+}

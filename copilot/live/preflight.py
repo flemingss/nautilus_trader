@@ -39,15 +39,15 @@ from pathlib import Path
 
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
+from copilot.live.symbology import broker_instrument_id
+from copilot.strategies.activations import load_activations
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import TradingState
 from nautilus_trader.model import Venue
 
-from copilot.live.symbology import broker_instrument_id
-from copilot.strategies.activations import load_activations
-
 
 OUT_DIR = Path(__file__).parent / "out"
+
 
 def registered_instruments() -> tuple[str, ...]:
     """
@@ -63,10 +63,10 @@ def registered_instruments() -> tuple[str, ...]:
 
     """
     return tuple(
-        dict.fromkeys(
-            str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()
-        ),
+        dict.fromkeys(str(broker_instrument_id(a.symbol, a.venue)) for a in load_activations()),
     )
+
+
 """
 Broker-side ids, in the ``SymbologyMethod.RAW`` form the IB adapter resolves.
 

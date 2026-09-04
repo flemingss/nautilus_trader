@@ -78,19 +78,26 @@ from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
 from copilot.live.warmup import load as load_warmup
 from copilot.live.warmup import session_to_prepare
+from copilot.paths import add_catalog_argument
+from copilot.risk.budget import DEFAULT_RISK_FRACTION
+from copilot.risk.budget import RiskPolicy
+from copilot.risk.budget import budget_for
+from copilot.risk.exposure import ExposureLedger
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
+from copilot.strategies.activations import load_activations
 from copilot.validation.types import DailyBar
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import Bar
 from nautilus_trader.model import BarType
+from nautilus_trader.model import Currency
 from nautilus_trader.model import Equity
 from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import Venue
 from nautilus_trader.trading import Strategy
 
 
 OUT_DIR = Path(__file__).parent / "out"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 SETTLE_SECS = 30
 """
@@ -107,6 +114,57 @@ DRAIN_SECS = 10
 """
 Seconds after the decision, to let order events land before the cache is read.
 """
+
+
+@dataclass(frozen=True)
+class Plan:
+    """
+    One activation and the bars the session will hand it, decided before any connection.
+    """
+
+    activation: Activation
+    warmup: tuple[DailyBar, ...]
+    decision: DailyBar
+
+
+class NoAccountEquityError(RuntimeError):
+    """
+    The broker reported no usable equity, so nothing can be sized.
+    """
+
+
+EQUITY_CURRENCY = "USD"
+EXEC_VENUE = "IB"
+
+
+def reported_equity(cache: object, venues: tuple[Venue, ...]) -> tuple[Decimal, str]:
+    """
+    Read the account's total balance in the sizing currency, and say which account.
+
+    The same search the preflight makes, for the same reason: the account is registered
+    under the exec client's venue rather than the instrument's, and looking under only
+    one of them is how the first preflight reported a missing account that was in the
+    cache the whole time.
+
+    ``total`` rather than ``free``. Free excludes what working orders have reserved,
+    which on a session that starts with none is the same number; the playbook's
+    settled-cash term is the one that would differ, and it is not modelled here.
+
+    """
+    for venue in venues:
+        account_id = cache.account_id(venue)  # type: ignore[attr-defined]
+        if account_id is None:
+            continue
+        account = cache.account_for_venue(venue)  # type: ignore[attr-defined]
+        balance = account.balances().get(Currency.from_str(EQUITY_CURRENCY))
+        if balance is None:
+            continue
+        return balance.total.as_decimal(), str(account_id)
+    raise NoAccountEquityError(
+        f"no {EQUITY_CURRENCY} balance under any of {[str(v) for v in venues]}. A session "
+        f"cannot size against equity it cannot read; check the account with "
+        f"python -m copilot.live.preflight before reading anything else into this.",
+    )
 
 
 class NoBrokerInstrumentError(RuntimeError):
@@ -150,6 +208,18 @@ class SessionRecord:
     orders: list[OrderRecord] = field(default_factory=list)
     largest_rounding: str = "0"
     instrument_resolved: bool = False
+    budget: dict[str, str] = field(default_factory=dict)
+    """
+    What the session sized against, derived from the equity the broker reported.
+    """
+    basket_position: int = 0
+    """
+    Where this activation stood in the order bars were handed out, from one.
+    """
+    exposure_after: dict[str, object] = field(default_factory=dict)
+    """
+    The shared ledger as it stood once this activation had decided.
+    """
     note: str = ""
 
     @property
@@ -221,44 +291,76 @@ def build_strategy(activation: Activation, instrument_id: InstrumentId) -> Strat
 
     """
     return activation.setup.factory(
-        dict(activation.parameters),
+        {**activation.parameters, "order_id_tag": _tag_for(activation)},
         instrument_id=instrument_id,
         bar_type=broker_bar_type(instrument_id),
         risk_registry=None,
     )
 
 
+def _tag_for(activation: Activation) -> str:
+    """
+    Return the order-id tag that makes this activation's strategy distinct in a node.
+
+    Several strategies run in one node now, and Nautilus keys them by strategy id. Two
+    built from the same class with no tag collide silently: the second registration
+    replaces the first, and the session reports one decision where it should report two.
+    The symbol is the tag because it is what makes the activations different.
+
+    """
+    return activation.symbol.lower()
+
+
 async def run_session(
     session: PaperSession,
-    activation: Activation,
-    warmup: tuple[DailyBar, ...],
-    decision: DailyBar,
+    plans: tuple[Plan, ...],
     *,
+    policy: RiskPolicy,
+    allocation: Decimal | None,
     settle_secs: int = SETTLE_SECS,
     drain_secs: int = DRAIN_SECS,
-) -> SessionRecord:
+) -> tuple[SessionRecord, ...]:
     """
-    Start the node, hand the strategy its history and its bar, and record what it did.
-    """
-    broker_id = broker_instrument_id(activation.symbol, activation.venue)
-    research_id = equity_for(activation.symbol, activation.venue).id
-    strategy = build_strategy(activation, broker_id)
+    Start one node for the whole basket, hand each strategy its bar, and record it all.
 
-    record = SessionRecord(
-        activation=activation.name,
-        broker_instrument=str(broker_id),
-        research_instrument=str(research_id),
-        decision_bar=decision.closed_at.date().isoformat(),
-        warmup_bars=len(warmup),
-        warmup_from=warmup[0].closed_at.date().isoformat(),
-        warmup_to=warmup[-1].closed_at.date().isoformat(),
-        parameters={k: str(v) for k, v in activation.parameters.items()},
-    )
+    One node rather than one per activation, because the session-wide cap is a property
+    of the session: strategies that cannot see each other's reservations cannot be capped
+    together, and the shape that motivated the ledger - four risk-on wrappers deciding on
+    the same morning - only exists when they decide in one place.
+
+    Bars are handed out in the order ``plans`` arrives, and the ledger grants in that
+    order. The order is recorded per activation so a refusal can be read against who was
+    asked first.
+
+    """
+    strategies = {
+        plan.activation.name: build_strategy(
+            plan.activation,
+            broker_instrument_id(plan.activation.symbol, plan.activation.venue),
+        )
+        for plan in plans
+    }
+    records = {
+        plan.activation.name: SessionRecord(
+            activation=plan.activation.name,
+            broker_instrument=str(
+                broker_instrument_id(plan.activation.symbol, plan.activation.venue),
+            ),
+            research_instrument=str(equity_for(plan.activation.symbol, plan.activation.venue).id),
+            decision_bar=plan.decision.closed_at.date().isoformat(),
+            warmup_bars=len(plan.warmup),
+            warmup_from=plan.warmup[0].closed_at.date().isoformat(),
+            warmup_to=plan.warmup[-1].closed_at.date().isoformat(),
+            parameters={k: str(v) for k, v in plan.activation.parameters.items()},
+            basket_position=index + 1,
+        )
+        for index, plan in enumerate(plans)
+    }
 
     node, _risk_engine = build_paper_node(
         session,
         market_data_type=MarketDataType.DELAYED,
-        strategies=(strategy,),
+        strategies=tuple(strategies.values()),
     )
     # Captured before the run, for the same reason ``build_paper_node`` returns the risk
     # engine handle: a hosted run takes ownership of the node, and ``node.cache`` raises
@@ -270,48 +372,77 @@ async def run_session(
     try:
         await asyncio.sleep(settle_secs)
 
-        instrument = cache.instrument(broker_id)
-        if instrument is None:
-            raise NoBrokerInstrumentError(
-                f"the broker did not resolve {broker_id} within {settle_secs}s. A bar "
-                f"cannot be built without its instrument's precision; check the "
-                f"instrument provider and the connection before reading anything else "
-                f"into this session.",
+        # One equity, one budget, one ledger for the basket. Read here rather than at
+        # construction because the equity does not exist until the exec client has
+        # connected, and the strategies have to exist before the node.
+        first = plans[0].activation
+        venues = (broker_instrument_id(first.symbol, first.venue).venue, Venue(EXEC_VENUE))
+        equity, _account = reported_equity(cache, venues)
+        budget = budget_for(equity, allocation=allocation, policy=policy)
+        ledger = ExposureLedger(
+            max_total_risk=budget.max_total_risk,
+            max_new_entries=policy.max_new_entries,
+        )
+
+        for plan in plans:
+            name = plan.activation.name
+            strategy, record = strategies[name], records[name]
+            broker_id = broker_instrument_id(plan.activation.symbol, plan.activation.venue)
+            instrument = cache.instrument(broker_id)
+            if instrument is None:
+                raise NoBrokerInstrumentError(
+                    f"the broker did not resolve {broker_id} within {settle_secs}s. A "
+                    f"bar cannot be built without its instrument's precision; check the "
+                    f"instrument provider and the connection before reading anything "
+                    f"else into this session.",
+                )
+            record.instrument_resolved = True
+
+            strategy.size_against(budget.risk_budget, budget.max_notional, ledger=ledger)
+            record.budget = budget.as_record()
+
+            bar_type = broker_bar_type(broker_id)
+            warm_bars, warm_rounding = to_broker_bars(plan.warmup, instrument, bar_type)
+            decision_bars, decision_rounding = to_broker_bars(
+                (plan.decision,),
+                instrument,
+                bar_type,
             )
-        record.instrument_resolved = True
+            record.largest_rounding = str(max(warm_rounding, decision_rounding))
 
-        bar_type = broker_bar_type(broker_id)
-        warm_bars, warm_rounding = to_broker_bars(warmup, instrument, bar_type)
-        decision_bars, decision_rounding = to_broker_bars((decision,), instrument, bar_type)
-        record.largest_rounding = str(max(warm_rounding, decision_rounding))
+            strategy.warm_up(warm_bars)
+            record.atr_initialized = bool(strategy._atr.initialized)
+            strategy.on_bar(decision_bars[0])
+            record.exposure_after = ledger.as_record()
 
-        strategy.warm_up(warm_bars)
-        record.atr_initialized = bool(strategy._atr.initialized)
-
-        strategy.on_bar(decision_bars[0])
         await asyncio.sleep(drain_secs)
 
-        record.atr_value = str(strategy._atr.value)
-        record.previous_close = str(strategy._previous_close)
-        record.skips = dict(strategy.skips)
-        record.orders = [
-            OrderRecord(
-                client_order_id=str(order.client_order_id),
-                side=str(order.side),
-                quantity=str(order.quantity),
-                order_type=str(order.order_type),
-                status=str(order.status),
-                price=str(order.price) if hasattr(order, "price") else None,
-            )
-            for order in cache.orders()
-        ]
+        for plan in plans:
+            name = plan.activation.name
+            strategy, record = strategies[name], records[name]
+            record.atr_value = str(strategy._atr.value)
+            record.previous_close = str(strategy._previous_close)
+            record.skips = dict(strategy.skips)
+            record.orders = [
+                OrderRecord(
+                    client_order_id=str(order.client_order_id),
+                    side=str(order.side),
+                    quantity=str(order.quantity),
+                    order_type=str(order.order_type),
+                    status=str(order.status),
+                    price=str(order.price) if hasattr(order, "price") else None,
+                )
+                for order in cache.orders()
+                if str(order.strategy_id) == str(strategy.strategy_id)
+            ]
     finally:
         handle.stop()
         try:
             await asyncio.wait_for(task, timeout=90)
         except (TimeoutError, asyncio.CancelledError):
-            record.note = "node did not stop cleanly within 90s"
-    return record
+            for record in records.values():
+                record.note = "node did not stop cleanly within 90s"
+    return tuple(records[plan.activation.name] for plan in plans)
 
 
 def _report(record: SessionRecord) -> None:
@@ -324,6 +455,23 @@ def _report(record: SessionRecord) -> None:
     print(f"  decision bar    {record.decision_bar}")
     print(f"  indicator       initialized={record.atr_initialized}  atr={record.atr_value}")
     print(f"  previous close  {record.previous_close}")
+    if record.budget:
+        b = record.budget
+        capped = (
+            "  (request exceeded equity, capped)" if b.get("allocation_capped") == "True" else ""
+        )
+        print(f"  equity          {b['equity']} reported; sizing against {b['allocation']}{capped}")
+        print(
+            f"  risk budget     {b['risk_budget']} per position ({b['risk_fraction']} of "
+            f"allocation), notional cap {b['max_notional']} ({b['max_position_fraction']})",
+        )
+    if record.exposure_after:
+        x = record.exposure_after
+        print(
+            f"  session risk    {x['total']} of {x['max_total_risk']} reserved after this "
+            f"decision; entries {x['entries']}/{x['max_new_entries']}  "
+            f"(basket position {record.basket_position})",
+        )
     if record.largest_rounding != "0":
         print(f"  rounding        {record.largest_rounding} to the broker's precision")
     if record.skips:
@@ -349,13 +497,34 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.run_activation",
         description="Run a registered activation on the paper broker, orders denied.",
     )
-    parser.add_argument("activation", help="Activation name")
+    parser.add_argument(
+        "activations",
+        nargs="*",
+        help="Activation names, handed bars in this order (default with --all: every "
+        "next_close activation, by name)",
+    )
+    parser.add_argument("--all", action="store_true", help="Run every next_close activation")
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
     parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     parser.add_argument("--session", help="Session to run for, YYYY-MM-DD (default: the next)")
     parser.add_argument("--settle-secs", type=int, default=SETTLE_SECS)
+    parser.add_argument(
+        "--allocation",
+        type=Decimal,
+        default=None,
+        help="Capital this activation sizes against (default: the reported equity; never more)",
+    )
+    parser.add_argument(
+        "--risk-fraction",
+        type=Decimal,
+        default=DEFAULT_RISK_FRACTION,
+        help=(
+            f"Planned risk per position as a fraction of allocation "
+            f"(default {DEFAULT_RISK_FRACTION})"
+        ),
+    )
     parser.add_argument("--data-client-id", type=int, default=871)
     parser.add_argument("--exec-client-id", type=int, default=872)
     args = parser.parse_args(argv)
@@ -364,32 +533,50 @@ def main(argv: list[str] | None = None) -> int:
         print("error: no paper account; pass --account or set COPILOT_PAPER_ACCOUNT")
         return 2
 
-    activation = find_activation(args.activation)
+    if args.all:
+        activations = tuple(
+            a
+            for a in sorted(load_activations(), key=lambda a: a.name)
+            if a.parameters.get("entry_timing") == "next_close"
+        )
+    else:
+        activations = tuple(find_activation(name) for name in args.activations)
+    if not activations:
+        print("error: name at least one activation, or pass --all")
+        return 2
     first_session = (
         datetime.fromisoformat(args.session).date()
         if args.session
         else session_to_prepare(datetime.now(tz=UTC))
     )
 
-    # The warm-up loader is used as the gate and not as the source. It refuses a stale or
-    # holed window - the same refusal the operator's morning check makes, and the reason a
-    # session cannot quietly warm across a missing day - but it returns bars built at the
-    # catalog's precision, and what reaches the strategy has to be built at the broker's.
-    load_warmup(args.catalog, activation, first_session=first_session)
+    plans = []
+    for activation in activations:
+        # The warm-up loader is used as the gate and not as the source. It refuses a
+        # stale or holed window - the same refusal the operator's morning check makes -
+        # but it returns bars built at the catalog's precision, and what reaches the
+        # strategy has to be built at the broker's.
+        load_warmup(args.catalog, activation, first_session=first_session)
 
-    # The last bar before the session is the one the rule decides on; the warm-up is the
-    # history behind it. Splitting them here rather than in the loader keeps the loader's
-    # single job - is the catalog current enough - separate from this module's.
-    catalog_bars = _catalog_bars(args.catalog, activation, first_session)
-    needed = activation.setup.warmup_bars
-    if len(catalog_bars) < needed + 1:
-        print(f"error: {len(catalog_bars)} bars available, need {needed + 1}")
-        return 2
-    decision = catalog_bars[-1]
-    warmup = catalog_bars[-(needed + 1) : -1]
+        # The last bar before the session is the one the rule decides on; the warm-up is
+        # the history behind it.
+        catalog_bars = _catalog_bars(args.catalog, activation, first_session)
+        needed = activation.setup.warmup_bars
+        if len(catalog_bars) < needed + 1:
+            print(f"error: {activation.name}: {len(catalog_bars)} bars, need {needed + 1}")
+            return 2
+        plans.append(
+            Plan(
+                activation=activation,
+                warmup=catalog_bars[-(needed + 1) : -1],
+                decision=catalog_bars[-1],
+            ),
+        )
 
+    names = ", ".join(a.name for a in activations)
     print(
-        f"Running {activation.name} for the session opening {first_session}.\n"
+        f"Running {len(plans)} activation(s) for the session opening {first_session}: "
+        f"{names}.\n"
         f"Orders are DENIED in the risk engine: this measures what the rule decides, "
         f"not what it fills. Enabling them is paper stage seven and needs a frozen "
         f"candidate.\n",
@@ -402,14 +589,23 @@ def main(argv: list[str] | None = None) -> int:
         data_client_id=args.data_client_id,
         exec_client_id=args.exec_client_id,
         orders_enabled=False,
-        instrument_ids=(str(broker_instrument_id(activation.symbol, activation.venue)),),
+        instrument_ids=tuple(
+            dict.fromkeys(str(broker_instrument_id(a.symbol, a.venue)) for a in activations),
+        ),
     )
 
     started = datetime.now(tz=UTC)
-    record = asyncio.run(
-        run_session(session, activation, warmup, decision, settle_secs=args.settle_secs),
+    records = asyncio.run(
+        run_session(
+            session,
+            tuple(plans),
+            policy=RiskPolicy(risk_fraction=args.risk_fraction),
+            allocation=args.allocation,
+            settle_secs=args.settle_secs,
+        ),
     )
-    _report(record)
+    for record in records:
+        _report(record)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"run_activation_{started.strftime('%Y%m%dT%H%M%SZ')}.json"
@@ -417,12 +613,18 @@ def main(argv: list[str] | None = None) -> int:
         "run_at": started.isoformat(),
         "session": first_session.isoformat(),
         "orders_enabled": False,
-        **{k: v for k, v in vars(record).items() if k != "orders"},
-        "orders": [vars(o) for o in record.orders],
+        "basket": [a.name for a in activations],
+        "activations": [
+            {
+                **{k: v for k, v in vars(record).items() if k != "orders"},
+                "orders": [vars(o) for o in record.orders],
+            }
+            for record in records
+        ],
     }
     path.write_text(json.dumps(payload, indent=2, default=str) + "\n")
     print(f"\n  filed {path}")
-    return 0 if record.instrument_resolved else 1
+    return 0 if all(record.instrument_resolved for record in records) else 1
 
 
 def _catalog_bars(catalog_path: str, activation: Activation, before: date) -> tuple[DailyBar, ...]:
@@ -442,6 +644,7 @@ __all__ = [
     "SETTLE_SECS",
     "NoBrokerInstrumentError",
     "OrderRecord",
+    "Plan",
     "SessionRecord",
     "broker_bar_type",
     "build_strategy",

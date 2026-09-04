@@ -64,7 +64,7 @@ if TYPE_CHECKING:
 
 SNAPSHOT_DIR = Path(__file__).parent / "out"
 
-CANONICAL_SNAPSHOT = "spread_history_20260904T085055Z.json"
+CANONICAL_SNAPSHOT = "spread_history_20260904T112723Z.json"
 """
 The pinned calibration source: measured historical top of book, charged per [ADR-0019].
 

@@ -180,3 +180,61 @@ def test_a_history_only_beyond_the_window_refuses() -> None:
 
 def test_an_unclipped_carve_reports_nothing_beyond() -> None:
     assert carve(history(100, 20)).unevaluated == ()
+
+
+class TestPerActivationBoundary:
+    """
+    A holdout boundary carried by the activation rather than by this module.
+
+    Onboarding a series that starts in 2017 put ADR-0012's shared 2022-01-01 pin at
+    44 percent of the evaluation window, and ``carve`` refused it. ADR-0020 moves the pin
+    into the activation; these tests exist to prove that move kept every property
+    ADR-0012 was written to protect - it is still a date, still refused outside the band,
+    and still the shared one when nothing else is named.
+
+    """
+
+    def test_the_shared_pin_is_the_default(self) -> None:
+        """
+        An activation that names no boundary carves exactly where it always did.
+        """
+        bars = history(1000, 200)
+        assert carve(bars).holdout == carve(bars, holdout_start=HOLDOUT_START).holdout
+
+    def test_an_explicit_boundary_moves_the_split(self) -> None:
+        """
+        The whole point: a shorter history can put its holdout somewhere reachable.
+        """
+        bars = history(1000, 200)
+        later = carve(bars, holdout_start=HOLDOUT_START + timedelta(days=15))
+        assert len(later.holdout) == 185
+        assert len(carve(bars).holdout) == 200
+
+    def test_the_band_still_guards_an_explicit_boundary(self) -> None:
+        """
+        Naming a boundary is not a way around the charter's 15-20 percent.
+
+        This is the test that matters most: the refusal is the only thing standing
+        between a per-activation pin and a per-activation reservation of whatever size
+        flattered the result.
+
+        """
+        with pytest.raises(HoldoutCarveError, match="outside the charter"):
+            carve(history(1000, 200), holdout_start=HOLDOUT_START - timedelta(days=100))
+
+    def test_a_boundary_outside_the_history_is_refused(self) -> None:
+        """
+        A pin no bar sits after leaves no holdout, and must not pass as one.
+        """
+        with pytest.raises(HoldoutCarveError, match="does not straddle"):
+            carve(history(1000, 200), holdout_start=EVALUATION_END - timedelta(days=1))
+
+    def test_clipping_still_happens_before_the_split(self) -> None:
+        """
+        ADR-0017's second pin is unaffected by which boundary divides the rest.
+        """
+        carved = carve(
+            [*history(1000, 200), *beyond(50)],
+            holdout_start=HOLDOUT_START + timedelta(days=15),
+        )
+        assert all(bar.closed_at < EVALUATION_END for bar in carved.holdout)

@@ -42,7 +42,10 @@ Two constraints that are easy to lose:
 - If the strategy exits only after a completed daily bar, `g` must come from a **tested
   next-session stress loss**, not from an assumption that `|P - S| + g` bounds the loss.
 
-Implemented in `copilot/risk/sizing.py`. Quantity is **floored, never rounded** - rounding
+Implemented in `copilot/risk/sizing.py` (the quantity and the notional cap),
+`copilot/risk/budget.py` (`R = A * r` and the caps from equity) and
+`copilot/risk/exposure.py` (total open planned risk and the entry count, across every
+strategy in a session). Quantity is **floored, never rounded** - rounding
 up puts more at risk than the budget allows, which is the one direction a risk control must
 not err in. Realised risk is recorded per trade rather than assumed equal to the budget,
 because flooring leaves it at or just under.

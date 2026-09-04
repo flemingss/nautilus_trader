@@ -36,6 +36,8 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import UTC
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
 from pathlib import Path
@@ -53,16 +55,32 @@ class Lifecycle(StrEnum):
     How far an activation has been trusted.
 
     A field rather than a database state, so promotion is a diff someone reviewed.
+
     """
 
     RESEARCH = "RESEARCH"
-    """Never trades. Free to be re-validated, re-parameterised, or deleted."""
+    """
+    Never trades.
+
+    Free to be re-validated, re-parameterised, or deleted.
+
+    """
 
     PAPER = "PAPER"
-    """Trades on a paper account. Real orders, no capital."""
+    """
+    Trades on a paper account.
+
+    Real orders, no capital.
+
+    """
 
     LIVE = "LIVE"
-    """Trades real capital. Nothing reaches this without a spent holdout."""
+    """
+    Trades real capital.
+
+    Nothing reaches this without a spent holdout.
+
+    """
 
 
 @dataclass(frozen=True)
@@ -72,10 +90,13 @@ class SetupSpec:
     search_space: Mapping[str, Sequence[Any]]
     factory: Any
     warmup_bars: int
-    """Bars the rule needs before it can fire.
+    """
+    Bars the rule needs before it can fire.
 
     Taken from the strategy rather than guessed by the caller. Guessing short makes the
-    gate read missing history as failing folds, which looks like a dead premise."""
+    gate read missing history as failing folds, which looks like a dead premise.
+
+    """
 
 
 SETUPS: Mapping[str, SetupSpec] = {
@@ -85,11 +106,14 @@ SETUPS: Mapping[str, SetupSpec] = {
         warmup_bars=gap_reversal.WARMUP_BARS,
     ),
 }
-"""Every strategy an activation may name.
+"""
+Every strategy an activation may name.
 
 An activation naming something absent from here fails to load, loudly. The alternative -
 skipping it with a logged reason - would let a typo silently remove a strategy from a
-validation run."""
+validation run.
+
+"""
 
 
 @dataclass(frozen=True)
@@ -99,6 +123,7 @@ class ValidationSettings:
 
     Part of what makes a verdict reproducible: the same bars and the same grid under a
     different fold geometry are a different experiment.
+
     """
 
     train_bars: int = 252
@@ -106,11 +131,40 @@ class ValidationSettings:
     purge_bars: int = 5
     min_trades: int = 20
     fold_min_trades: int = 5
+    holdout_start: str = ""
+    """
+    This activation's holdout boundary as ``YYYY-MM-DD``; empty means the shared pin.
+
+    [ADR-0012] pinned one date for the whole universe, and that was right while the
+    universe was single names with twenty years each. A series that starts in 2017 or
+    2020 puts 2022-01-01 at 44 percent or more of its history, far outside the charter's
+    15-20 percent band, and ``carve`` refuses it - correctly, because the alternative is
+    a boundary that quietly means something different per symbol.
+
+    So the pin moves *into the activation*, where it is still a date in a committed file
+    that cannot change without a diff, which was the whole point of pinning by date
+    rather than by percentage. [ADR-0020] records the change.
+
+    [ADR-0012]: ../docs/decisions/0012-the-holdout-is-carved-at-2022-01-01.md
+    [ADR-0020]: ../docs/decisions/0020-the-holdout-boundary-is-per-activation.md
+
+    """
+
+    @property
+    def holdout_boundary(self) -> datetime | None:
+        """
+        Return the parsed boundary, or None to use the shared pin.
+        """
+        if not self.holdout_start:
+            return None
+        return datetime.fromisoformat(self.holdout_start).replace(tzinfo=UTC)
 
 
 @dataclass(frozen=True)
 class Activation:
-    """One strategy, configured to trade one instrument, at one lifecycle stage."""
+    """
+    One strategy, configured to trade one instrument, at one lifecycle stage.
+    """
 
     name: str
     strategy: str
@@ -118,18 +172,24 @@ class Activation:
     symbol: str
     venue: str
     parameters: Mapping[str, Any] = field(default_factory=dict)
-    """Fixed parameters that are this activation's identity, not search placeholders."""
+    """
+    Fixed parameters that are this activation's identity, not search placeholders.
+    """
     validation: ValidationSettings = field(default_factory=ValidationSettings)
     note: str = ""
 
     @property
     def setup(self) -> SetupSpec:
-        """The registered strategy this activation names."""
+        """
+        The registered strategy this activation names.
+        """
         return SETUPS[self.strategy]
 
     @property
     def trades(self) -> bool:
-        """Whether this activation may place orders at all."""
+        """
+        Whether this activation may place orders at all.
+        """
         return self.lifecycle is not Lifecycle.RESEARCH
 
     def grid(self) -> ParameterGrid:
@@ -137,6 +197,7 @@ class Activation:
         Return the search, seeded with this activation's own identity.
 
         Searched axes win over the seed, so this can narrow nothing.
+
         """
         return ParameterGrid(axes_by_name=dict(self.setup.search_space)).with_base(
             dict(self.parameters),
@@ -150,6 +211,7 @@ def _decimalise(value: Any) -> Any:
     TOML floats are binary floats, and these values are multiplied by an ATR to place
     stops. Numbers are written as strings in the registry for that reason; a float that
     slipped through is converted here rather than silently reaching an order price.
+
     """
     if isinstance(value, str):
         try:
@@ -162,7 +224,9 @@ def _decimalise(value: Any) -> Any:
 
 
 def parse_activation(name: str, raw: Mapping[str, Any]) -> Activation:
-    """Build an activation from decoded TOML, failing on anything unrecognised."""
+    """
+    Build an activation from decoded TOML, failing on anything unrecognised.
+    """
     strategy = raw.get("strategy")
     if strategy not in SETUPS:
         raise ValueError(
@@ -194,17 +258,23 @@ def parse_activation(name: str, raw: Mapping[str, Any]) -> Activation:
 
 
 def load_activation(path: Path) -> Activation:
-    """Read one activation file."""
+    """
+    Read one activation file.
+    """
     return parse_activation(path.stem, tomllib.loads(path.read_text()))
 
 
 def load_activations(directory: Path = REGISTRY_DIR) -> tuple[Activation, ...]:
-    """Every activation in the registry, in name order."""
+    """
+    Every activation in the registry, in name order.
+    """
     return tuple(load_activation(p) for p in sorted(directory.glob("*.toml")))
 
 
 def find_activation(name: str, directory: Path = REGISTRY_DIR) -> Activation:
-    """Look one up by name, listing what exists when it is missing."""
+    """
+    Look one up by name, listing what exists when it is missing.
+    """
     path = directory / f"{name}.toml"
     if not path.exists():
         available = sorted(p.stem for p in directory.glob("*.toml"))

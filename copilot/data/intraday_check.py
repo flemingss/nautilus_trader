@@ -59,6 +59,8 @@ from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
 from copilot.data.corporate_actions import ACTIONS
 from copilot.data.corporate_actions import cumulative_factor
+from copilot.paths import DEFAULT_STORE
+from copilot.paths import add_catalog_argument
 
 
 try:
@@ -66,8 +68,6 @@ try:
 except ImportError:  # pragma: no cover - required to read what was bought
     zstandard = None
 
-DEFAULT_STORE = "~/.nautilus_copilot/databento"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
 
 EASTERN = ZoneInfo("America/New_York")
 PRICE_SCALE = Decimal(10) ** 9
@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
         description="Check daily bars against the intraday path they summarise.",
     )
     parser.add_argument("--store", default=DEFAULT_STORE, help="Where minute files landed")
-    parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
+    add_catalog_argument(parser)
     args = parser.parse_args(argv)
 
     root = Path(args.store).expanduser()

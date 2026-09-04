@@ -14,6 +14,7 @@ change in the classifier's behaviour shows up against the data it was written fo
 from __future__ import annotations
 
 from datetime import UTC
+from datetime import date
 from datetime import datetime
 from decimal import Decimal
 
@@ -164,3 +165,76 @@ def test_detection_finds_the_distribution_a_threshold_scan_misses() -> None:
     ]
 
     assert unadjusted_actions(closes, [T_WBD]) == [T_WBD]
+
+
+class TestScan:
+    """
+    The scan as the onboarding command sees it: findings, not a printed table.
+    """
+
+    def test_a_split_sitting_in_the_prices_blocks(self, tmp_path) -> None:
+        """
+        SCHX's shape on 2026-09-04: the vendor reports a 3:1, the stored series still
+        carries the jump, and nothing in ACTIONS knows.
+        """
+        from copilot.data.corporate_actions import SITTING_IN_PRICES
+
+        class Vendor:
+            def fetch_splits(self, symbols, start, end):
+                return {"ZZZ": ((date(2024, 10, 11), Decimal(3)),)}
+
+        class Catalog:
+            pass
+
+        import copilot.data.corporate_actions as module
+
+        closes = [
+            (datetime(2024, 10, 10, tzinfo=UTC), Decimal("68.17")),
+            (datetime(2024, 10, 11, tzinfo=UTC), Decimal("22.88")),
+        ]
+        found = module.unadjusted_actions(
+            closes,
+            [module.Action("ZZZ", datetime(2024, 10, 11, tzinfo=UTC), Decimal(3))],
+        )
+        assert len(found) == 1
+        # The finding type carries the decision the stage needs.
+        finding = module.Finding("ZZZ", found[0], SITTING_IN_PRICES)
+        assert finding.blocks
+
+    def test_an_already_adjusted_action_does_not_block(self) -> None:
+        from copilot.data.corporate_actions import ALREADY_ADJUSTED
+        from copilot.data.corporate_actions import Action
+        from copilot.data.corporate_actions import Finding
+
+        finding = Finding(
+            "ZZZ",
+            Action("ZZZ", datetime(2005, 6, 9, tzinfo=UTC), Decimal(3)),
+            ALREADY_ADJUSTED,
+        )
+        assert not finding.blocks
+
+    def test_an_untestable_action_blocks(self) -> None:
+        """
+        No stored bars to check against is not a pass; it is a symbol the gate would
+        meet unprepared.
+        """
+        from copilot.data.corporate_actions import UNTESTABLE
+        from copilot.data.corporate_actions import Action
+        from copilot.data.corporate_actions import Finding
+
+        assert Finding(
+            "ZZZ",
+            Action("ZZZ", datetime(2024, 1, 2, tzinfo=UTC), Decimal(2)),
+            UNTESTABLE,
+        ).blocks
+
+    def test_the_three_found_by_the_walk_are_registered(self) -> None:
+        from copilot.data.corporate_actions import ACTIONS
+
+        assert {(a.effective.date(), a.factor) for a in ACTIONS["SCHX"]} == {
+            (date(2022, 3, 11), Decimal(2)),
+            (date(2024, 10, 11), Decimal(3)),
+        }
+        assert [(a.effective.date(), a.factor) for a in ACTIONS["GLDM"]] == [
+            (date(2022, 2, 23), Decimal("0.5")),
+        ]

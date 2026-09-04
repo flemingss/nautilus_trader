@@ -465,6 +465,25 @@ recorded in `copilot/data/substitutions.py`
 ([ADR-0018](decisions/0018-an-unusable-bar-is-substituted-whole.md)); it is not worked
 around by loosening the gate.
 
+## What filed outputs stay in the tree
+
+Three directories hold JSON the tools write, and each grew today without a rule: 45
+verdicts where 14 were current, seven calibration outputs nothing referenced, and a
+session record per run. Git history keeps every version regardless; the question is only
+what the working tree should present as *the* record.
+
+| Directory              | Keep                                                                    | Why                                                                       |
+| ---------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| `strategies/verdicts/` | The newest per activation, plus any a `holdouts/` record names          | The newest is what `--changed` compares against; a spend cites its base   |
+| `calibration/out/`     | Anything a module pins or an ADR, playbook or roadmap names by filename | A pinned snapshot is a dependency; a named one is evidence                |
+| `live/out/`            | Everything                                                              | Session records are the paper campaign's evidence and are never rewritten |
+| `strategies/holdouts/` | Everything                                                              | Single-use by construction                                                |
+
+Prune verdicts and calibration outputs when a filing supersedes them, in the same commit
+as the filing. A superseded file is not deleted history - it is one `git log` away - but
+a tree that presents thirty stale verdicts beside twelve current ones makes the current
+ones harder to find, and the operator reads the tree.
+
 ## Inherited governance surfaces
 
 Surveyed 2026-09-02, after ownership. These files came with the copy and describe how to

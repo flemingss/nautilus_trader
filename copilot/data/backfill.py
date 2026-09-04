@@ -37,6 +37,8 @@ from copilot.data.marketstack import normalize
 from copilot.data.substitutions import SOURCE as SUBSTITUTION_SOURCE
 from copilot.data.substitutions import apply_to
 from copilot.data.substitutions import unmatched
+from copilot.paths import MARKETSTACK_API_KEY_ENV
+from copilot.paths import add_catalog_argument
 
 
 if TYPE_CHECKING:
@@ -45,17 +47,7 @@ if TYPE_CHECKING:
     from copilot.data.substitutions import Substitution
 
 
-API_KEY_ENV = "MARKETSTACK_API_KEY"
-CATALOG_PATH_ENV = "COPILOT_CATALOG_PATH"
-DEFAULT_CATALOG = "~/.nautilus_copilot/catalog"
-"""
-Outside the repository on purpose.
-
-A parquet store inside the tree would need a
-`.gitignore` entry, and `.gitignore` is an upstream file this fork does not touch -
-so the data would sit one `git add -A` away from being committed.
-
-"""
+API_KEY_ENV = MARKETSTACK_API_KEY_ENV
 
 DEFAULT_MAX_REJECTION_RATIO = "0.02"
 """
@@ -81,11 +73,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=date.today().isoformat(),  # noqa: DTZ011 - a local calendar day is the intent
         help="End date, YYYY-MM-DD (default: today)",
     )
-    parser.add_argument(
-        "--catalog",
-        default=os.environ.get(CATALOG_PATH_ENV, DEFAULT_CATALOG),
-        help=f"Catalog directory (default: ${CATALOG_PATH_ENV} or {DEFAULT_CATALOG})",
-    )
+    add_catalog_argument(parser)
     parser.add_argument(
         "--currency",
         default=DEFAULT_CURRENCY,

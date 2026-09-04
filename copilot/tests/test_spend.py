@@ -18,7 +18,9 @@ import pytest
 
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import Lifecycle
+from copilot.strategies.spend_holdout import MIN_PROJECTED_TRADES_MARGIN
 from copilot.strategies.spend_holdout import OWNER_DECISIONS
+from copilot.strategies.spend_holdout import ThinHoldoutError
 from copilot.strategies.spend_holdout import holdout_record
 from copilot.strategies.spend_holdout import is_spent
 from copilot.strategies.spend_holdout import refusal
@@ -259,3 +261,58 @@ def test_the_record_says_the_holdout_is_spent_and_leaves_the_decision_to_the_own
     assert record["windows"]["holdout_start"] == HOLDOUT_START.date().isoformat()
     # The audit carries every candidate, not only the winner.
     assert len(record["selection_audit"]["candidates"]) == 3
+
+
+class TestThinHoldoutRefusal:
+    """
+    The pre-spend check on whether a holdout can be scored at all.
+
+    Built after a spend was destroyed to learn that its own window was too short: SCHX
+    returned four trades against a floor of five on 2026-09-04, and a single-use test
+    was gone for nothing. What the tests here pin is the shape of the refusal rather
+    than the arithmetic, because the arithmetic is only as good as the parameters it is
+    made with - and that is measured against the real spends in the module's docstring,
+    where AAPL projects 110.7 against the 111 it produced.
+
+    """
+
+    def test_the_refusal_is_its_own_error(self) -> None:
+        """
+        A distinct type, so a caller can tell "cannot be scored" from "must not be run".
+
+        The other refusals mean the operator did something wrong. This one means the
+        history did, and the two want different answers.
+
+        """
+        assert issubclass(ThinHoldoutError, ValueError)
+
+    def test_the_error_names_the_way_out(self) -> None:
+        """
+        A refusal that does not say what to change is a dead end.
+
+        The way out is a longer window and the band still applies to it, so the message
+        carries both - or it quietly invites moving the pin until the count is
+        convenient, which is the one thing the holdout must not permit.
+
+        """
+        message = (
+            "the holdout for x projects 2.0 trades over its 100 bars, under the 5 the "
+            "scorer requires. Spending it would return insufficient_test_trades and "
+            "destroy the evidence to learn that. Lengthen the window by moving "
+            "holdout_start earlier (ADR-0020, the band still applies), or accept that "
+            "this activation cannot be tested on the history it has."
+        )
+        assert "holdout_start" in message
+        assert "band still applies" in message
+        assert "insufficient_test_trades" in message
+
+    def test_the_margin_is_the_floor_itself(self) -> None:
+        """
+        One, not a comfort factor.
+
+        The check exists to stop a spend that plainly cannot reach the floor, not to
+        predict the result; a margin above one would start refusing spends that could
+        have been scored.
+
+        """
+        assert Decimal("1.0") == MIN_PROJECTED_TRADES_MARGIN

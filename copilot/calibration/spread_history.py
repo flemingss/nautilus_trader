@@ -50,13 +50,14 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from copilot.paths import DEFAULT_STORE
+
 
 try:
     import zstandard
 except ImportError:  # pragma: no cover - the reader is required to read what was bought
     zstandard = None
 
-DEFAULT_STORE = "~/.nautilus_copilot/databento"
 OUT_DIR = Path(__file__).parent / "out"
 
 EASTERN = ZoneInfo("America/New_York")

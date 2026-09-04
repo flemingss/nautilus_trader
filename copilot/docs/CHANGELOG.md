@@ -2,7 +2,52 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
-## 2026-09-03 (both adapter fixes watched working at the broker)
+## 2026-09-04 (a strategy on a broker connection; six symbols onboarded; the morning made cheap)
+
+### Built
+
+- **The live path warms from the catalog and runs a strategy on a broker connection.**
+  `live/warmup.py` refuses a stale or holed window; `live/run_activation.py` hands the
+  strategy its history and the last completed bar, orders denied. IB 2188 refuses daily
+  bars on this account, so the catalog is the data client - which is what ADR-0017's
+  two-ended window made possible.
+- **The evaluation window is pinned at both ends** (ADR-0017), so one catalog serves
+  frozen research and fresh execution. Proved by appending 169 sessions and every
+  verdict staying bit-identical.
+- **`data/append.py`** keeps the catalog current on a schedule; **`data/patch.py`** fills
+  holes from the Databento store, taking the close from the auction statistic and the
+  rest of the bar from the venue, because the listing venue's `ohlcv-1d` close runs 3.5
+  to 11.4 bps from the official print and the `statistics` schema matches it exactly.
+- **Six ETFs onboarded** (SCHX, TLT, GLDM, XLF, HYG, EEM) for $2.42 of Databento credit.
+  Nine defects found by running the process rather than reading it; **`data/onboard.py`**
+  is that process as a status report. SPLG turned out not to be absent from the vendor
+  but stopped on 2026-07-17 - a narrow probe reads that as absence.
+- **The holdout boundary is per activation** (ADR-0020). A 2017 series put the shared
+  2022-01-01 pin at 44%; the pin moves into the registry as a date. SCHX's holdout was
+  spent and **failed on four trades**; `spend_holdout` now projects the count first
+  (AAPL: 110.7 projected, 111 actual) and refuses a window too short to score.
+- **Sizing comes from the account.** `risk/budget.py` derives `R = A * r` and the 10%
+  notional cap from the equity the broker reports; `risk/exposure.py` caps total open
+  planned risk and daily entries across every strategy in the session, which now runs
+  the whole basket in one node. The research R-unit of USD 1,000 had been reaching the
+  live strategy verbatim.
+- **`onboard` has a corporate-actions stage.** The evening walk found three splits sitting
+  in the prices of two symbols onboarded that morning, one inside a spent holdout; the scan
+  existed and the sequence had not included it. It blocks on anything sitting in the prices.
+- **Every verdict carries the four digests it was computed from**, and
+  `validate --changed` skips what cannot have moved: 12 recomputed in 2m54s, then 0 in
+  half a second. `preflight` derives its instrument list from the registry (it had
+  passed 3 of 9).
+
+### Measured
+
+- Spread repinned to 7.6 years of top-of-book in the execution window (ADR-0019). Nothing
+  moved: the IB per-order minimum is 3-15x the whole spread charge at these sizes.
+- Marketstack's 2026 rows carry 11 unreadable bars, substituted whole (ADR-0018); its
+  ETF closes before 2017 are largely sub-penny consolidated values, and TLT's 2026 is
+  unusable in 122 of 169 sessions.
+- The AAPL next-close holdout passed thinly (+0.035 R over 111 trades); crossing equity
+  moved to USD 25,000. `owner_decision` is unfilled in both spent records.
 
 ### Measured
 
