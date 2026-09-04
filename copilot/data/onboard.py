@@ -60,6 +60,7 @@ from copilot.data.catalog import bar_type_for
 from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
+from copilot.data.corporate_actions import scan
 from copilot.data.marketstack import MarketstackClient
 from copilot.paths import MARKETSTACK_API_KEY_ENV
 from copilot.paths import add_catalog_argument
@@ -253,7 +254,14 @@ def preferred_boundary(
     return min(candidates, key=lambda pair: abs(pair[1] - middle))
 
 
-def steps_for(catalog_path: str, symbol: str, venue: str, coverage: Coverage | None) -> list[Step]:
+def steps_for(
+    catalog_path: str,
+    symbol: str,
+    venue: str,
+    coverage: Coverage | None,
+    *,
+    client: object | None = None,
+) -> list[Step]:
     """
     Return the ordered stages for one symbol, each answering whether it is done.
 
@@ -344,6 +352,47 @@ def steps_for(catalog_path: str, symbol: str, venue: str, coverage: Coverage | N
                     else f"python -m copilot.data.patch --symbols {pair} --write  "
                     f"(needs the Databento pull below first)"
                 ),
+            ),
+        )
+
+    if bars and client is not None:
+        findings = scan(
+            catalog_path,
+            [symbol],
+            min(b.closed_at.date() for b in bars),
+            date.today(),  # noqa: DTZ011
+            client=client,
+        )
+        blocking = [f for f in findings if f.blocks]
+        steps.append(
+            Step(
+                "corporate actions",
+                done=not blocking,
+                detail=(
+                    f"{len(blocking)} sitting in the prices: "
+                    + ", ".join(
+                        f"{f.action.effective.date()} x{f.action.factor}"
+                        for f in blocking
+                        if f.action
+                    )
+                    if blocking
+                    else f"{sum(1 for f in findings if f.action)} vendor action(s), all registered or adjusted"
+                ),
+                command=(
+                    f"add the action(s) to ACTIONS in copilot/data/corporate_actions.py, then "
+                    f"python -m copilot.data.corporate_actions {symbol}"
+                    if blocking
+                    else ""
+                ),
+            ),
+        )
+    elif bars:
+        steps.append(
+            Step(
+                "corporate actions",
+                done=False,
+                detail="not checked without --survey",
+                command=f"python -m copilot.data.corporate_actions {symbol}",
             ),
         )
 
@@ -486,7 +535,9 @@ def main(argv: list[str] | None = None) -> int:
     results = []
     for symbol, venue in pairs:
         coverage = survey(client, symbol, venue) if client else None
-        results.append((f"{symbol}.{venue}", steps_for(args.catalog, symbol, venue, coverage)))
+        results.append(
+            (f"{symbol}.{venue}", steps_for(args.catalog, symbol, venue, coverage, client=client)),
+        )
     return report(results)
 
 

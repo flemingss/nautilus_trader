@@ -3,7 +3,7 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "GLDM.ARCX",
-  "run_at": "2026-09-04T13:18:04.123577+00:00",
+  "run_at": "2026-09-04T13:30:52.180890+00:00",
   "runtime_seconds": 6.6,
   "bars": 1562,
   "bar_range": [
@@ -60,19 +60,19 @@
     "commission": "IB Pro fixed tier: max(1.00, 0.005/share) per order, capped at 1.00% of notional, split-corrected share counts"
   },
   "inputs": {
-    "data": "0be2fa4d9b735eb274ee847394f87336ab9316c045ac1e06eed2c4c5f682de2f",
+    "data": "886fe3d0829287f5aec3baa0b1cf1853fc39b123b54c1e92a42e5b460af80114",
     "identity": "eb92a0fba23e6e9168e6dac53389237508dce4382e0d3d8430970faf3906c877",
     "cost": "d3d16a5ffb28086585a28083911df8a20dcec08b88523d9635f59cfc21048add",
-    "code": "114376228784189e855976d641c3740a1d1e122e6a6750fb7ee436e356afb56f",
-    "combined": "b2c3b39ba1d4840efbe8b893595fe45cd05be969a4e7f6d147bf3a9e8194809b"
+    "code": "c5919264a10d27cfb783cd661dfd5ebf30ed7c74351c9ec03eb80ea31717ae65",
+    "combined": "7e603743706605664a420280f5ec5821e1e2a5828bcd6c14e7072ce59a166508"
   },
   "holdout_spent": false,
   "folds": 10,
   "folds_evaluated": 10,
-  "folds_passed": 3,
+  "folds_passed": 4,
   "majority_passed": false,
-  "mean_oos_net_expectancy_r": "0.021268",
-  "total_test_trades": 126,
+  "mean_oos_net_expectancy_r": "0.030403",
+  "total_test_trades": 127,
   "fold_detail": [
     {
       "index": 0,
@@ -90,9 +90,9 @@
         "target_1_atr": "1.5"
       },
       "trades": 10,
-      "net_score_r": "-0.119864",
+      "net_score_r": "-0.119860",
       "passed": false,
-      "reason": "score -0.1198640447406044429494788283 not above 0"
+      "reason": "score -0.1198599592484060123916351364 not above 0"
     },
     {
       "index": 1,
@@ -110,9 +110,9 @@
         "target_1_atr": "1.5"
       },
       "trades": 14,
-      "net_score_r": "-0.122172",
+      "net_score_r": "-0.122194",
       "passed": false,
-      "reason": "score -0.1221715895982000077183966388 not above 0"
+      "reason": "score -0.1221937985570620660975409376 not above 0"
     },
     {
       "index": 2,
@@ -130,9 +130,9 @@
         "target_1_atr": "1.5"
       },
       "trades": 13,
-      "net_score_r": "-0.046199",
+      "net_score_r": "-0.046171",
       "passed": false,
-      "reason": "score -0.04619878637194439462703865936 not above 0"
+      "reason": "score -0.0461710698415416353373635504 not above 0"
     },
     {
       "index": 3,
@@ -150,9 +150,9 @@
         "target_1_atr": "1.5"
       },
       "trades": 11,
-      "net_score_r": "-0.112039",
+      "net_score_r": "-0.112016",
       "passed": false,
-      "reason": "score -0.1120386318543458903287564845 not above 0"
+      "reason": "score -0.1120159900588136038316242149 not above 0"
     },
     {
       "index": 4,
@@ -170,9 +170,9 @@
         "target_1_atr": "1.5"
       },
       "trades": 15,
-      "net_score_r": "-0.191503",
+      "net_score_r": "-0.191518",
       "passed": false,
-      "reason": "score -0.1915030560442873851031888339 not above 0"
+      "reason": "score -0.1915175635379370230600322561 not above 0"
     },
     {
       "index": 5,
@@ -189,10 +189,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 8,
-      "net_score_r": "0.156441",
+      "trades": 13,
+      "net_score_r": "0.003470",
       "passed": true,
-      "reason": "score 0.1564405032418972530289126818 above 0"
+      "reason": "score 0.003470285701224458098885041677 above 0"
     },
     {
       "index": 6,
@@ -206,13 +206,13 @@
         "stop_atr": "1.5",
         "entry_buffer_atr": "0.25",
         "risk_budget": "1000",
-        "min_gap_atr": "0.25",
-        "target_1_atr": "1.0"
+        "min_gap_atr": "0.40",
+        "target_1_atr": "1.5"
       },
-      "trades": 19,
-      "net_score_r": "-0.142477",
-      "passed": false,
-      "reason": "score -0.1424773633665746846736047713 not above 0"
+      "trades": 15,
+      "net_score_r": "0.101826",
+      "passed": true,
+      "reason": "score 0.1018259793036567927271078029 above 0"
     },
     {
       "index": 7,

@@ -59,6 +59,7 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from copilot.paths import MARKETSTACK_API_KEY_ENV
 from copilot.paths import add_catalog_argument
 
 
@@ -212,12 +213,20 @@ ACTIONS: dict[str, tuple[Action, ...]] = {
         Action("AAPL", datetime(2020, 8, 31, tzinfo=UTC), Decimal(4)),
     ),
     "AMZN": (Action("AMZN", datetime(2022, 6, 6, tzinfo=UTC), Decimal(20)),),
+    # Found by the operator-day walk on 2026-09-04, the evening after these were
+    # onboarded: the scan reported all three "sitting in the prices", and they were.
+    # The 3:1 sat inside SCHX's holdout window as a -67% gap-down.
+    "GLDM": (Action("GLDM", datetime(2022, 2, 23, tzinfo=UTC), Decimal("0.5")),),
     "GOOGL": (
         Action("GOOGL", datetime(2014, 4, 3, tzinfo=UTC), Decimal(2)),
         Action("GOOGL", datetime(2022, 7, 18, tzinfo=UTC), Decimal(20)),
     ),
     "KO": (Action("KO", datetime(2012, 8, 13, tzinfo=UTC), Decimal(2)),),
     "MRK": (Action("MRK", datetime(2021, 6, 3, tzinfo=UTC), Decimal("1.05")),),
+    "SCHX": (
+        Action("SCHX", datetime(2022, 3, 11, tzinfo=UTC), Decimal(2)),
+        Action("SCHX", datetime(2024, 10, 11, tzinfo=UTC), Decimal(3)),
+    ),
     "T": (Action("T", datetime(2022, 4, 11, tzinfo=UTC), Decimal("1.32")),),
     "VZ": (
         Action("VZ", datetime(2006, 11, 20, tzinfo=UTC), Decimal("1.04")),
@@ -277,13 +286,49 @@ def split_actions(symbol: str) -> tuple[Action, ...]:
     return tuple(a for a in ACTIONS.get(symbol, ()) if a.kind is SPLIT)
 
 
-def _report(catalog_path: str, symbols: Sequence[str], start: date, end: date) -> int:
-    """
-    Compare a symbol's vendor corporate actions against what this module already knows.
+SITTING_IN_PRICES = "NOT IN ACTIONS and sitting in the prices"
+UNTESTABLE = "NOT IN ACTIONS (no stored bars to test)"
+ALREADY_ADJUSTED = "not in ACTIONS; prices look already adjusted"
+REGISTERED = "in ACTIONS"
 
-    Returns a process exit code, non-zero when an action is in the stored prices and not
-    in :data:`ACTIONS` - which is the state that puts a discontinuity in front of a gap
-    strategy.
+
+@dataclass(frozen=True)
+class Finding:
+    """
+    One vendor-reported action and where this module stands on it.
+    """
+
+    symbol: str
+    action: Action | None
+    status: str
+
+    @property
+    def blocks(self) -> bool:
+        """
+        Whether this action must be registered before the symbol is used.
+
+        Untestable counts: an action the stored series cannot be checked against is one
+        the gate would meet unprepared.
+
+        """
+        return self.status in (SITTING_IN_PRICES, UNTESTABLE)
+
+
+def scan(
+    catalog_path: str,
+    symbols: Sequence[str],
+    start: date,
+    end: date,
+    *,
+    client: object,
+) -> list[Finding]:
+    """
+    Compare each symbol's vendor corporate actions against what this module knows.
+
+    Separate from the printer so the onboarding command can ask the same question. The
+    drill of 2026-09-04 onboarded six symbols without asking it, and the operator-day
+    walk that evening found three splits sitting in two of their series - one inside a
+    holdout that had already been spent.
 
     """
     # Deferred, and not for convenience: `catalog` imports this module to adjust on
@@ -293,47 +338,66 @@ def _report(catalog_path: str, symbols: Sequence[str], start: date, end: date) -
     from copilot.data.catalog import equity_for  # noqa: PLC0415
     from copilot.data.catalog import open_catalog  # noqa: PLC0415
     from copilot.data.catalog import read_daily_bars  # noqa: PLC0415
-    from copilot.data.marketstack import MarketstackClient  # noqa: PLC0415
 
-    key = os.environ.get("MARKETSTACK_API_KEY", "")
-    vendor = MarketstackClient(access_key=key).fetch_splits(symbols, start, end)
-
+    vendor = client.fetch_splits(symbols, start, end)  # type: ignore[attr-defined]
     catalog = open_catalog(catalog_path)
     root = Path(catalog_path).expanduser() / "data" / "bars"
     venues = {
         e.name.partition(".")[0]: e.name.partition(".")[2].split("-", 1)[0] for e in root.iterdir()
     }
 
-    print(f"  {'symbol':<7}{'effective':<13}{'factor':>8}{'kind':>14}   status")
-    missing = 0
+    findings: list[Finding] = []
     for symbol in symbols:
         actions = vendor.get(symbol, ())
         if not actions:
-            print(f"  {symbol:<7}{'-':<13}{'-':>8}{'-':>14}   no corporate actions in window")
+            findings.append(Finding(symbol, None, "no corporate actions in window"))
             continue
         venue = venues.get(symbol)
         closes: list[tuple[datetime, Decimal]] = []
         if venue is not None:
             bar_type = bar_type_for(equity_for(symbol, venue).id)
-            bars = read_daily_bars(catalog, bar_type, adjust=False)
-            closes = [(b.closed_at, b.close) for b in bars]
+            closes = [
+                (b.closed_at, b.close) for b in read_daily_bars(catalog, bar_type, adjust=False)
+            ]
 
         known = {(a.effective.date(), a.factor) for a in ACTIONS.get(symbol, ())}
         for when, factor in actions:
             action = Action(symbol, datetime(when.year, when.month, when.day, tzinfo=UTC), factor)
             if (when, factor) in known:
-                status = "in ACTIONS"
+                status = REGISTERED
             elif not closes:
-                status = "NOT IN ACTIONS (no stored bars to test)"
-                missing += 1
+                status = UNTESTABLE
             elif unadjusted_actions(closes, [action]):
-                status = "NOT IN ACTIONS and sitting in the prices"
-                missing += 1
+                status = SITTING_IN_PRICES
             else:
-                status = "not in ACTIONS; prices look already adjusted"
-            print(f"  {symbol:<7}{when!s:<13}{factor:>8}{action.kind.value:>14}   {status}")
+                status = ALREADY_ADJUSTED
+            findings.append(Finding(symbol, action, status))
+    return findings
 
-    print(f"\n  {missing} action(s) need an ACTIONS entry before these symbols are used")
+
+def _report(catalog_path: str, symbols: Sequence[str], start: date, end: date) -> int:
+    """
+    Print the scan and return a process exit code: non-zero when anything blocks.
+    """
+    from copilot.data.marketstack import MarketstackClient  # noqa: PLC0415
+
+    key = os.environ.get(MARKETSTACK_API_KEY_ENV, "")
+    findings = scan(catalog_path, symbols, start, end, client=MarketstackClient(access_key=key))
+
+    print(f"  {'symbol':<7}{'effective':<13}{'factor':>8}{'kind':>14}   status")
+    for f in findings:
+        if f.action is None:
+            print(f"  {f.symbol:<7}{'-':<13}{'-':>8}{'-':>14}   {f.status}")
+        else:
+            when = f.action.effective.date()
+            print(
+                f"  {f.symbol:<7}{when!s:<13}{f.action.factor:>8}{f.action.kind.value:>14}   {f.status}",
+            )
+    missing = sum(1 for f in findings if f.blocks)
+    if missing:
+        print(f"\n  {missing} action(s) need an ACTIONS entry before these symbols are used")
+    else:
+        print("\n  nothing to add")
     return 1 if missing else 0
 
 
