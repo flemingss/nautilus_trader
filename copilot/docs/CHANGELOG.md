@@ -31,6 +31,9 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
   planned risk and daily entries across every strategy in the session, which now runs
   the whole basket in one node. The research R-unit of USD 1,000 had been reaching the
   live strategy verbatim.
+- **`onboard` has a corporate-actions stage.** The evening walk found three splits sitting
+  in the prices of two symbols onboarded that morning, one inside a spent holdout; the scan
+  existed and the sequence had not included it. It blocks on anything sitting in the prices.
 - **Every verdict carries the four digests it was computed from**, and
   `validate --changed` skips what cannot have moved: 12 recomputed in 2m54s, then 0 in
   half a second. `preflight` derives its instrument list from the registry (it had
