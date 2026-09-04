@@ -38,6 +38,7 @@ import json
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict
 from datetime import UTC
 from datetime import datetime
@@ -53,10 +54,15 @@ from copilot.data.catalog import read_daily_bars
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.validation.holdout import HOLDOUT_START
+from copilot.validation.holdout import CarvedHistory
 from copilot.validation.holdout import carve
+from copilot.validation.insample import DEFAULT_CLIFF_DROP
+from copilot.validation.insample import Replay
+from copilot.validation.insample import search_in_sample
 from copilot.validation.nautilus_replay import make_replay
 from copilot.validation.spend import HoldoutResult
 from copilot.validation.spend import spend_holdout
+from copilot.validation.types import BacktestRunResult
 
 
 SPENT_DIR = Path(__file__).parent / "holdouts"
@@ -141,6 +147,102 @@ def latest_verdict_for(activation_name: str, verdicts_dir: Path = VERDICTS_DIR) 
     return files[-1].name if files else None
 
 
+MIN_PROJECTED_TRADES_MARGIN = Decimal("1.0")
+"""
+How many times the fold floor the projection must clear before a spend proceeds.
+
+One, not a comfort factor. A projection is an estimate and the check is not trying to
+predict the result - only to stop a spend whose window plainly cannot reach the floor
+the scorer will apply to it.
+
+"""
+
+
+def project_holdout_trades(
+    activation: Activation,
+    carved: CarvedHistory,
+    replay: Replay,
+    *,
+    objective: Callable[[BacktestRunResult], Decimal],
+) -> tuple[Decimal, int]:
+    """
+    Estimate the holdout's trade count, with the parameters it will be scored under.
+
+    Why this exists
+    ---------------
+    The holdout is single-use, and on 2026-09-04 one was spent to discover that its own
+    window was too short to score: SCHX returned four trades against a floor of five and
+    failed on ``insufficient_test_trades``, destroying the evidence to learn a fact that
+    was available beforehand. A short history is the normal case for a newly onboarded
+    symbol ([ADR-0020]), so this is not a one-off.
+
+    Why it selects first, which is the whole difficulty
+    ---------------------------------------------------
+    The obvious estimator - replay the activation's seeded identity and scale its rate -
+    is wrong by an order of magnitude, and was measured to be: on SCHX it projected 49.6
+    trades against the 4 the spend produced. Selection tightens ``min_gap_atr`` from
+    0.25 to 0.40, and a gap threshold moved that far changes the event count by more than
+    the window length does. An estimate made with different parameters than the scorer
+    uses is not a conservative estimate; it is a different question.
+
+    So the selection runs here, on the same development window and with the same purge
+    the spend will use. That costs nothing that matters: development bars carry no
+    single-use restriction, and the selection is deterministic, so the spend that follows
+    repeats it rather than being influenced by it. **No holdout bar is replayed.**
+
+    What it catches, and what it does not
+    -------------------------------------
+    Measured against both holdouts spent so far: AAPL projects 110.7 trades against the
+    111 it produced, and SCHX projects 34.3 against 4.
+
+    The AAPL number is what the estimator is for - a window long enough at the rate the
+    premise has always run at. The SCHX number is the honest limit: its holdout is
+    eighteen recent months, and the gaps simply did not arrive in it at anything like the
+    2017-2024 rate. That is a **regime** difference, not an arithmetic one, and no
+    estimate made from earlier bars can see it coming.
+
+    This check therefore stops a spend on a window that is too short at the historical
+    rate. It does not, and cannot, stop one on a window that is long enough and quiet.
+    Whether a spend that scored nothing should consume the holdout at all is a separate
+    question, and the owner's; it is on the roadmap rather than decided here, because the
+    obvious answer - let it be re-spent - is also the one that lets a boundary be moved
+    until the trade count is convenient.
+
+    [ADR-0020]: ../docs/decisions/0020-the-holdout-boundary-is-per-activation.md
+
+    """
+    development = carved.development
+    settings = activation.validation
+    train = development[: len(development) - settings.purge_bars]
+    warmup = activation.setup.warmup_bars
+    if len(train) <= warmup:
+        return Decimal(0), len(carved.holdout)
+
+    report = search_in_sample(
+        train,
+        activation.grid(),
+        replay=replay,
+        objective=objective,
+        min_trades=settings.min_trades,
+        cliff_drop=DEFAULT_CLIFF_DROP,
+    )
+    if report.selected is None:
+        # Nothing was selectable, so the spend will return no result either. Let it say
+        # so in its own words rather than getting ahead of it with a projection of zero.
+        return Decimal(0), len(carved.holdout)
+
+    result = replay(train, dict(report.selected.parameters))
+    scored = len(train) - warmup
+    rate = Decimal(len(result.trades)) / Decimal(scored)
+    return rate * Decimal(len(carved.holdout)), len(carved.holdout)
+
+
+class ThinHoldoutError(ValueError):
+    """
+    The holdout cannot produce enough trades to be scored, so it must not be spent.
+    """
+
+
 def run(
     activation: Activation,
     catalog_path: str = DEFAULT_CATALOG,
@@ -169,6 +271,24 @@ def run(
         strategy_factory=activation.setup.factory,
     )
 
+    objective = cost_model.net_expectancy_for(activation.symbol)
+    projected, holdout_bars = project_holdout_trades(
+        activation,
+        carved,
+        replay,
+        objective=objective,
+    )
+    floor = Decimal(settings.fold_min_trades) * MIN_PROJECTED_TRADES_MARGIN
+    if projected < floor:
+        raise ThinHoldoutError(
+            f"the holdout for {activation.name} projects {projected:.1f} trades over its "
+            f"{holdout_bars} bars, under the {settings.fold_min_trades} the scorer "
+            f"requires. Spending it would return insufficient_test_trades and destroy "
+            f"the evidence to learn that. Lengthen the window by moving "
+            f"holdout_start earlier (ADR-0020, the band still applies), or accept that "
+            f"this activation cannot be tested on the history it has.",
+        )
+
     started = time.time()
     result = spend_holdout(
         carved,
@@ -176,7 +296,7 @@ def run(
         purge_bars=settings.purge_bars,
         warmup_bars=activation.setup.warmup_bars,
         replay=replay,
-        objective=cost_model.net_expectancy_for(activation.symbol),
+        objective=objective,
         min_trades=settings.min_trades,
         fold_min_trades=settings.fold_min_trades,
     )
@@ -312,7 +432,13 @@ def main(argv: list[str] | None = None) -> int:
         f"Net of costs: spread at {cost_model.percentile} per side from "
         f"{cost_model.snapshot}, plus IB commission.\n",
     )
-    result, record = run(activation, args.catalog, cost_model)
+    try:
+        result, record = run(activation, args.catalog, cost_model)
+    except ThinHoldoutError as e:
+        # Exit 2, the same code every other refusal uses: nothing was spent, and the
+        # holdout is still there to spend once the window can carry it.
+        print(f"refused: {e}", file=sys.stderr)
+        return 2
 
     frozen = record["frozen_parameters"]
     print(f"frozen parameters: {frozen or 'none selected'}")

@@ -1,0 +1,31 @@
+{
+  "run_at": "2026-09-04T11:44:43.810408+00:00",
+  "session": "2026-09-04",
+  "orders_enabled": false,
+  "activation": "hyg-gap-fade-long-next-close",
+  "broker_instrument": "HYG=STK.SMART",
+  "research_instrument": "HYG.ARCX",
+  "decision_bar": "2026-09-03",
+  "warmup_bars": 16,
+  "warmup_from": "2026-08-12",
+  "warmup_to": "2026-09-02",
+  "parameters": {
+    "long": "True",
+    "entry_timing": "next_close",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000"
+  },
+  "atr_initialized": true,
+  "atr_value": "0.21285714285714213",
+  "previous_close": "79.21",
+  "skips": {
+    "setup_not_triggered": 1
+  },
+  "largest_rounding": "0.0050",
+  "instrument_resolved": true,
+  "note": "",
+  "orders": []
+}
