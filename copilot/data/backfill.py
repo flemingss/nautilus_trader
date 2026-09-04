@@ -26,6 +26,7 @@ from datetime import UTC
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+from typing import TYPE_CHECKING
 
 from copilot.data.catalog import DEFAULT_CURRENCY
 from copilot.data.catalog import open_catalog
@@ -33,6 +34,15 @@ from copilot.data.catalog import venues_from_rows
 from copilot.data.catalog import write_ingestion
 from copilot.data.marketstack import MarketstackClient
 from copilot.data.marketstack import normalize
+from copilot.data.substitutions import SOURCE as SUBSTITUTION_SOURCE
+from copilot.data.substitutions import apply_to
+from copilot.data.substitutions import unmatched
+
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from copilot.data.substitutions import Substitution
 
 
 API_KEY_ENV = "MARKETSTACK_API_KEY"
@@ -100,6 +110,27 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
+def _report_substitutions(applied: Sequence[Substitution]) -> None:
+    """
+    Say which sessions came from the second source, and which the table expected and
+    missed.
+
+    Printed whether or not any applied. Silence would make a run over a window
+    containing no substituted day indistinguishable from one where the table failed to
+    match, and the second is a defect.
+
+    """
+    if applied:
+        print(f"\n  substituted: {len(applied)}  ({SUBSTITUTION_SOURCE})")
+        for entry in applied:
+            print(f"      {entry.symbol} {entry.day}  close {entry.close}  [{entry.reason}]")
+    missed = unmatched(applied)
+    if missed:
+        print(f"\n  table entries with no vendor row in this window: {len(missed)}")
+        for entry in missed:
+            print(f"      {entry.symbol} {entry.day}  (outside the window, or the row is gone)")
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Run one backfill.
@@ -136,6 +167,11 @@ def main(argv: list[str] | None = None) -> int:
         rows.extend(dict(row) for row in fetched)
         print(f"  [{i}/{len(symbols)}] {symbol:<6} {len(fetched):>6} rows", flush=True)
 
+    # Before the gate, not after it: a substituted session has to pass the same
+    # coherence, positivity and penny checks as any other, or the repair becomes a way
+    # around the checks rather than a way past a vendor that could not price the day.
+    rows, applied = apply_to(rows)
+
     result = normalize(
         rows,
         received_at=datetime.now(tz=UTC),
@@ -143,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     _report(result, symbols, start, end)
+    _report_substitutions(applied)
 
     if result.rejection_ratio > args.max_rejection_ratio:
         print(

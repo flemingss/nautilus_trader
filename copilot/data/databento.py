@@ -378,6 +378,61 @@ class DatabentoClient:
             out[name][day] = (Decimal(str(row["close"])) / scale, int(row["volume"]))
         return out
 
+    def fetch_daily_bars(
+        self,
+        symbols: list[str],
+        start: str,
+        end: str,
+        dataset: str | None = None,
+    ) -> dict[str, dict[date, tuple[Decimal, Decimal, Decimal, Decimal, int]]]:
+        """
+        Fetch full daily OHLCV per symbol, as ``(open, high, low, close, volume)``.
+
+        ``fetch_daily`` returns close and volume because the audit only ever compares
+        closes. A repair needs the whole bar: a session the daily vendor could not price
+        is missing its open, high and low as well, and a bar assembled from one true
+        close and three guesses is worse than no bar.
+
+        The close here is trade-derived. Where the official auction print matters - and
+        for a stored bar it does - pair this with ``fetch_official_closes`` and prefer
+        the print.
+
+        **Spends**; price it with ``cost``.
+
+        """
+        rows = self._get(
+            "timeseries.get_range",
+            {
+                "dataset": dataset or DAILY_DATASET,
+                "symbols": ",".join(symbols),
+                "schema": "ohlcv-1d",
+                "start": start,
+                "end": end,
+                "stype_in": "raw_symbol",
+                "encoding": "json",
+            },
+        )
+        scale = Decimal(10) ** 9
+        intervals = self.resolve_symbols(symbols, start, end, dataset)
+        out: dict[str, dict[date, tuple[Decimal, Decimal, Decimal, Decimal, int]]] = {
+            s: {} for s in symbols
+        }
+        for row in rows:
+            header = row.get("hd", row)
+            stamp = int(row.get("ts_event") or header["ts_event"])
+            day = datetime.fromtimestamp(stamp / 1e9, tz=UTC).date()
+            name = _symbol_for(intervals, int(header["instrument_id"]), day)
+            if name not in out:
+                continue
+            out[name][day] = (
+                Decimal(str(row["open"])) / scale,
+                Decimal(str(row["high"])) / scale,
+                Decimal(str(row["low"])) / scale,
+                Decimal(str(row["close"])) / scale,
+                int(row["volume"]),
+            )
+        return out
+
     def fetch_official_closes(
         self,
         symbols: list[str],
