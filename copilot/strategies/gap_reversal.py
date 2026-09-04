@@ -500,15 +500,13 @@ class GapReversalStrategy(Strategy):
 
     def on_order_denied(self, event: Any) -> None:
         """
-        Release the reservation for an entry the risk engine refused; it never became
-        open risk.
+        Release an entry the risk engine refused; it never became open risk.
         """
         self._release_if_entry(event)
 
     def on_order_rejected(self, event: Any) -> None:
         """
-        Release the reservation for an entry the broker refused; it never became open
-        risk.
+        Release an entry the broker refused; it never became open risk.
         """
         self._release_if_entry(event)
 

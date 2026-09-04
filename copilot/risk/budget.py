@@ -81,8 +81,7 @@ class RiskPolicy:
 
     def __post_init__(self) -> None:
         """
-        Refuse a policy that is not a fraction of anything, or that caps below one
-        trade.
+        Refuse a policy that is not a fraction, or that caps below one trade.
         """
         for name in ("risk_fraction", "max_position_fraction", "max_total_risk_fraction"):
             value = getattr(self, name)
