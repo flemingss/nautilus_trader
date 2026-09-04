@@ -190,26 +190,22 @@ def bars_to_nautilus(
     return out
 
 
-def run_nautilus_replay(
+def _engine_over(
     daily_bars: Sequence[DailyBar],
-    parameters: Any,
     *,
     instrument: Any,
     bar_type: BarType,
-    strategy_factory: StrategyFactory,
-    venue: ReplayVenue | None = None,
-    require_risk_amounts: bool = True,
-) -> BacktestRunResult:
+    venue: ReplayVenue,
+) -> BacktestEngine:
     """
-    Run one parameter set over ``daily_bars`` and return scoreable trades.
-    """
-    if not daily_bars:
-        return BacktestRunResult(diagnostics={"reason": "no bars supplied"})
+    Build an engine holding the venue, the instrument and the bars, and no strategy.
 
-    venue = venue or ReplayVenue()
+    Shared by the scoring replay and the decision replay so the two run the identical
+    engine: a comparison between a live decision and an offline one is only worth
+    making if "offline" means the engine the gate scores with.
+
+    """
     venue_obj = Venue(venue.name) if venue.name else instrument.id.venue
-    registry = RiskAmountRegistry()
-
     engine = BacktestEngine(
         BacktestEngineConfig(trader_id=TraderId.from_str("COPILOT-WFA-001")),
     )
@@ -241,7 +237,28 @@ def run_nautilus_replay(
     engine.add_venue(**add_venue_kwargs)
     engine.add_instrument(instrument)
     engine.add_data(bars_to_nautilus(daily_bars, instrument, bar_type))
+    return engine
 
+
+def run_nautilus_replay(
+    daily_bars: Sequence[DailyBar],
+    parameters: Any,
+    *,
+    instrument: Any,
+    bar_type: BarType,
+    strategy_factory: StrategyFactory,
+    venue: ReplayVenue | None = None,
+    require_risk_amounts: bool = True,
+) -> BacktestRunResult:
+    """
+    Run one parameter set over ``daily_bars`` and return scoreable trades.
+    """
+    if not daily_bars:
+        return BacktestRunResult(diagnostics={"reason": "no bars supplied"})
+
+    venue = venue or ReplayVenue()
+    registry = RiskAmountRegistry()
+    engine = _engine_over(daily_bars, instrument=instrument, bar_type=bar_type, venue=venue)
     strategy = strategy_factory(
         parameters,
         instrument_id=instrument.id,
@@ -257,6 +274,60 @@ def run_nautilus_replay(
             trades=tuple(trades),
             diagnostics={"positions": len(trades), "risk_records": len(registry)},
         )
+    finally:
+        engine.reset()
+        engine.dispose()
+
+
+def run_to_decision[T](
+    daily_bars: Sequence[DailyBar],
+    parameters: Any,
+    *,
+    instrument: Any,
+    bar_type: BarType,
+    strategy_factory: StrategyFactory,
+    inspect: Callable[[Any], T],
+    warmup: int = 0,
+    venue: ReplayVenue | None = None,
+) -> T:
+    """
+    Run one parameter set over ``daily_bars`` and return what ``inspect`` reads.
+
+    The scoring replay returns closed trades and disposes the strategy with the engine.
+    The playbook's live-versus-replay comparison needs the other thing: the state the
+    rule holds after its last bar - triggered, deferred, declined and why - which for a
+    ``next_close`` rule is never a trade, because the entry belongs to the bar after the
+    window ends. ``inspect`` is called before the engine is disposed and its result is
+    all that leaves.
+
+    ``warmup`` bars are handed to the strategy's ``warm_up`` before the engine starts and
+    are never seen by ``on_bar``, which is how the live path treats them: history that
+    charges the indicator and sets the previous close, on which no decision is made.
+    Feeding them through the engine instead would let the rule trade during the warm-up
+    and arrive at the decision bar in a state the live session was never in. The bars
+    after ``warmup`` go through the engine, so the decision bar reaches the rule the way
+    the gate's replay delivers it - indicators updated first, then ``on_bar``.
+
+    """
+    if not daily_bars:
+        raise ValueError("no bars supplied; a decision needs at least one bar to decide on")
+    if not 0 <= warmup < len(daily_bars):
+        raise ValueError(f"warmup={warmup} leaves no decision bar out of {len(daily_bars)}")
+    venue = venue or ReplayVenue()
+    ordered = sorted(daily_bars, key=lambda b: b.closed_at)
+    engine = _engine_over(ordered[warmup:], instrument=instrument, bar_type=bar_type, venue=venue)
+    strategy = strategy_factory(
+        parameters,
+        instrument_id=instrument.id,
+        bar_type=bar_type,
+        risk_registry=RiskAmountRegistry(),
+    )
+    if warmup:
+        strategy.warm_up(bars_to_nautilus(ordered[:warmup], instrument, bar_type))
+    engine.add_strategy(strategy)
+    try:
+        engine.run()
+        return inspect(strategy)
     finally:
         engine.reset()
         engine.dispose()
@@ -355,4 +426,5 @@ __all__ = [
     "bars_to_nautilus",
     "make_replay",
     "run_nautilus_replay",
+    "run_to_decision",
 ]

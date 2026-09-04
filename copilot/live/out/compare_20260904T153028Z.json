@@ -1,0 +1,154 @@
+{
+  "compared_at": "2026-09-04T15:30:28.188847+00:00",
+  "record": "run_activation_20260904T132308Z.json",
+  "session": "2026-09-04",
+  "agrees": false,
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "6.725714285714288",
+          "offline": "6.976335714285715",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "0.9485714285714276",
+          "offline": "0.9603571428571424",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "1.7257142857142855",
+          "offline": "1.8244285714285706",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": true,
+      "disagreements": [],
+      "note": ""
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "9.549999999999999",
+          "offline": "10.460142857142854",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "0.2014285714285712",
+          "offline": "0.21928571428571406",
+          "note": "tolerance 0"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "5.117142857142848",
+          "offline": "5.510357142857133",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "0.7685714285714289",
+          "offline": "0.7464285714285727",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "decision_bar": "2026-09-03",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "atr_value",
+          "live": "0.6242857142857139",
+          "offline": "0.6750000000000002",
+          "note": "tolerance 0.0100"
+        }
+      ],
+      "note": ""
+    }
+  ]
+}

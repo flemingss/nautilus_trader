@@ -97,6 +97,14 @@ class SetupSpec:
     gate read missing history as failing folds, which looks like a dead premise.
 
     """
+    axis_defaults: Mapping[str, Any]
+    """
+    What each searched axis runs at when an activation's parameters leave it unfixed.
+
+    The live path names these in its record, because a strategy built from a seeded
+    identity alone runs at them - and they are not what any fold selected.
+
+    """
 
 
 SETUPS: Mapping[str, SetupSpec] = {
@@ -104,6 +112,7 @@ SETUPS: Mapping[str, SetupSpec] = {
         search_space=gap_reversal.SEARCH_SPACE,
         factory=gap_reversal.strategy_factory,
         warmup_bars=gap_reversal.WARMUP_BARS,
+        axis_defaults=gap_reversal.AXIS_DEFAULTS,
     ),
 }
 """

@@ -81,6 +81,12 @@ longer than eight weeks. **Do not manufacture trades to reach a threshold.**
 
 ## Running a session
 
+Two commands own the sequence, so the order below is enforced rather than remembered:
+`python -m copilot.live.day morning` after the close and `day evening` an hour before the
+open. Each step is one of the commands named below, run in order with its exit code read;
+the corporate-actions scan blocks the verdict, the preflight blocks the basket, and the
+sweep runs whatever happened before it.
+
 ### Before
 
 - Verify strategy ID, code commit, config hash and data hash.
@@ -119,6 +125,9 @@ success because the cache it consulted was empty. **Fixed the same day** - `Subm
 adopted, and the execution client fetches orders from every client id - though the recovery
 has never been confirmed against the broker.
 
+`cancel_working --all` sweeps every registered instrument in one node (2026-09-05); a
+sweep that took one symbol per invocation was six minutes of commands and a forgotten one.
+
 **A clean sweep is still not proof the broker has nothing working**, and this does not
 depend on that fix. An order held by a TWS precautionary size setting never reaches the
 broker at all and no API call can see it. Confirm against the broker's own order list, and
@@ -127,7 +136,10 @@ treat an order whose status cannot be confirmed as an alert rather than a pass.
 ### After
 
 - Reconcile positions, cash, commissions, executions and open orders.
-- Compare live decisions against offline replay.
+- Compare live decisions against offline replay - `python -m copilot.live.compare`, run
+  by the morning command, recomputes every decision in the session record through the
+  gate's engine over the same bars and reports any field that differs beyond the
+  session's own rounding. Its first run found the live ATR one bar behind the replay's.
 - Archive logs, config, data manifest, identifier map and any incident report.
 - Attribute P&L to market move, signal, spread, slippage, fees, FX and manual intervention.
 

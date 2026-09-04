@@ -167,6 +167,25 @@ def verify_paper_session(
         )
 
 
+PAPER_ACCOUNT_ENV = "COPILOT_PAPER_ACCOUNT"
+"""
+The environment variable naming the paper account, read by every broker command.
+"""
+
+
+def add_connection_arguments(parser: argparse.ArgumentParser) -> None:
+    """
+    Add the three flags that name a broker connection: host, port, account.
+
+    Separate from the client ids because a command that only *passes the connection on*
+    to other commands - the operator's day - has no client ids of its own.
+
+    """
+    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
+    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
+    parser.add_argument("--account", default=os.getenv(PAPER_ACCOUNT_ENV, ""))
+
+
 def add_broker_arguments(
     parser: argparse.ArgumentParser,
     *,
@@ -180,9 +199,7 @@ def add_broker_arguments(
     partitions order-id space by client id and two commands sharing one collide.
 
     """
-    parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
-    parser.add_argument("--account", default=os.getenv("COPILOT_PAPER_ACCOUNT", ""))
+    add_connection_arguments(parser)
     parser.add_argument("--data-client-id", type=int, default=data_client_id)
     parser.add_argument("--exec-client-id", type=int, default=exec_client_id)
 
@@ -192,6 +209,7 @@ __all__ = [
     "GATEWAY_LIVE_PORT",
     "GATEWAY_PAPER_PORT",
     "LIVE_PORTS",
+    "PAPER_ACCOUNT_ENV",
     "PAPER_ACCOUNT_PREFIX",
     "PAPER_PORTS",
     "TWS_LIVE_PORT",
@@ -199,6 +217,7 @@ __all__ = [
     "NotAPaperSessionError",
     "PaperSession",
     "add_broker_arguments",
+    "add_connection_arguments",
     "verify_client_id",
     "verify_paper_session",
 ]

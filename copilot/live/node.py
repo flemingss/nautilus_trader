@@ -97,6 +97,7 @@ def build_paper_node(
     market_data_type: MarketDataType = MarketDataType.DELAYED,
     symbology: SymbologyMethod = SymbologyMethod.RAW,
     strategies: tuple[object, ...] = (),
+    actors: tuple[object, ...] = (),
     risk_engine_config: LiveRiskEngineConfig | None = None,
     logging_config: object | None = None,
 ) -> tuple[LiveNode, SupportsTradingState]:
@@ -171,6 +172,8 @@ def build_paper_node(
 
     for strategy in strategies:
         node.add_strategy(strategy)
+    for actor in actors:
+        node.add_actor(actor)
 
     risk_engine = node.risk_engine
     apply_order_switch(risk_engine, orders_enabled=session.orders_enabled)
