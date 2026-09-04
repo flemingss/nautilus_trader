@@ -376,6 +376,10 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: the append report it prints is the product, and a scheduler reads its exit code
 "copilot/data/backfill.py" = ["T201"]
+"copilot/data/onboard.py" = [
+  "SLF001",
+  "T201",
+] # Operator CLI: the status table it prints is the product; SLF001 for its own module-private helpers, which the tests pin because the recommendation rules are the substance
 "copilot/data/patch.py" = [
   "T201",
   "TRY301",
