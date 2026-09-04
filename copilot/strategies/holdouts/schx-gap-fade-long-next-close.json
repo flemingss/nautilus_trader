@@ -1,0 +1,214 @@
+{
+  "activation": "schx-gap-fade-long-next-close",
+  "strategy": "gap_reversal",
+  "lifecycle": "RESEARCH",
+  "instrument": "SCHX.ARCX",
+  "entry_timing": "next_close",
+  "run_at": "2026-09-04T11:36:03.252445+00:00",
+  "runtime_seconds": 8.3,
+  "code_commit": "f29a33637ddb1dbd8b848847f292b17ab2c7a8f2",
+  "holdout_spent": true,
+  "owner_decision": null,
+  "owner_decision_allowed": [
+    "reject",
+    "revise",
+    "freeze"
+  ],
+  "walk_forward_reference": "schx-gap-fade-long-next-close_20260904T113344Z.json",
+  "windows": {
+    "development_bars": 1883,
+    "development_range": [
+      "2017-01-03",
+      "2024-07-01"
+    ],
+    "purge_bars": 5,
+    "warmup_bars": 16,
+    "holdout_start": "2024-07-01",
+    "holdout_bars": 378,
+    "holdout_range": [
+      "2024-07-01",
+      "2025-12-31"
+    ]
+  },
+  "search_space": {
+    "min_gap_atr": [
+      "0.15",
+      "0.25",
+      "0.40"
+    ],
+    "target_1_atr": [
+      "1.0",
+      "1.5"
+    ]
+  },
+  "seeded_parameters": {
+    "long": "True",
+    "entry_timing": "next_close",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000"
+  },
+  "validation": {
+    "train_bars": 252,
+    "test_bars": 126,
+    "purge_bars": 5,
+    "min_trades": 20,
+    "fold_min_trades": 5,
+    "holdout_start": "2024-07-01"
+  },
+  "costs_modelled": true,
+  "cost_model": {
+    "snapshot": "spread_history_20260904T112723Z.json",
+    "percentile": "p95",
+    "bps_per_side": "5.2549",
+    "commission": "IB Pro fixed tier: max(1.00, 0.005/share) per order, capped at 1.00% of notional, split-corrected share counts"
+  },
+  "frozen_parameters": {
+    "long": "True",
+    "entry_timing": "next_close",
+    "require_unfilled": "False",
+    "atr_period": "14",
+    "stop_atr": "1.5",
+    "entry_buffer_atr": "0.25",
+    "risk_budget": "1000",
+    "min_gap_atr": "0.40",
+    "target_1_atr": "1.5"
+  },
+  "selection_audit": {
+    "selected_the_peak": true,
+    "candidates": [
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.15')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.0')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.15",
+          "target_1_atr": "1.0"
+        },
+        "trades": 282,
+        "score_r": "0.053700",
+        "plateau_floor_r": "0.053700",
+        "rejected": null
+      },
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.15')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.5')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.15",
+          "target_1_atr": "1.5"
+        },
+        "trades": 231,
+        "score_r": "0.113182",
+        "plateau_floor_r": "0.053700",
+        "rejected": null
+      },
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.25')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.0')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        },
+        "trades": 244,
+        "score_r": "0.057760",
+        "plateau_floor_r": "0.053700",
+        "rejected": null
+      },
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.25')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.5')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.5"
+        },
+        "trades": 202,
+        "score_r": "0.098135",
+        "plateau_floor_r": "0.057760",
+        "rejected": null
+      },
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.40')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.0')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.40",
+          "target_1_atr": "1.0"
+        },
+        "trades": 187,
+        "score_r": "0.069046",
+        "plateau_floor_r": "0.057760",
+        "rejected": null
+      },
+      {
+        "version": "atr_period=14|entry_buffer_atr=Decimal('0.25')|entry_timing='next_close'|long=True|min_gap_atr=Decimal('0.40')|require_unfilled=False|risk_budget=Decimal('1000')|stop_atr=Decimal('1.5')|target_1_atr=Decimal('1.5')",
+        "parameters": {
+          "long": "True",
+          "entry_timing": "next_close",
+          "require_unfilled": "False",
+          "atr_period": "14",
+          "stop_atr": "1.5",
+          "entry_buffer_atr": "0.25",
+          "risk_budget": "1000",
+          "min_gap_atr": "0.40",
+          "target_1_atr": "1.5"
+        },
+        "trades": 169,
+        "score_r": "0.174105",
+        "plateau_floor_r": "0.069046",
+        "rejected": null
+      }
+    ]
+  },
+  "holdout": {
+    "trades": 4,
+    "net_expectancy_r": "-0.071364",
+    "passed": false,
+    "reason": "insufficient_test_trades: 4 < 5",
+    "tearsheet": {
+      "trades": "4",
+      "wins": "2",
+      "losses": "2",
+      "win_rate": "0.5",
+      "expectancy_r": "-0.000011527932413301844650768475",
+      "total_r": "-0.0000461117296532073786030739",
+      "average_win_r": "0.999982440207991369737818872",
+      "average_loss_r": "1.000005496072817973427120409",
+      "profit_factor": "0.9999769442618894118386160774",
+      "max_drawdown_r": "1.000037167281354010621210842",
+      "sharpe": "-0.000009983542539834651166500150755",
+      "exposure": "0.3",
+      "span_days": "50",
+      "trades_per_year": "20.16"
+    }
+  }
+}
