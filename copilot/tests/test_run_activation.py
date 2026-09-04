@@ -159,3 +159,20 @@ def test_a_denied_order_still_counts_as_a_decision() -> None:
         status="DENIED",
     )
     assert record(orders=[denied]).decided_to_trade
+
+
+def test_the_strategy_is_built_with_the_research_budget_and_resized_live() -> None:
+    # Construction happens before the connection, so the config still carries the
+    # activation's research R-unit. What matters is that the live path replaces it
+    # before the decision bar, and the session record says with what.
+    strategy = build_strategy(ACTIVATION, BROKER_ID)
+    assert strategy._sizing.risk_budget == Decimal(ACTIVATION.parameters["risk_budget"])
+    strategy.size_against(Decimal("1.00"), Decimal("100.00"))
+    assert strategy._sizing.risk_budget == Decimal("1.00")
+
+
+def test_a_record_without_a_budget_is_a_session_that_never_sized() -> None:
+    # Distinguishable on disk from one that sized to zero: an empty budget means the
+    # equity was never read, which is a different failure from a rule that declined.
+    assert record().budget == {}
+    assert record(budget={"equity": "1000"}).budget["equity"] == "1000"

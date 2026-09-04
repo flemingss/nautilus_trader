@@ -78,14 +78,19 @@ from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
 from copilot.live.warmup import load as load_warmup
 from copilot.live.warmup import session_to_prepare
+from copilot.risk.budget import DEFAULT_RISK_FRACTION
+from copilot.risk.budget import RiskPolicy
+from copilot.risk.budget import budget_for
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.validation.types import DailyBar
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import Bar
 from nautilus_trader.model import BarType
+from nautilus_trader.model import Currency
 from nautilus_trader.model import Equity
 from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import Venue
 from nautilus_trader.trading import Strategy
 
 
@@ -107,6 +112,46 @@ DRAIN_SECS = 10
 """
 Seconds after the decision, to let order events land before the cache is read.
 """
+
+
+class NoAccountEquityError(RuntimeError):
+    """
+    The broker reported no usable equity, so nothing can be sized.
+    """
+
+
+EQUITY_CURRENCY = "USD"
+EXEC_VENUE = "IB"
+
+
+def reported_equity(cache: object, venues: tuple[Venue, ...]) -> tuple[Decimal, str]:
+    """
+    Read the account's total balance in the sizing currency, and say which account.
+
+    The same search the preflight makes, for the same reason: the account is registered
+    under the exec client's venue rather than the instrument's, and looking under only
+    one of them is how the first preflight reported a missing account that was in the
+    cache the whole time.
+
+    ``total`` rather than ``free``. Free excludes what working orders have reserved,
+    which on a session that starts with none is the same number; the playbook's
+    settled-cash term is the one that would differ, and it is not modelled here.
+
+    """
+    for venue in venues:
+        account_id = cache.account_id(venue)  # type: ignore[attr-defined]
+        if account_id is None:
+            continue
+        account = cache.account_for_venue(venue)  # type: ignore[attr-defined]
+        balance = account.balances().get(Currency.from_str(EQUITY_CURRENCY))
+        if balance is None:
+            continue
+        return balance.total.as_decimal(), str(account_id)
+    raise NoAccountEquityError(
+        f"no {EQUITY_CURRENCY} balance under any of {[str(v) for v in venues]}. A session "
+        f"cannot size against equity it cannot read; check the account with "
+        f"python -m copilot.live.preflight before reading anything else into this.",
+    )
 
 
 class NoBrokerInstrumentError(RuntimeError):
@@ -150,6 +195,10 @@ class SessionRecord:
     orders: list[OrderRecord] = field(default_factory=list)
     largest_rounding: str = "0"
     instrument_resolved: bool = False
+    budget: dict[str, str] = field(default_factory=dict)
+    """
+    What the session sized against, derived from the equity the broker reported.
+    """
     note: str = ""
 
     @property
@@ -234,6 +283,8 @@ async def run_session(
     warmup: tuple[DailyBar, ...],
     decision: DailyBar,
     *,
+    policy: RiskPolicy,
+    allocation: Decimal | None,
     settle_secs: int = SETTLE_SECS,
     drain_secs: int = DRAIN_SECS,
 ) -> SessionRecord:
@@ -280,6 +331,14 @@ async def run_session(
             )
         record.instrument_resolved = True
 
+        # Sized from what the broker reports, not from the activation's research budget.
+        # Read here rather than at construction because the equity does not exist until
+        # the exec client has connected, and the strategy has to exist before the node.
+        equity, _account = reported_equity(cache, (broker_id.venue, Venue(EXEC_VENUE)))
+        budget = budget_for(equity, allocation=allocation, policy=policy)
+        strategy.size_against(budget.risk_budget, budget.max_notional)
+        record.budget = budget.as_record()
+
         bar_type = broker_bar_type(broker_id)
         warm_bars, warm_rounding = to_broker_bars(warmup, instrument, bar_type)
         decision_bars, decision_rounding = to_broker_bars((decision,), instrument, bar_type)
@@ -324,6 +383,16 @@ def _report(record: SessionRecord) -> None:
     print(f"  decision bar    {record.decision_bar}")
     print(f"  indicator       initialized={record.atr_initialized}  atr={record.atr_value}")
     print(f"  previous close  {record.previous_close}")
+    if record.budget:
+        b = record.budget
+        capped = (
+            "  (request exceeded equity, capped)" if b.get("allocation_capped") == "True" else ""
+        )
+        print(f"  equity          {b['equity']} reported; sizing against {b['allocation']}{capped}")
+        print(
+            f"  risk budget     {b['risk_budget']} per position ({b['risk_fraction']} of "
+            f"allocation), notional cap {b['max_notional']} ({b['max_position_fraction']})",
+        )
     if record.largest_rounding != "0":
         print(f"  rounding        {record.largest_rounding} to the broker's precision")
     if record.skips:
@@ -356,6 +425,21 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--catalog", default=DEFAULT_CATALOG, help="Catalog directory")
     parser.add_argument("--session", help="Session to run for, YYYY-MM-DD (default: the next)")
     parser.add_argument("--settle-secs", type=int, default=SETTLE_SECS)
+    parser.add_argument(
+        "--allocation",
+        type=Decimal,
+        default=None,
+        help="Capital this activation sizes against (default: the reported equity; never more)",
+    )
+    parser.add_argument(
+        "--risk-fraction",
+        type=Decimal,
+        default=DEFAULT_RISK_FRACTION,
+        help=(
+            f"Planned risk per position as a fraction of allocation "
+            f"(default {DEFAULT_RISK_FRACTION})"
+        ),
+    )
     parser.add_argument("--data-client-id", type=int, default=871)
     parser.add_argument("--exec-client-id", type=int, default=872)
     args = parser.parse_args(argv)
@@ -407,7 +491,15 @@ def main(argv: list[str] | None = None) -> int:
 
     started = datetime.now(tz=UTC)
     record = asyncio.run(
-        run_session(session, activation, warmup, decision, settle_secs=args.settle_secs),
+        run_session(
+            session,
+            activation,
+            warmup,
+            decision,
+            policy=RiskPolicy(risk_fraction=args.risk_fraction),
+            allocation=args.allocation,
+            settle_secs=args.settle_secs,
+        ),
     )
     _report(record)
 

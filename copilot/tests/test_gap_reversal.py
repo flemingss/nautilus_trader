@@ -477,3 +477,53 @@ def test_every_searched_threshold_produces_trades_on_real_bars():
         Decimal("0.25"),
         Decimal("0.40"),
     }
+
+
+# --------------------------------------------------------------------- sizing hook
+
+
+def test_the_config_budget_seeds_the_sizing():
+    """
+    Research runs size from the config, unchanged: no verdict moves because a hook
+    exists.
+    """
+    strategy = a_strategy(risk_budget="1000")
+    assert strategy._sizing.risk_budget == Decimal(1000)
+    assert strategy._sizing.max_notional is None
+
+
+def test_size_against_replaces_the_research_budget():
+    """
+    The live path's whole point: USD 1,000 is an R-unit, not an amount to risk.
+    """
+    strategy = a_strategy(risk_budget="1000")
+    strategy.size_against(Decimal("1.00"), Decimal("100.00"))
+    assert strategy._sizing.risk_budget == Decimal("1.00")
+    assert strategy._sizing.max_notional == Decimal("100.00")
+
+
+def test_size_against_refuses_a_budget_that_is_not_one():
+    strategy = a_strategy()
+    with pytest.raises(ValueError, match="risk_budget must be positive"):
+        strategy.size_against(Decimal(0), None)
+    with pytest.raises(ValueError, match="max_notional must be positive"):
+        strategy.size_against(Decimal(1), Decimal(0))
+
+
+def test_a_config_notional_cap_binds_in_a_replay():
+    """
+    The cap reaches the order, not only the sizing object.
+
+    The same 2 ATR gap-down that sizes 1000 / (1.5 * ~2) = ~333 shares unbounded sizes to
+    floor(300 / 96) = 3 shares under a 300 cap - and the trade's recorded risk is the
+    floored quantity times the stop distance, not the budget.
+
+    """
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    unbounded = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000")
+    capped = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000", max_notional="300")
+
+    (free,), (bound,) = unbounded.trades, capped.trades
+    assert free.quantity > bound.quantity
+    assert bound.quantity * bound.entry_price <= Decimal(300)
+    assert bound.risk_amount < free.risk_amount

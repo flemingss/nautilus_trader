@@ -376,6 +376,9 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
   "T201",
 ] # Operator CLI: the append report it prints is the product, and a scheduler reads its exit code
 "copilot/data/backfill.py" = ["T201"]
+"copilot/risk/sizing.py" = [
+  "PLR0913",
+] # position_size takes the playbook's sizing inputs by keyword; folding them into an object would hide which cap bound
 "copilot/data/onboard.py" = [
   "SLF001",
   "T201",

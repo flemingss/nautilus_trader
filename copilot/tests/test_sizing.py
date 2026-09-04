@@ -156,3 +156,59 @@ class TestSizeFromLevels:
             risk_budget=Decimal(1000),
         )
         assert abs(risk_high - risk_low) < Decimal(10)
+
+
+class TestMaxNotional:
+    """
+    The playbook's second cap: ``floor(A * c / P)``, whatever the stop says.
+    """
+
+    def test_a_tight_stop_no_longer_sizes_past_the_cap(self):
+        # 1000 of risk over a 0.50 stop is 2000 shares; at 30 a share that is 60,000 of
+        # notional. Capped at 100 of notional it is 3 shares, and this is the whole
+        # difference between a position and the account on a small account.
+        qty = position_size(
+            risk_budget=Decimal(1000),
+            distance=Decimal("0.50"),
+            max_notional=Decimal(100),
+            entry_price=Decimal(30),
+        )
+        assert qty == Decimal(3)
+        assert qty * Decimal(30) <= Decimal(100)
+
+    def test_a_cap_that_does_not_bind_changes_nothing(self):
+        qty = position_size(
+            risk_budget=Decimal(1000),
+            distance=Decimal(5),
+            max_notional=Decimal(1_000_000),
+            entry_price=Decimal(30),
+        )
+        assert qty == Decimal(200)
+
+    def test_a_cap_below_one_share_refuses(self):
+        # 100 of notional cannot buy one share at 150: zero, not a fractional share and
+        # not a rounded-up one.
+        qty = position_size(
+            risk_budget=Decimal(1000),
+            distance=Decimal(5),
+            max_notional=Decimal(100),
+            entry_price=Decimal(150),
+        )
+        assert qty == Decimal(0)
+
+    def test_the_cap_needs_a_price_to_mean_anything(self):
+        with pytest.raises(ValueError, match="together or not at all"):
+            position_size(risk_budget=Decimal(1000), distance=Decimal(5), max_notional=Decimal(100))
+
+    def test_realised_risk_falls_with_the_cap_and_is_reported(self):
+        # The cap binds, so the position risks less than the budget - and says so, the
+        # same way flooring already does. Assuming the budget here would overstate R.
+        qty, risk = size_from_levels(
+            direction=Direction.LONG,
+            entry_price=Decimal(30),
+            stop_price=Decimal("29.50"),
+            risk_budget=Decimal(1000),
+            max_notional=Decimal(100),
+        )
+        assert qty == Decimal(3)
+        assert risk == Decimal("1.50")

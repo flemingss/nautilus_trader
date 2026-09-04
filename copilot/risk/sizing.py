@@ -61,6 +61,8 @@ def position_size(
     risk_budget: Decimal,
     distance: Decimal,
     lot_size: Decimal = Decimal(1),
+    max_notional: Decimal | None = None,
+    entry_price: Decimal | None = None,
 ) -> Decimal:
     """
     Largest whole-lot size whose stop-out costs at most ``risk_budget``.
@@ -72,10 +74,22 @@ def position_size(
     engine vetoes for an invalid stop distance or a zero quantity. A caller should skip
     the trade rather than invent one production would never take.
 
+    ``max_notional`` is the playbook's second cap, ``floor(A * c / P)``: the most the
+    position may be worth at entry, whatever the stop says. A risk budget alone does not
+    bound notional - a tight stop on a cheap instrument sizes to many shares - and on a
+    small account that is the difference between a position and the whole account. It
+    needs ``entry_price`` to mean anything, and both are given or neither is.
+
     """
     if distance <= 0 or risk_budget <= 0 or lot_size <= 0:
         return Decimal(0)
+    if (max_notional is None) != (entry_price is None):
+        raise ValueError("max_notional and entry_price are given together or not at all")
     raw_lots = (risk_budget / distance) / lot_size
+    if max_notional is not None and entry_price is not None:
+        if max_notional <= 0 or entry_price <= 0:
+            return Decimal(0)
+        raw_lots = min(raw_lots, (max_notional / entry_price) / lot_size)
     lots = raw_lots.to_integral_value(rounding=ROUND_FLOOR)
     if lots <= 0:
         return Decimal(0)
@@ -104,11 +118,15 @@ def size_from_levels(
     stop_price: Decimal,
     risk_budget: Decimal,
     lot_size: Decimal = Decimal(1),
+    max_notional: Decimal | None = None,
 ) -> tuple[Decimal, Decimal]:
     """
     Return ``(quantity, risk_amount)`` for one signal.
 
     Both zero when the trade cannot be sized, so a caller can refuse on a single check.
+    When ``max_notional`` binds, the realised risk is below the budget and says so - the
+    same way flooring already leaves it at or under, and for the same reason it is
+    recorded per trade rather than assumed.
 
     """
     distance = stop_distance(
@@ -116,7 +134,13 @@ def size_from_levels(
         entry_price=entry_price,
         stop_price=stop_price,
     )
-    quantity = position_size(risk_budget=risk_budget, distance=distance, lot_size=lot_size)
+    quantity = position_size(
+        risk_budget=risk_budget,
+        distance=distance,
+        lot_size=lot_size,
+        max_notional=max_notional,
+        entry_price=entry_price if max_notional is not None else None,
+    )
     return quantity, risk_amount(quantity=quantity, distance=distance)
 
 

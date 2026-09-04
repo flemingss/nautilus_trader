@@ -70,6 +70,7 @@ scores every trade at ``r_multiple == 0`` and reports no edge anywhere.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
@@ -151,6 +152,16 @@ shorter than the indicator needs.
 """
 
 
+@dataclass(frozen=True)
+class Sizing:
+    """
+    The two numbers a position is sized with, kept together so they cannot come apart.
+    """
+
+    risk_budget: Decimal
+    max_notional: Decimal | None = None
+
+
 class GapReversalConfig(StrategyConfig):
     """
     Knobs for the gap fade.
@@ -172,6 +183,7 @@ class GapReversalConfig(StrategyConfig):
         "stop_atr",
         "target_1_atr",
         "risk_budget",
+        "max_notional",
         "require_unfilled",
         "long",
         "entry_timing",
@@ -195,6 +207,7 @@ class GapReversalConfig(StrategyConfig):
         stop_atr: str = DEFAULT_STOP_ATR,
         target_1_atr: str = DEFAULT_TARGET_ATR,
         risk_budget: str = DEFAULT_RISK_BUDGET,
+        max_notional: str = "",
         require_unfilled: bool = False,
         long: bool = True,
         entry_timing: str = "signal_close",
@@ -217,6 +230,7 @@ class GapReversalConfig(StrategyConfig):
         self.stop_atr = stop_atr
         self.target_1_atr = target_1_atr
         self.risk_budget = risk_budget
+        self.max_notional = max_notional
         self.require_unfilled = require_unfilled
         self.long = long
         self.entry_timing = entry_timing
@@ -236,6 +250,10 @@ class GapReversalStrategy(Strategy):
         self._previous_close: Decimal | None = None
         self._registry: Any = None
         self._pending_risk = Decimal(0)
+        self._sizing = Sizing(
+            risk_budget=Decimal(config.risk_budget),
+            max_notional=Decimal(config.max_notional) if config.max_notional else None,
+        )
         self._deferred_atr: Decimal | None = None
         """
         A decision frozen at the signal bar, awaiting its session (``next_close`` only).
@@ -266,6 +284,29 @@ class GapReversalStrategy(Strategy):
 
         """
         self._registry = registry
+
+    def size_against(self, risk_budget: Decimal, max_notional: Decimal | None) -> None:
+        """
+        Replace the sizing the config seeded with numbers derived from the account.
+
+        The config's ``risk_budget`` is a research R-unit, USD 1,000 by default, chosen so
+        scores compare across instruments. It is not an amount anyone decided to risk, and
+        a live session sizes with what the account can carry instead: the playbook's
+        ``R = A * r`` and its notional cap, derived from the equity the broker reported
+        once the session is up. That is after construction by necessity - the strategy
+        exists before the connection does - which is why this is a hook like ``warm_up``
+        rather than a config field.
+
+        One place holds the numbers ``on_bar`` sizes with, whichever path set them. Two
+        would let the config's research budget survive into a live decision by default,
+        which is exactly the state this hook was written to end.
+
+        """
+        if risk_budget <= 0:
+            raise ValueError(f"risk_budget must be positive, got {risk_budget}")
+        if max_notional is not None and max_notional <= 0:
+            raise ValueError(f"max_notional must be positive when given, got {max_notional}")
+        self._sizing = Sizing(risk_budget=risk_budget, max_notional=max_notional)
 
     def warm_up(self, bars: Sequence[Bar]) -> None:
         """
@@ -409,7 +450,8 @@ class GapReversalStrategy(Strategy):
             direction=direction,
             entry_price=entry,
             stop_price=stop_price,
-            risk_budget=Decimal(self.config.risk_budget),
+            risk_budget=self._sizing.risk_budget,
+            max_notional=self._sizing.max_notional,
         )
         if quantity <= 0:
             # Exactly when a real risk engine vetoes. Skipping is right; inventing a
@@ -469,6 +511,7 @@ def strategy_factory(
             stop_atr=str(parameters.get("stop_atr", DEFAULT_STOP_ATR)),
             target_1_atr=str(parameters.get("target_1_atr", DEFAULT_TARGET_ATR)),
             risk_budget=str(parameters.get("risk_budget", DEFAULT_RISK_BUDGET)),
+            max_notional=str(parameters.get("max_notional", "")),
             require_unfilled=bool(parameters.get("require_unfilled", False)),
             long=bool(parameters.get("long", True)),
             entry_timing=str(parameters.get("entry_timing", "signal_close")),
