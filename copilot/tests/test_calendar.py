@@ -13,15 +13,19 @@ the exchange one - and this test is what caught it.
 from __future__ import annotations
 
 import json
+from datetime import UTC
 from datetime import date
+from datetime import datetime
 from pathlib import Path
 
 import pytest
 
+from copilot.data.calendar import EASTERN
 from copilot.data.calendar import early_closes
 from copilot.data.calendar import easter_sunday
 from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import market_holidays
+from copilot.data.calendar import session_close
 from copilot.data.calendar import session_end_minutes
 from copilot.data.calendar import trading_days
 
@@ -174,3 +178,26 @@ def test_an_early_close_is_still_a_trading_day() -> None:
 def test_the_session_ends_three_hours_early_on_those_days() -> None:
     assert session_end_minutes(date(2025, 11, 28)) == 13 * 60
     assert session_end_minutes(date(2025, 12, 1)) == 16 * 60
+
+
+def test_session_close_is_2100_utc_in_winter() -> None:
+    assert session_close(date(2026, 2, 23)) == datetime(2026, 2, 23, 21, 0, tzinfo=UTC)
+
+
+def test_session_close_is_2000_utc_in_summer() -> None:
+    # The reason this is computed rather than a constant: a fixed offset is wrong for a
+    # third of the year, and anything asking "should this data exist by now" would be
+    # wrong with it.
+    assert session_close(date(2026, 7, 2)) == datetime(2026, 7, 2, 20, 0, tzinfo=UTC)
+
+
+def test_session_close_follows_a_half_day() -> None:
+    # Thanksgiving Friday closes at 13:00 Eastern, not 16:00.
+    assert session_close(date(2025, 11, 28)) == datetime(2025, 11, 28, 18, 0, tzinfo=UTC)
+
+
+def test_session_close_matches_the_minute_the_calendar_states() -> None:
+    for day in (date(2026, 2, 23), date(2025, 11, 28), date(2026, 12, 24)):
+        minutes = session_end_minutes(day)
+        local = session_close(day).astimezone(EASTERN)
+        assert local.hour * 60 + local.minute == minutes
