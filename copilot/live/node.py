@@ -40,10 +40,11 @@ strength of it.
 
 Actors
 ------
-Only strategies can be attached. ``LiveNode.add_actor`` exists in the Rust node but is
-**not exposed to Python** on the pinned build, so an actor would have to go through
-``add_actor_from_config``. Stage one wants the strategy path exercised anyway, so nothing
-here needs an actor and the limitation costs us nothing yet.
+``LiveNode.add_actor`` **is** exposed to Python on this build - it was added to the fork
+so ``spread_snapshot`` could record quotes from committed code, and this docstring said
+otherwise until 2026-09-04. It matters now rather than academically: the strategy cannot
+get a daily bar from the broker (IB 2188, re-probed 2026-09-04), so the only route to a
+paper session that decides anything is an actor publishing the catalog's own bars.
 """
 
 from __future__ import annotations
