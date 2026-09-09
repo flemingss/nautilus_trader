@@ -165,6 +165,9 @@ docs = [
   "myst-parser>=5.1.0,<6.0.0",
   "sphinx-comments>=0.0.3,<1.0.0",
 ]
+copilot = [
+  "zstandard>=0.25.0",
+] # Fork-local overlay: copilot/data/patch.py reads the Databento store, which is .csv.zst
 
 [tool.ruff]
 target-version = "py312"
