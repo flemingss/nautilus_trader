@@ -180,7 +180,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Fifteen items. Grouped by blocking condition rather than by component, because that is
+Fourteen items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -190,16 +190,23 @@ detail table below - gets a row in one of these groups before the session that s
 it ends. Three items sat outside the count because they lived only in a status table, a
 conversation, and a test log; the count exists so that cannot happen quietly.
 
-### Waiting on the account (3)
+### Waiting on the account (2)
 
-Recorded 2026-09-01. **The operator's to close, not the repository's.** Three items in the
+Recorded 2026-09-01. **The operator's to close, not the repository's.** Two items in the
 groups below inherit their block, which is why they sit first.
 
-| Item                                                              | Stage  | The action                                                                                                                                                                                                                                                              |
-| ----------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Clear the IBKR market-data equity minimum**                     | 10     | Market-data subscriptions are gated on account equity and the account is below the bar. Funds have been added; settlement expected **on or after 2026-09-08**. Until then the only US equity quotes available are the complimentary **delayed, non-consolidated** feed. |
-| **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.                                                                                        |
-| **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission.                                                                              |
+**Closed 2026-09-09: the market-data equity minimum.** The owner subscribed the live
+username to NYSE (Network A/CTA), Network B and NASDAQ (Network C/UTP), USD 1.50 each a
+month, and the paper account borrows them. Measured the same hour from the second
+machine: `preflight` 15/15 after the close, historical bars for AAPL and SPY under both
+`REALTIME` and `DELAYED` where every request had returned 2188, and `spread_snapshot`
+recording 47/61/139 quotes under `REALTIME` against a 35/64/120 delayed control. Detail
+under stage 10 below; the campaign log has the rows.
+
+| Item                                                              | Stage  | The action                                                                                                                                                                                 |
+| ----------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Resolve margin, or confirm cash is permanent**                  | 05, 06 | The account is **cash**. Cash cannot sell short, so the gap fade's short leg is unavailable at any price, and sizing must come from **settled USD** rather than headline equity.           |
+| **Confirm settlement and buying-power rules on the real account** | 06     | T+1 is the general US rule, but PREFLIGHT requires it verified with the carrying entity rather than assumed. Decides whether a settled-cash check has to sit in front of order submission. |
 
 **Fixed and verified live 2026-09-03: the adopted-order cancel path.** The two cancel
 paths had diverged - single-order cancel routed an order's identity into the adapter's ID
@@ -317,9 +324,10 @@ release machinery, none of which applies here.
 
 **Tabletop: subscriptions, operations, strategy.** Under way. Operations and strategy
 governance are settled and recorded in [`CHARTER.md`](CHARTER.md), the
-[playbook](playbook/README.md) and the ADRs. **Subscriptions remain open**, and the one
-decision still waiting above - the consolidated-data purchase - resolves inside that
-half. The spread coefficient was called on 2026-09-02
+[playbook](playbook/README.md) and the ADRs. **Subscriptions closed 2026-09-09**: the three
+consolidated US equity feeds are bought (see *Waiting on the account*), and the earlier
+decision to skip a separate consolidated-data purchase stands - Databento remains the
+intraday source ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). The spread coefficient was called on 2026-09-02
 ([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)).
 
 ### Carrying cost, tracked (9 files)
@@ -666,6 +674,42 @@ attempt proved nothing and this one does.
 
 `entitlements.py` probes historical bars only, which is not what this question was about.
 Its docstring now says so and points at the two-run procedure above.
+
+### Entitlement change, 2026-09-09: the consolidated feeds
+
+The live username is now subscribed to NYSE (Network A/CTA), NYSE American, BATS, ARCA,
+IEX and Regional Exchanges (Network B) and NASDAQ (Network C/UTP), USD 1.50 each a month
+for a non-professional - the three tapes the section below said were the only route.
+Measured within the hour, from the Florida machine, after the 16:00 ET close:
+
+|                                  | 2026-09-02       | 2026-09-09                                  |
+| -------------------------------- | ---------------- | ------------------------------------------- |
+| Delayed quotes, nine instruments | works            | works, 15/15                                |
+| Realtime quotes, AAPL/MSFT/SPY   | **zero** in 107s | **47 / 61 / 139** in 130s                   |
+| Delayed control, same session    | 55 in 106s       | 35 / 64 / 120 in 130s                       |
+| US equity historical bars, SMART | IB 2188          | **bars returned**, `REALTIME` and `DELAYED` |
+| IEX- and ISLAND-directed history | IB 2188          | bars returned                               |
+| `^SPX` index history             | IB 2188          | still 2188 - a CBOE index feed, not bought  |
+| Forex (IDEALPRO)                 | full             | full                                        |
+
+Evidence: `live/out/preflight_20260909T204052Z.json`,
+`calibration/out/spread_snapshot_20260909T204319Z.json` (realtime) and
+`spread_snapshot_20260909T204529Z.json` (the delayed control). The spreads in those two
+snapshots are **after-hours** numbers - MSFT quoted 8-10 bps wide - and are filed as the
+entitlement evidence, not as a coefficient. ADR-0019 charges spread from measured
+history, and the first realtime calibration inside the session is a separate run.
+
+**What it does not settle.** Whether the feed quotes *before* the open, which is the hour
+the evening command runs; the row under *Ready to build* stays. And subscriptions activate
+at a trading-day boundary, so the 2026-09-10 session is the first full one on the new
+entitlement.
+
+**The first connection from this machine failed on IB 10197 before any of this**,
+"No market data during competing live session", on all nine quotes with stages 1-2
+passing (`live/out/preflight_20260909T202508Z.json`). The paper username borrows the live
+username's data and IB refuses it while the live username is logged in elsewhere - Client
+Portal, mobile, or a live TWS on another machine. It is the streaming sibling of the 162
+rule below: log the live session out, then rerun. Not an entitlement reading.
 
 ### Why 2188 happens, and what would fix it
 

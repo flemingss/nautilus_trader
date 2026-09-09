@@ -1,0 +1,127 @@
+{
+  "started_at": "2026-09-09T20:25:08.326324+00:00",
+  "finished_at": "2026-09-09T20:25:48.608173+00:00",
+  "stage": "1-2",
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "market_data_type": "DELAYED",
+  "orders_enabled": false,
+  "passed": false,
+  "failed_checks": [
+    "quote_AAPL",
+    "quote_EEM",
+    "quote_GLDM",
+    "quote_HYG",
+    "quote_MSFT",
+    "quote_SCHX",
+    "quote_SPY",
+    "quote_TLT",
+    "quote_XLF"
+  ],
+  "checks": [
+    {
+      "name": "halt_applied_before_start",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "orders disabled at build time"
+    },
+    {
+      "name": "halt_survives_startup",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "the claim stage one exists to settle"
+    },
+    {
+      "name": "instruments_resolved",
+      "passed": true,
+      "observed": "9",
+      "expected": "9",
+      "note": "resolved: ['AAPL=STK.SMART', 'EEM=STK.SMART', 'GLDM=STK.SMART', 'HYG=STK.SMART', 'MSFT=STK.SMART', 'SCHX=STK.SMART', 'SPY=STK.SMART', 'TLT=STK.SMART', 'XLF=STK.SMART']"
+    },
+    {
+      "name": "account_reported_by_broker",
+      "passed": true,
+      "observed": "DUT067974",
+      "expected": "DUT067974",
+      "note": "venues searched: ['IB', 'SMART']; found: IB-DUT067974"
+    },
+    {
+      "name": "account_has_balances",
+      "passed": true,
+      "observed": "1",
+      "expected": ">0",
+      "note": "account_type=MARGIN. A paper account may not carry the live account's type - see docs/PAPER_CAMPAIGN.md on what paper cannot reproduce."
+    },
+    {
+      "name": "quote_AAPL",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_EEM",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_GLDM",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_HYG",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_MSFT",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SCHX",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SPY",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_TLT",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_XLF",
+      "passed": false,
+      "observed": "none",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "clean_shutdown",
+      "passed": true,
+      "observed": "stopped",
+      "expected": "stopped",
+      "note": ""
+    }
+  ]
+}
