@@ -243,7 +243,14 @@ chain, which compiles ten cargo tools this fork does not use:
 
 ```bash
 uv tool install prek==$(bash scripts/tool-version.sh prek)
+cargo binstall -y --locked cargo-machete@$(bash scripts/tool-version.sh cargo-machete)
 ```
+
+Two hooks want tools the chain above does not install and fail by name without them:
+`cargo machete` wants that pinned binary, and `cargo cooldown` wants `jq` on `PATH` - a
+static release binary in `~/.local/bin` serves when there is no sudo. On a 15 GB WSL box
+the Rust hooks have locked the machine up twice; `CARGO_BUILD_JOBS=4 make pre-commit`
+finished in under four minutes without incident (2026-09-09).
 
 `make format` additionally needs `cargo +nightly fmt`:
 `rustup toolchain install nightly --profile minimal --component rustfmt`.
