@@ -286,16 +286,22 @@ un-gates the holdout spend; the bracket verdict is under stage 02 below.
 | ------------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Correct the survivor-biased universe | 00    | The 20-symbol catalog is today's large caps backfilled to 2005, which the charter names as the error to avoid. Needs point-in-time membership and delisted securities, which [ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md) prices at Norgate Platinum, USD 630/year. |
 
-### Waiting on spend (2)
+### Waiting on spend (1)
 
-No code closes these.
+No code closes this.
+
+**Closed 2026-09-09: US equity history through IB.** The three Network subscriptions
+under *Waiting on the account* were the spend; `entitlements.py` returned bars for every
+US equity shape that had returned 2188. IB history is not adopted as a source - Databento
+holds intraday ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)) and
+Marketstack the daily series - but the wall is gone, and the calibrator can cross-check a
+Databento-derived coefficient against the broker's own tape.
 
 | Item                           | Stage | Notes                                                                                                                                                                                                                                                                                |
 | ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| US equity history through IB   | 00    | All 16 request shapes return 2188. No client-side workaround. Redundant with Marketstack unless intraday comes with it.                                                                                                                                                              |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (10)
+### Ready to build (11)
 
 Twenty-two rows closed on 2026-09-03, 2026-09-04 and 2026-09-05 moved to [`CHANGELOG.md`](CHANGELOG.md);
 this table holds open work only, and its count is the checksum.
@@ -312,6 +318,7 @@ this table holds open work only, and its count is the checksum.
 | **Confirm the quote check passes before the open**                         | 08    | `preflight` now checks nine quotes and passed 15/15 on 2026-09-04 - measured **with the session open**, at 11:32 ET. The evening runs it an hour before the open on a delayed feed, and IB's delayed data may not quote pre-market. If it does not, the gate blocks every evening and the first honest reading is Tuesday 2026-09-08 at 21:30 JST.                                                                                                                                                                                                                                                                                                                                                                               |
 | **Build an alerting path**                                                 | 08    | The playbook makes alerting a gate for unattended paper and a required limb of the kill switch - *preserve state and alert*, *acknowledge critical alerts within the deadline*. **No code sends an alert anywhere.** `failure_injection` proves the system notices, not that anyone is told. An operator asleep in Japan while the US session runs is the whole reason this matters.                                                                                                                                                                                                                                                                                                                                             |
 | **Size from settled cash, not headline equity**                            | 06    | The charter requires it for a cash account and no code reads a settled figure. The paper account is MARGIN with USD 1M, so it **cannot** surface the bug ([paper fidelity limits](PAPER_CAMPAIGN.md)). Pairs with the settlement-rules item under the account group.                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Make the operator's clock a setting**                                    | 08    | `day` prints the operator's side of the clock in `Asia/Tokyo`, fixed in code, and the draft's schedule is written in JST. From 2026-09-09 the operator is in Florida for a while, so the printed clock is noise and the *07:00 / 21:30 JST* schedule reads as *18:00 the evening before / 08:30 ET*. Session logic keys off `EASTERN` and is unaffected. An `OPERATOR_ZONE` override, defaulting to Tokyo, and a schedule table that names both. Not a charter change.                                                                                                                                                                                                                                                           |
 
 ### Deferred by decision (2)
 
