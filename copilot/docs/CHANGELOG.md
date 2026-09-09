@@ -15,6 +15,10 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 - **IB 10197 on the first connection**, every quote refused while stages 1-2 passed: the
   live username was logged in elsewhere. Recorded beside the 162 rule as the streaming
   sibling of it.
+- **US equity history through IB is no longer waiting on spend**: the same subscriptions
+  closed it. Not adopted as a source; the wall is gone. The roadmap files *make the
+  operator's clock a setting* in its place, surfaced by the operator's move to Eastern
+  time. Fourteen items, eleven ready to build.
 
 ### Fixed
 
