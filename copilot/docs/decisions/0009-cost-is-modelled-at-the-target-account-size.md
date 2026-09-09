@@ -14,12 +14,12 @@ backtest convenience and never examined.
 The operating charter specifies an account under USD 10,000 at 0.10% to 0.25% planned risk,
 which is **USD 8 to 20 per trade**. Repricing the same trades at that budget:
 
-| Risk budget | AAPL | MSFT | SPY |
-| --- | --- | --- | --- |
-| USD 1,000 (research default) | +0.040 | +0.071 | +0.053 |
-| USD 20 (8k at 0.25%) | **-0.065** | **-0.037** | **-0.059** |
-| USD 8 (8k at 0.10%) | -0.246 | -0.202 | -0.263 |
-| USD 125 (50k at 0.25%) | +0.026 | +0.062 | +0.040 |
+| Risk budget                  | AAPL       | MSFT       | SPY        |
+| ---------------------------- | ---------- | ---------- | ---------- |
+| USD 1,000 (research default) | +0.040     | +0.071     | +0.053     |
+| USD 20 (8k at 0.25%)         | **-0.065** | **-0.037** | **-0.059** |
+| USD 8 (8k at 0.10%)          | -0.246     | -0.202     | -0.263     |
+| USD 125 (50k at 0.25%)       | +0.026     | +0.062     | +0.040     |
 
 **The premise is negative on every symbol at the account size it would actually trade.**
 

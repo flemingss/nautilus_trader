@@ -11,6 +11,7 @@ and filed the result against the wrong row. Both halves of that rule are pinned 
 The **failure mode of a typo**: a misspelled section in a TOML file would otherwise be
 ignored, and an activation would run with defaults nobody chose while looking configured.
 Loading is strict for that reason.
+
 """
 
 from __future__ import annotations
@@ -52,7 +53,10 @@ def test_a_minimal_activation_loads():
 
 def test_lifecycle_defaults_to_research():
     """
-    The safe default. An activation that forgot to say must not trade.
+    The safe default.
+
+    An activation that forgot to say must not trade.
+
     """
     assert an_activation().lifecycle is Lifecycle.RESEARCH
     assert an_activation().trades is False
@@ -67,7 +71,9 @@ def test_only_paper_and_live_trade(lifecycle, trades):
 
 
 def test_an_unknown_strategy_fails_loudly():
-    """Skipping it with a logged reason would let a typo remove a strategy from a run."""
+    """
+    Skipping it with a logged reason would let a typo remove a strategy from a run.
+    """
     with pytest.raises(ValueError, match="unknown strategy"):
         an_activation(strategy="gap_revrsal")
 
@@ -76,11 +82,13 @@ def test_an_unknown_section_fails_loudly():
     """
     A misspelled section would otherwise be ignored.
 
-    The activation would then run on defaults nobody chose, while reading as configured -
-    which is worse than failing, because the file says one thing and the run does another.
+    The activation would then run on defaults nobody chose, while reading as configured,
+    which is worse than failing, because the file says one thing and the run does
+    another.
+
     """
     with pytest.raises(ValueError, match="unknown section"):
-        an_activation(paramaters={"long": True})
+        an_activation(parameter={"long": True})
 
 
 @pytest.mark.parametrize("missing", ["symbol", "venue"])
@@ -103,9 +111,10 @@ def test_numbers_arrive_as_decimal_not_float():
     """
     These get multiplied by an ATR to place a stop.
 
-    TOML floats are binary floats. Values are written as strings in the registry for that
-    reason, and anything that slips through as a float is converted here rather than
-    reaching an order price.
+    TOML floats are binary floats. Values are written as strings in the registry for
+    that reason, and anything that slips through as a float is converted here rather
+    than reaching an order price.
+
     """
     activation = an_activation(parameters={"stop_atr": "1.5", "entry_buffer_atr": 0.25})
 
@@ -159,7 +168,12 @@ def test_a_searched_axis_still_wins_over_the_seed():
 
 
 def test_the_grid_expands_to_the_declared_space():
-    """Three thresholds by two targets. A larger space costs headroom against deflation."""
+    """
+    Three thresholds by two targets.
+
+    A larger space costs headroom against deflation.
+
+    """
     assert len(an_activation().grid().expand()) == 6
 
 
@@ -170,8 +184,9 @@ def test_every_registry_file_loads():
     """
     Run against the committed files, not fixtures.
 
-    A registry that stopped loading would fail every validation run, and the failure would
-    surface as "no verdict" rather than as a broken file.
+    A registry that stopped loading would fail every validation run, and the failure
+    would surface as "no verdict" rather than as a broken file.
+
     """
     activations = load_activations()
 
@@ -182,7 +197,9 @@ def test_every_registry_file_loads():
 
 
 def test_registry_names_match_their_filenames():
-    """The name is the handle `validate` is invoked with, so it has to be the filename."""
+    """
+    The name is the handle `validate` is invoked with, so it has to be the filename.
+    """
     for path in sorted(REGISTRY_DIR.glob("*.toml")):
         assert load_activation(path).name == path.stem
 
@@ -193,6 +210,7 @@ def test_nothing_in_the_registry_trades_yet():
 
     A test rather than a convention: promotion should be a deliberate diff that fails this
     assertion and makes someone justify changing it.
+
     """
     trading = [a.name for a in load_activations() if a.trades]
     assert trading == [], f"activation(s) past RESEARCH without a recorded holdout: {trading}"
@@ -209,6 +227,7 @@ def test_warmup_comes_from_the_strategy_not_the_caller():
 
     That looks identical to a dead premise, which is why the number is taken from the
     strategy that knows what it needs.
+
     """
     activation = an_activation()
     assert activation.setup.warmup_bars == 16  # ATR period 14, plus the two-bar trigger

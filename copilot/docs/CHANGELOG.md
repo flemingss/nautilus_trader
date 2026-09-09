@@ -2,6 +2,26 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09 (the second machine, and the data subscriptions)
+
+### Measured
+
+- **The consolidated US equity feeds are bought and they work.** NYSE (Network A/CTA),
+  Network B and NASDAQ (Network C/UTP) on the live username, borrowed by paper. From the
+  Florida machine, after the close: `preflight` 15/15; historical bars for AAPL and SPY
+  under both data types where every request had returned 2188 since 2026-08-31; realtime
+  streaming 47/61/139 quotes in 130s against a 35/64/120 delayed control. The roadmap's
+  *Waiting on the account* group drops to two; fourteen items open.
+- **IB 10197 on the first connection**, every quote refused while stages 1-2 passed: the
+  live username was logged in elsewhere. Recorded beside the 162 rule as the streaming
+  sibling of it.
+
+### Fixed
+
+- **The ruff hook failed on `develop` as pulled**, two findings, and **`zstandard` was
+  never declared** - the overlay suite could not collect on a fresh venv. Declared as a
+  `copilot` dependency group in `python/pyproject.toml`, registered in the delta. PR #55.
+
 ## 2026-09-05, later (the decisions, and the day's last quick wins)
 
 ### Decided

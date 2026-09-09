@@ -47,11 +47,19 @@ reads as confirmation.
 Confirm for **every** field used in research and live whether it is real-time, delayed,
 frozen, consolidated or non-consolidated.
 
-**Subscriptions can be gated on account equity.** As of 2026-09-01 this account sits below
-IBKR's bar, funds have been added, and settlement is expected on or after 2026-09-08. Until
-it clears, the only US equity quotes available are the complimentary delayed,
-non-consolidated feed - which is enough for broker-integration testing and **not** enough to
-set a cost coefficient anyone should trade on.
+**Subscriptions can be gated on account equity.** This account sat below IBKR's bar until
+2026-09-08; on 2026-09-09 the live username was subscribed to the three consolidated US
+equity tapes - NYSE (Network A/CTA), Network B, NASDAQ (Network C/UTP) - and the paper
+account borrows them. Before that the only US equity quotes were the complimentary delayed,
+non-consolidated feed, enough for broker-integration testing and **not** enough to set a
+cost coefficient anyone should trade on. IB activates a subscription at a trading-day
+boundary, so recheck after the next session before trusting a purchase.
+
+**The paper account cannot borrow data the live login is using elsewhere.** IB 10197,
+*No market data during competing live session*, means the live username is logged in on
+another machine, Client Portal or mobile. Log it out and rerun; it is not an entitlement
+result. The historical-data sibling is IB 162, recorded in
+[`../ROADMAP.md`](../ROADMAP.md) under stage 10.
 
 **Top of book is the requirement; depth is not.** Both candidate entry mechanics are
 auctions - market-on-close today, next-session-open under the charter - and an auction

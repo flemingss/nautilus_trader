@@ -1,0 +1,117 @@
+{
+  "started_at": "2026-09-09T20:40:52.977362+00:00",
+  "finished_at": "2026-09-09T20:41:33.498305+00:00",
+  "stage": "1-2",
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "market_data_type": "DELAYED",
+  "orders_enabled": false,
+  "passed": true,
+  "failed_checks": [],
+  "checks": [
+    {
+      "name": "halt_applied_before_start",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "orders disabled at build time"
+    },
+    {
+      "name": "halt_survives_startup",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "the claim stage one exists to settle"
+    },
+    {
+      "name": "instruments_resolved",
+      "passed": true,
+      "observed": "9",
+      "expected": "9",
+      "note": "resolved: ['AAPL=STK.SMART', 'EEM=STK.SMART', 'GLDM=STK.SMART', 'HYG=STK.SMART', 'MSFT=STK.SMART', 'SCHX=STK.SMART', 'SPY=STK.SMART', 'TLT=STK.SMART', 'XLF=STK.SMART']"
+    },
+    {
+      "name": "account_reported_by_broker",
+      "passed": true,
+      "observed": "DUT067974",
+      "expected": "DUT067974",
+      "note": "venues searched: ['IB', 'SMART']; found: IB-DUT067974"
+    },
+    {
+      "name": "account_has_balances",
+      "passed": true,
+      "observed": "1",
+      "expected": ">0",
+      "note": "account_type=MARGIN. A paper account may not carry the live account's type - see docs/PAPER_CAMPAIGN.md on what paper cannot reproduce."
+    },
+    {
+      "name": "quote_AAPL",
+      "passed": true,
+      "observed": "10 quotes, last 0.6s ago, 315.82/315.90",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_EEM",
+      "passed": true,
+      "observed": "3 quotes, last 17.1s ago, 68.41/68.56",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_GLDM",
+      "passed": true,
+      "observed": "14 quotes, last 0.6s ago, 87.02/87.03",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_HYG",
+      "passed": true,
+      "observed": "2 quotes, last 16.9s ago, 78.89/78.98",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_MSFT",
+      "passed": true,
+      "observed": "5 quotes, last 15.9s ago, 492.00/492.06",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SCHX",
+      "passed": true,
+      "observed": "5 quotes, last 10.9s ago, 30.03/30.04",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SPY",
+      "passed": true,
+      "observed": "35 quotes, last 0.4s ago, 762.63/762.64",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_TLT",
+      "passed": true,
+      "observed": "7 quotes, last 0.4s ago, 81.61/81.62",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "quote_XLF",
+      "passed": true,
+      "observed": "3 quotes, last 4.1s ago, 57.06/57.10",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; DELAYED feed, age measured from arrival"
+    },
+    {
+      "name": "clean_shutdown",
+      "passed": true,
+      "observed": "stopped",
+      "expected": "stopped",
+      "note": ""
+    }
+  ]
+}
