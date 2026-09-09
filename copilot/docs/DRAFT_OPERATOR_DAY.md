@@ -105,7 +105,7 @@ python -m copilot.live.day evening
 | Reconcile positions, cash, working orders                      | `copilot.live.cancel_working --all`            | **40.3s for nine**, one node, was 41.5s each                                  |
 | Indicator warm-up from the local catalog                       | `copilot.live.warmup`                          | **0.1s**, 12/12 ready                                                         |
 | Parameters are the ones the gate scored                        | `copilot.strategies.promotion`, in the basket  | Closed: every session labelled `seeded identity ... not the gate's selection` |
-| Kill switch and remote broker access verified                  | -                                              | **GAP** - no operator kill command                                            |
+| Kill switch and remote broker access verified                  | -                                              | **GAP** - no operator kill command; roadmap row filed 2026-09-09              |
 
 **What the gating did on its first run.** The evening was first run for the session of
 2026-09-08 while Friday's session was still open, and the warm-up **blocked** all twelve
