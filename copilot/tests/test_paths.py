@@ -56,9 +56,11 @@ def test_no_module_defines_its_own_copy() -> None:
         if file.name == "paths.py" or "tests" in file.parts:
             continue
         text = file.read_text()
-        for literal in literals:
-            if f'"{literal}"' in text or f"'{literal}'" in text:
-                offenders.append(f"{file.relative_to(OVERLAY)}: {literal}")
+        offenders.extend(
+            f"{file.relative_to(OVERLAY)}: {literal}"
+            for literal in literals
+            if f'"{literal}"' in text or f"'{literal}'" in text
+        )
     assert offenders == []
 
 
