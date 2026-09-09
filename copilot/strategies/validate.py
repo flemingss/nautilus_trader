@@ -181,7 +181,8 @@ def stored_bars(activation: Activation, catalog_path: str = DEFAULT_CATALOG) -> 
     if not bars:
         raise ValueError(
             f"no bars in the catalog for {activation.symbol}.{activation.venue}. Backfill it "
-            f"first: python -m copilot.data.backfill --symbols {activation.symbol} --from 2005-01-01",
+            f"first: python -m copilot.data.backfill --symbols {activation.symbol} "
+            "--from 2005-01-01",
         )
     return bars
 
