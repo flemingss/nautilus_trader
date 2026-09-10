@@ -43,19 +43,42 @@ The organising frame for everything below: the eleven stages between finding a t
 banking it, ordered as the trade travels, so a break shows where everything downstream
 stalls.
 
-| #   | Stage                | Covered by                    | State                                                     |
-| --- | -------------------- | ----------------------------- | --------------------------------------------------------- |
-| 00  | Historical data      | `copilot/data`                | **Ready (daily).** 105,398 bars, 20 symbols, 2005-2025    |
-| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                       |
-| 02  | Research / strategy  | `copilot/strategies`          | **Ready.** Gap fade ported; first verdict below           |
-| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                       |
-| 04  | Validation gate      | `copilot/validation`          | **Ready.** Holdout carved ([ADR-0012]); unspent           |
-| 05  | Position sizing      | `copilot/risk/sizing`         | Ready. Risk-based, floored                                |
-| 06  | Risk limits          | `copilot/risk/protections`    | **Ready.** Engine-level halt via the `RiskEngine` binding |
-| 07  | Orders / exits       | Nautilus execution            | Ready. 9 order types, brackets, trailing                  |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Stages 1-6 pass** 2026-09-01                            |
-| 09  | Monitoring           | Nautilus analysis + tearsheet | Ready                                                     |
-| 10  | Cost calibration     | `copilot/calibration`         | **Wired.** p95 per instrument ([ADR-0011])                |
+| #   | Stage                | Covered by                    | State as of 2026-09-10                                                                |
+| --- | -------------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
+| 00  | Historical data      | `copilot/data`                | **Ready, with known holes.** 9 registered symbols, 29,722 daily bars to 2026-09-09    |
+| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                                                   |
+| 02  | Research / strategy  | `copilot/strategies`          | **NOT READY. No established edge.** The blocking stage; everything below waits on it  |
+| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                   |
+| 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Three-way verdict with an interval (ADR-0024)                |
+| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash        |
+| 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live.** Balance and margin checks do not run on the SMART venue path    |
+| 07  | Orders / exits       | Nautilus execution            | **Ready and exercised.** Order-type matrix passed in regular hours 2026-09-10         |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Supervised: ready.** Unattended: three named gaps, all open                         |
+| 09  | Monitoring           | Nautilus analysis + tearsheet | **Alerting built, nothing calls it.** No kill command, so no consumer for its trigger |
+| 10  | Cost calibration     | `copilot/calibration`         | **Strongest stage.** Spread and commission both corroborated against the broker       |
+
+**Read the table by where it breaks, not by how much is green.** Ten of eleven stages are
+built and seven are proven against a live broker. The one that is not is stage 02, and it is
+the one that decides whether any of the rest is worth running: **no premise has an
+established edge.** The AAPL holdout returns `insufficient_evidence` under
+[ADR-0024](decisions/0024-a-holdout-pass-needs-an-interval.md) - +0.035 R with a 90% interval
+of [-0.126, +0.209]. The pooled nine-symbol walk-forward passes its majority gate and clears
+zero, and its fold detail puts the edge in the era before the pool was a pool: 12 of 22
+three-symbol folds at +0.081 R against 5 of 11 wider folds at +0.017 R. Nothing is frozen,
+so stage 08's supervised readiness has nothing to deploy.
+
+Three groups of open work, and they gate different things:
+
+- **A candidate worth deploying** - stage 02, eleven rows. The pooled premise's remaining
+  questions, attribution, and the evidence interval on ordinary verdicts.
+- **Unattended running** - stages 08 and 09. Alerting is written and unwired, the operator
+  kill command does not exist, and the sweep's *clear* verdict cannot yet be confirmed
+  against the broker. Supervised paper needs none of these; leaving the system alone needs
+  all three.
+- **Real money in a cash account** - stages 05 and 06, three rows. Settled-cash sizing, the
+  T+1 rules confirmed with the carrying entity, and the margin-or-cash question. The paper
+  account is MARGIN with USD 1M and **cannot surface any of them**, which is why they stay
+  open however well paper goes.
 
 ### Stage 02 - the gap fade, and the first real verdict
 
