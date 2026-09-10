@@ -2,6 +2,33 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, the TLT repair
+
+### Fixed
+
+- **TLT's two holed September sessions are filled and the series is current.** Marketstack
+  returned closes of 82.1307 and 82.2373 on 2026-09-04 and 2026-09-08, which are not whole
+  cents, and no US equity auction prints one; the ingestion gate refused them, correctly.
+  Repaired with `copilot.data.patch` after extending the Databento store to cover the
+  window, which is the generator ADR-0018's hand table was outgrown by. The filled closes,
+  82.21 and 82.20, are corroborated twice: the venue's official auction print and
+  `EQUS.SUMMARY`'s consolidated trade close agree exactly on both days.
+
+### Learned
+
+- **`EQUS.SUMMARY`'s historical licence lags the present by about a day.** A request past
+  2026-09-09T04:00Z was refused with `license_not_found_unauthorized`, so a session cannot
+  be repaired the evening it breaks; the fix waits for the next day.
+- **`--pull --dataset` is a footgun** and now has a row. It overrides venue routing without
+  restricting symbol selection, so every venue's symbols are fetched against the named
+  dataset and written into its directory, each batch overwriting the last. The store briefly
+  held ten NYSE names under `XNAS.ITCH`. Nothing complained; `patch` still reporting *no
+  source* is what exposed it. `--only` is the safe form.
+- **A hole census across all nine series**: TLT, AAPL, MSFT, SPY and XLF are clean. GLDM
+  misses thirteen sessions in 2018-2019, which `patch` can fill. EEM, HYG and SCHX each miss
+  2017-03-20, which predates Databento's US equity history and cannot be filled from it.
+  Rows filed for both.
+
 ## 2026-09-09, the model policy
 
 ### Decided
