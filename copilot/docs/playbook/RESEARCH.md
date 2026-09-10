@@ -200,7 +200,9 @@ this alongside cost.
 
 - Economic rationale written before results.
 - Every configuration and failed experiment logged.
-- Net expectancy positive in validation **and** in the locked holdout.
+- Net expectancy positive in validation **and** in the locked holdout, with the holdout's
+  **interval** above the bar too, not only its point estimate
+  ([ADR-0024](../decisions/0024-a-holdout-pass-needs-an-interval.md)).
 - A majority of walk-forward folds profitable after base costs.
 - Still positive under doubled costs.
 - At least 70% of immediate parameter neighbours share the sign of net expectancy.
@@ -219,6 +221,11 @@ Require coverage across materially different regimes and report dependence-aware
 For a weekly or monthly strategy, do not raise turnover to reach a trade count. If the
 effective sample is too small or the intervals too wide: extend the history, forward test
 for longer, simplify the claim, or reject.
+
+`copilot.validation.evidence` computes the effective sample and the interval, and
+`spend_holdout` reports them beside every holdout verdict. A holdout whose interval
+straddles the bar returns **`insufficient_evidence`** - neither a pass nor a failure, and
+the verdict that points at the remedies in the paragraph above.
 
 ### Cost-at-size gate
 

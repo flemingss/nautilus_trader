@@ -211,5 +211,25 @@
       "span_days": "1418",
       "trades_per_year": "19.72637517630465444287729196"
     }
+  },
+  "reassessment": {
+    "note": "Retrospective only. The holdout block above is unchanged and remains the record of what was measured and decided on 2026-09-04. This block records what the ADR-0024 gate would have said, computed on 2026-09-10 from the same activation and the same cost snapshot named above.",
+    "adr": "0024",
+    "computed_at": "2026-09-10",
+    "reproduced_net_expectancy_r": "0.035130",
+    "reproduced_trades": 111,
+    "verdict_then": "pass",
+    "verdict_under_adr_0024": "insufficient_evidence",
+    "evidence": {
+      "effective_trades": "102.2",
+      "concurrency": "1.000000",
+      "block_trades": 5,
+      "confidence": "0.90",
+      "lower_r": "-0.125983",
+      "upper_r": "0.208740",
+      "standard_error_r": "0.103355",
+      "score_in_standard_errors": "0.34"
+    },
+    "what_it_does_not_change": "The owner's decision was 'revise', which is what an unresolved result warrants. The gate could not say so; the owner said it anyway. Nothing is reopened: the holdout is spent under ADR-0021 whichever of the three verdicts it returned."
   }
 }

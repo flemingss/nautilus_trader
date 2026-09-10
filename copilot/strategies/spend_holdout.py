@@ -300,6 +300,7 @@ def run(
         objective=objective,
         min_trades=settings.min_trades,
         fold_min_trades=settings.fold_min_trades,
+        threshold=settings.minimum_effect,
     )
     seconds = time.time() - started
     return result, holdout_record(
@@ -380,8 +381,22 @@ def holdout_record(
         "holdout": {
             "trades": result.trades,
             "net_expectancy_r": str(result.score.quantize(_SIX)),
+            "verdict": result.verdict,
             "passed": result.passed,
+            "cleared_threshold": result.cleared_threshold,
             "reason": fold.reason,
+            "evidence": {
+                "effective_trades": str(result.evidence.effective_trades),
+                "concurrency": str(result.evidence.concurrency),
+                "block_trades": result.evidence.block_bars,
+                "replicates": result.evidence.replicates,
+                "confidence": str(result.evidence.confidence),
+                "lower_r": str(result.evidence.lower_r),
+                "upper_r": str(result.evidence.upper_r),
+                "standard_error_r": str(result.evidence.standard_error_r),
+                "threshold_r": str(result.threshold),
+                "clears_threshold": result.evidence.clears(result.threshold),
+            },
             "tearsheet": {
                 k: (str(v) if v is not None else None) for k, v in asdict(result.tearsheet).items()
             },
@@ -443,10 +458,23 @@ def main(argv: list[str] | None = None) -> int:
 
     frozen = record["frozen_parameters"]
     print(f"frozen parameters: {frozen or 'none selected'}")
+    evidence = result.evidence
     print(
         f"holdout: {result.trades} trades  net {record['holdout']['net_expectancy_r']} R  "
-        f"{'PASS' if result.passed else 'FAIL'}  ({fold_reason(result)})",
+        f"{result.verdict.upper()}  ({fold_reason(result)})",
     )
+    print(
+        f"evidence: {evidence.effective_trades} effective trades  "
+        f"{evidence.confidence:%} interval [{evidence.lower_r}, {evidence.upper_r}] R  "
+        f"SE {evidence.standard_error_r} R  block {evidence.block_bars}",
+    )
+    if result.verdict == "insufficient_evidence":
+        print(
+            "\nThe score cleared the bar and the interval did not. That is neither a pass "
+            "nor a failure: the holdout is spent and the question is unresolved. Extending "
+            "the history, pooling across instruments, or simplifying the claim are the ways "
+            "forward; re-running this one is not.",
+        )
 
     SPENT_DIR.mkdir(parents=True, exist_ok=True)
     path = SPENT_DIR / f"{activation.name}.json"

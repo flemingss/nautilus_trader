@@ -140,6 +140,26 @@ class ValidationSettings:
     purge_bars: int = 5
     min_trades: int = 20
     fold_min_trades: int = 5
+    minimum_effect_r: str = ""
+    """
+    The holdout's predeclared bar, as a decimal string in R; empty means zero.
+
+    [`RESEARCH.md`](../docs/playbook/RESEARCH.md) requires the requirement to be
+    predeclared, and this is where it is declared: a committed file that cannot change
+    without a diff, set before the holdout is spent rather than argued for after the
+    number is known.
+
+    Zero is the honest default and stays the default, because costs are already in the
+    fill and *better than not trading* is the real bar. Raising it says something
+    stronger - that an edge smaller than this is not worth trading at the account this
+    premise is aimed at - which is a claim about economics, not about statistics.
+
+    Under [ADR-0024] the holdout requires the **interval** to clear this too, so a
+    premise cannot pass on a point estimate the sample cannot support.
+
+    [ADR-0024]: ../docs/decisions/0024-a-holdout-pass-needs-an-interval.md
+
+    """
     holdout_start: str = ""
     """
     This activation's holdout boundary as ``YYYY-MM-DD``; empty means the shared pin.
@@ -158,6 +178,13 @@ class ValidationSettings:
     [ADR-0020]: ../docs/decisions/0020-the-holdout-boundary-is-per-activation.md
 
     """
+
+    @property
+    def minimum_effect(self) -> Decimal:
+        """
+        Return the predeclared bar as a number, defaulting to zero.
+        """
+        return Decimal(self.minimum_effect_r) if self.minimum_effect_r else Decimal(0)
 
     @property
     def holdout_boundary(self) -> datetime | None:
