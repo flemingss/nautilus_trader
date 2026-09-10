@@ -34,6 +34,22 @@ Machine state with the same backup obligation.
 
 """
 
+OPERATOR_TZ_ENV = "COPILOT_OPERATOR_TZ"
+DEFAULT_OPERATOR_TZ = "Asia/Tokyo"
+"""
+The operator's own clock, printed beside Eastern in every time the day command shows.
+
+Display only. Every session decision keys off ``EASTERN``, so this cannot move a window,
+a fold or an order - which is why it is a setting rather than a decision.
+
+It is **not** ``IBAPI_TIMEZONE_ALIASES``. That alias is required on every IB connect
+whatever the operator's clock says, and conflating the two would make a cosmetic
+preference able to break connections opaquely.
+
+Tokyo remains the default because the playbook's schedule is written in JST.
+
+"""
+
 MARKETSTACK_API_KEY_ENV = "MARKETSTACK_API_KEY"
 DATABENTO_API_KEY_ENV = "DATABENTO_API_KEY"
 PUSHOVER_TOKEN_ENV = "PUSHOVER_TOKEN"  # noqa: S105 - the variable's name, never its value
@@ -76,8 +92,10 @@ __all__ = [
     "CATALOG_PATH_ENV",
     "DATABENTO_API_KEY_ENV",
     "DEFAULT_CATALOG",
+    "DEFAULT_OPERATOR_TZ",
     "DEFAULT_STORE",
     "MARKETSTACK_API_KEY_ENV",
+    "OPERATOR_TZ_ENV",
     "PUSHOVER_TOKEN_ENV",
     "PUSHOVER_USER_KEY_ENV",
     "add_catalog_argument",

@@ -13,6 +13,9 @@ from datetime import UTC
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+from zoneinfo import ZoneInfo
+
+import pytest
 
 from copilot.live.day import EVENING
 from copilot.live.day import MORNING
@@ -21,9 +24,11 @@ from copilot.live.day import SWEEP
 from copilot.live.day import TIMEZONE_ALIASES_ENV
 from copilot.live.day import Connection
 from copilot.live.day import Step
+from copilot.live.day import _clock_line
 from copilot.live.day import closed_session
 from copilot.live.day import evening_steps
 from copilot.live.day import morning_steps
+from copilot.live.day import operator_zone
 from copilot.live.day import registered_symbols
 from copilot.live.day import required_environment
 from copilot.live.day import run_steps
@@ -31,6 +36,7 @@ from copilot.live.day import session_clock
 from copilot.live.day import summarise
 from copilot.live.day import sweep_steps
 from copilot.paths import MARKETSTACK_API_KEY_ENV
+from copilot.paths import OPERATOR_TZ_ENV
 
 
 CONNECTION = Connection(host="172.17.112.1", port=7497, account="DUT067974")
@@ -157,6 +163,18 @@ def test_the_evening_needs_the_alias_and_an_account() -> None:
     assert required_environment(EVENING, environ=complete, account="DUT067974") == ()
 
 
+@pytest.fixture(autouse=True)
+def _default_operator_clock(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    Clear the operator's timezone override so the clock tests read the default.
+
+    Without this they pass or fail on whatever the machine that runs them exports, which
+    is the one thing a test of a default must not do.
+
+    """
+    monkeypatch.delenv(OPERATOR_TZ_ENV, raising=False)
+
+
 def test_the_alias_must_be_the_right_one() -> None:
     wrong = {TIMEZONE_ALIASES_ENV: "JST=Asia/Seoul"}
     assert required_environment(EVENING, environ=wrong, account="DUT067974") != ()
@@ -207,4 +225,93 @@ def test_monitoring_end_needs_what_the_evening_needs() -> None:
         EVENING,
         environ={},
         account="",
+    )
+
+
+# -------------------------------------------------------- the operator's own clock
+
+
+def test_the_operator_clock_defaults_to_the_playbooks_zone() -> None:
+    """
+    The schedule in the playbook is written in JST, so the default has to match it.
+    """
+    assert operator_zone() == ZoneInfo("Asia/Tokyo")
+
+
+def test_the_operator_clock_follows_the_setting(monkeypatch: pytest.MonkeyPatch) -> None:
+    """
+    The operator moved from Japan to Florida mid-campaign; the printed clock followed.
+    """
+    monkeypatch.setenv(OPERATOR_TZ_ENV, "America/New_York")
+    clock = session_clock(date(2026, 9, 8))
+
+    assert operator_zone() == ZoneInfo("America/New_York")
+    assert clock.lines()[0] == "open          09:30 EDT"
+    assert "JST" not in "".join(clock.lines())
+
+
+def test_the_second_column_is_dropped_when_it_repeats_the_first() -> None:
+    """
+    An operator in Eastern reading ``09:30 EDT   09:30 EDT`` learns nothing.
+
+    The fixed Tokyo column was noise for an operator in Florida; repeating Eastern back
+    at them is the same noise wearing different clothes, and worse, it has to be read
+    before it can be dismissed.
+
+    """
+    eastern = _clock_line(
+        "open",
+        datetime(2026, 9, 8, 13, 30, tzinfo=UTC),
+        ZoneInfo("America/New_York"),
+    )
+    tokyo = _clock_line("open", datetime(2026, 9, 8, 13, 30, tzinfo=UTC), ZoneInfo("Asia/Tokyo"))
+
+    assert eastern.count("EDT") == 1
+    assert tokyo.count("EDT") == 1
+    assert "JST" in tokyo
+
+
+def test_a_misspelt_zone_falls_back_loudly(monkeypatch, capsys) -> None:
+    """
+    Neither silent nor fatal.
+
+    A display preference must not stop the trading day, and an operator reading Tokyo
+    while believing they set Eastern is worse than being told.
+
+    """
+    monkeypatch.setenv(OPERATOR_TZ_ENV, "Mars/Olympus_Mons")
+
+    assert operator_zone() == ZoneInfo("Asia/Tokyo")
+    assert "not a known timezone" in capsys.readouterr().err
+
+
+def test_the_ib_alias_is_not_the_operators_clock() -> None:
+    """
+    The regression for conflating two things that both say Asia/Tokyo.
+
+    ``IBAPI_TIMEZONE_ALIASES`` is required on every IB connect wherever the operator
+    is; without it connects fail and name nothing. Tying it to a cosmetic preference
+    would let a display setting break the broker connection.
+
+    """
+    assert REQUIRED_TIMEZONE_ALIAS == "JST=Asia/Tokyo"
+    assert OPERATOR_TZ_ENV != TIMEZONE_ALIASES_ENV
+
+
+def test_no_session_time_moves_with_the_operators_clock(monkeypatch) -> None:
+    """
+    Display only.
+
+    A clock setting that could move a window would be a charter change.
+
+    """
+    monkeypatch.delenv(OPERATOR_TZ_ENV, raising=False)
+    tokyo = session_clock(date(2026, 9, 8))
+    monkeypatch.setenv(OPERATOR_TZ_ENV, "America/New_York")
+    eastern = session_clock(date(2026, 9, 8))
+
+    assert (tokyo.opens, tokyo.window_ends, tokyo.closes) == (
+        eastern.opens,
+        eastern.window_ends,
+        eastern.closes,
     )

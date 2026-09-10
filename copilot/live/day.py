@@ -1,9 +1,22 @@
 """
 The operator's day as two commands, so the sequence lives in code.
 
-    python -m copilot.live.day morning      # ~07:00 JST, after the US close
-    python -m copilot.live.day evening      # ~21:30 JST, an hour before the US open
-    python -m copilot.live.day sweep        # 00:30 JST, monitoring end, once orders are enabled
+    python -m copilot.live.day morning      # after the US close
+    python -m copilot.live.day evening      # an hour before the US open
+    python -m copilot.live.day sweep        # monitoring end, once orders are enabled
+
+The schedule is anchored to the session, not to a wall clock. Written both ways, because
+the playbook's tables are in JST and the operator is not always there:
+
+    phase      Eastern        JST
+    morning    17:00          07:00 (next day)
+    evening    08:30          22:30
+    sweep      10:30          00:30 (next day)
+
+``COPILOT_OPERATOR_TZ`` sets the second column each command prints beside Eastern; it
+defaults to ``Asia/Tokyo`` and is dropped when it would repeat Eastern. It is display
+only - every session decision keys off ``EASTERN`` - and it is **not** the IB connect
+alias below, which is required wherever the operator is.
 
 Why a sequence and not a list
 -----------------------------
@@ -53,6 +66,7 @@ from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfoNotFoundError
 
 from copilot.data.calendar import EASTERN
 from copilot.data.calendar import early_closes
@@ -62,7 +76,9 @@ from copilot.data.calendar import trading_days
 from copilot.live.session import PAPER_ACCOUNT_ENV
 from copilot.live.session import add_connection_arguments
 from copilot.live.warmup import session_to_prepare
+from copilot.paths import DEFAULT_OPERATOR_TZ
 from copilot.paths import MARKETSTACK_API_KEY_ENV
+from copilot.paths import OPERATOR_TZ_ENV
 from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import load_activations
 
@@ -77,16 +93,38 @@ PHASES = (MORNING, EVENING, SWEEP)
 Three phases. ``sweep`` is the monitoring-end command on its own.
 
 While orders are denied nothing can be working after the basket, so the evening runs the
-sweep as its last step. The day orders are enabled, the sweep moves to 00:30 JST - the
-end of the charter's window, an hour before the operator sleeps - and this phase is that
-command, existing before it is needed rather than being written the night it is.
+sweep as its last step. The day orders are enabled, the sweep moves to the end of the
+charter's window - 10:30 Eastern, 00:30 JST, an hour before a Tokyo operator sleeps - and
+this phase is that command, existing before it is needed rather than being written the
+night it is.
 
 """
 
-OPERATOR_ZONE = ZoneInfo("Asia/Tokyo")
-"""
-The operator's clock, for the second column of every time printed.
-"""
+
+def operator_zone() -> ZoneInfo:
+    """
+    Return the operator's own clock, from ``COPILOT_OPERATOR_TZ`` or Tokyo.
+
+    Read per call rather than bound at import, so a change takes effect without a
+    reinstall - the operator this serves has already moved once mid-campaign.
+
+    An unknown or malformed zone falls back to the default and says so on stderr. The
+    second column of a clock line is a convenience; refusing to run the trading day
+    because a display preference is misspelt would be the tail wagging the dog, and
+    failing silently would leave the operator reading Tokyo while believing otherwise.
+
+    """
+    name = os.environ.get(OPERATOR_TZ_ENV, DEFAULT_OPERATOR_TZ)
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        print(
+            f"warning: {OPERATOR_TZ_ENV}={name!r} is not a known timezone; "
+            f"showing {DEFAULT_OPERATOR_TZ}",
+            file=sys.stderr,
+        )
+        return ZoneInfo(DEFAULT_OPERATOR_TZ)
+
 
 EXECUTION_WINDOW = timedelta(hours=2)
 """
@@ -157,10 +195,11 @@ class SessionClock:
     closes: datetime
     early_close: bool
 
-    def lines(self, zone: ZoneInfo = OPERATOR_ZONE) -> list[str]:
+    def lines(self, zone: ZoneInfo | None = None) -> list[str]:
         """
         Return the clock as an operator reads it: Eastern, then their own.
         """
+        zone = zone or operator_zone()
         out = [
             _clock_line("open", self.opens, zone),
             _clock_line("window ends", self.window_ends, zone),
@@ -175,13 +214,23 @@ class SessionClock:
 
 
 def _clock_line(label: str, instant: datetime, zone: ZoneInfo) -> str:
+    """
+    One line of the clock: the session's time in Eastern, then the operator's own.
+
+    The second column is dropped when it would repeat the first. An operator sitting in
+    Eastern reading ``09:30 EDT   09:30 EDT`` learns nothing from the repetition and has
+    to check every line to be sure it *is* a repetition, which is the same noise the
+    fixed Tokyo column made, wearing different clothes.
+
+    """
     eastern = instant.astimezone(EASTERN)
     local = instant.astimezone(zone)
+    first = f"{eastern.strftime('%H:%M')} {eastern.tzname()}"
+    second = f"{local.strftime('%H:%M')} {local.tzname()}"
+    if first == second:
+        return f"{label:<14}{first}"
     day_shift = " (next day)" if local.date() > eastern.date() else ""
-    return (
-        f"{label:<14}{eastern.strftime('%H:%M')} {eastern.tzname()}   "
-        f"{local.strftime('%H:%M')} {local.tzname()}{day_shift}"
-    )
+    return f"{label:<14}{first}   {second}{day_shift}"
 
 
 def session_clock(session: date) -> SessionClock:
@@ -490,7 +539,7 @@ def main(argv: list[str] | None = None) -> int:
         closed = closed_session(now)
         record.session = closed.isoformat() if closed else None
         print(
-            f"Morning of {now.astimezone(OPERATOR_ZONE):%Y-%m-%d %a %H:%M %Z}: the session of "
+            f"Morning of {now.astimezone(operator_zone()):%Y-%m-%d %a %H:%M %Z}: the session of "
             f"{closed.isoformat() if closed else '?'} has closed; next session "
             f"{session_to_prepare(now).isoformat()}",
         )
@@ -542,7 +591,6 @@ __all__ = [
     "EVENING",
     "EXECUTION_WINDOW",
     "MORNING",
-    "OPERATOR_ZONE",
     "PHASES",
     "REQUIRED_TIMEZONE_ALIAS",
     "SWEEP",
@@ -555,6 +603,7 @@ __all__ = [
     "closed_session",
     "evening_steps",
     "morning_steps",
+    "operator_zone",
     "registered_symbols",
     "required_environment",
     "run_module",
