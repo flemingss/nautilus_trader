@@ -2,6 +2,40 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, commission per plan
+
+### Changed
+
+- **Commission is a `CommissionSchedule` and there are two of them**, `FIXED` and `TIERED`,
+  each carrying its own per-share rate, minimum, cap and pass-through. `CostModel` takes one,
+  so a plan change is measured before it is made. [ADR-0025](decisions/0025-commission-is-modelled-per-plan.md)
+  records the decision; the pin stays on Fixed until the account is actually switched.
+- **The model now charges the regulatory pass-through, and reproduces two measured trips to
+  the cent.** The 2026-09-10 shakedown's round trips were charged USD 2.01 on one share and
+  USD 2.02 on three, where `max(1.00, 0.005/share)` twice is 2.00 exactly. The cent is the
+  SEC fee, the FINRA Trading Activity Fee and the CAT fee on the sale, and the model was
+  missing all three.
+- **Tiered is not Fixed with a lower minimum.** It passes the exchange access fee and
+  clearing through, so its all-in per-share rate is *above* Fixed's flat one and Fixed
+  becomes cheaper past roughly 150 shares. Dropping `COMMISSION_MIN` to 0.35 and stopping
+  there - the obvious change - would have claimed Tiered wins everywhere and understated it
+  by 34% at a thousand shares.
+- The access fee is charged at **0.003**, the Rule 610(c) cap in force today. The SEC's cut
+  to 0.001 was adopted in September 2024 but its compliance date is 2026-11-02, already
+  delayed once.
+
+### Measured
+
+- **The revalidation moves no verdict.** All twelve activations under both plans:
+  `calibration/out/commission_revalidation_20260910.json`. Nothing shifts by more than a few
+  thousandths of an R and **0 of 12 majority results change**. Two fold counts move, GLDM 4
+  to 3 and SPY 17 to 16, and neither crosses the majority line.
+- **The verdicts show Tiered marginally *worse*, and that is the crossover.** The activations
+  price at `risk_budget = 1000`, which is 200 shares - the single point where Fixed wins, by
+  0.0006 R. At the charter's USD 20 of risk Tiered is cheaper by 0.064 R, and commission in R
+  is thirty times larger there than at research sizing. Spread in R is size-independent
+  because quantity cancels; commission is not.
+
 ## 2026-09-10, the pull that crossed venues
 
 ### Fixed

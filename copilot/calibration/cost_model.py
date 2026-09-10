@@ -91,10 +91,145 @@ the snapshot's ``basis`` block, which refuses if the file was measured at anythi
 
 """
 
-# IB Pro, fixed tier, US equities.
-COMMISSION_PER_SHARE = Decimal("0.005")
-COMMISSION_MIN = Decimal("1.00")
-COMMISSION_MAX_PCT = Decimal("0.01")
+# Regulatory pass-through, charged on **both** IBKR plans and on the sale side only.
+#
+# Measured, not assumed. The 2026-09-10 shakedown's round trips paid USD 2.01 on one
+# share and USD 2.02 on three, where a bare max(1.00, 0.005/share) both ways is 2.00
+# exactly. The cent is these fees, and the arithmetic below reproduces both trips to the
+# cent - which is why they are here rather than dismissed as rounding.
+SEC_FEE_RATE = Decimal("0.0000206")
+"""
+SEC transaction fee, on the value of aggregate sales.
+"""
+
+FINRA_TAF_PER_SHARE = Decimal("0.000195")
+"""
+FINRA Trading Activity Fee, per share sold.
+"""
+
+CAT_PER_SHARE = Decimal("0.000003")
+"""
+FINRA Consolidated Audit Trail fee, per share.
+"""
+
+
+@dataclass(frozen=True)
+class CommissionSchedule:
+    """
+    One IBKR US-equity commission plan, as it charges a single order.
+
+    Two plans, and the choice between them is worth a modelled comparison rather than a
+    preference, because at this project's order sizes the **minimum** is the whole cost
+    and the two minimums differ by a factor of three.
+
+    """
+
+    name: str
+    per_share: Decimal
+    minimum: Decimal
+    max_pct: Decimal
+    exchange_per_share: Decimal = Decimal(0)
+    """
+    Exchange access fee passed through per share; zero when the plan absorbs it.
+
+    Fixed's single per-share rate covers exchange and clearing costs. Tiered passes them
+    through, which is why Tiered is not simply *Fixed with a lower minimum* - modelling
+    it that way would understate it for any order large enough to leave the minimum
+    behind.
+
+    Charged at the **liquidity-removing** rate, matching the conservatism the spread
+    coefficient already uses. A resting limit order can earn a rebate instead, and
+    charging the rebate would price the favourable half of a mix we cannot predict.
+
+    """
+
+    clearing_per_share: Decimal = Decimal(0)
+    """
+    NSCC and DTC clearing, passed through on Tiered and absorbed by Fixed.
+    """
+
+    def describe(self) -> str:
+        """
+        Return the one-line basis a verdict records, so a number ties to its plan.
+        """
+        passed = self.exchange_per_share + self.clearing_per_share
+        pass_through = (
+            f", plus {passed}/share exchange and clearing passed through" if passed else ""
+        )
+        return (
+            f"{self.name}: max({self.minimum}, {self.per_share}/share) per order, capped "
+            f"at {self.max_pct * 100}% of notional{pass_through}, plus the regulatory fee "
+            f"on the sale, split-corrected share counts"
+        )
+
+    def charge(self, real_shares: Decimal, notional: Decimal) -> Decimal:
+        """
+        Return this plan's commission for one side, excluding regulatory fees.
+
+        The cap applies to the commission, not to the pass-through: IBKR's *maximum per
+        order* is a cap on what IBKR charges, and an exchange's access fee is not IBKR's
+        to cap. Applying it to the total would quietly under-charge small, high-priced
+        orders - the exact shape this account trades.
+
+        """
+        fee = max(self.minimum, self.per_share * real_shares)
+        capped = min(fee, self.max_pct * notional)
+        passed = (self.exchange_per_share + self.clearing_per_share) * real_shares
+        return capped + passed
+
+
+FIXED = CommissionSchedule(
+    name="IBKR Pro Fixed",
+    per_share=Decimal("0.005"),
+    minimum=Decimal("1.00"),
+    max_pct=Decimal("0.01"),
+)
+"""
+The plan the paper account is measurably on, confirmed 2026-09-10 by a one-share trip
+paying the USD 1.00 minimum twice.
+"""
+
+TIERED = CommissionSchedule(
+    name="IBKR Pro Tiered",
+    per_share=Decimal("0.0035"),
+    minimum=Decimal("0.35"),
+    max_pct=Decimal("0.01"),
+    exchange_per_share=Decimal("0.003"),
+    clearing_per_share=Decimal("0.0002"),
+)
+"""
+The lowest published tier, at the access fee cap **in force today**.
+
+``per_share`` is the rate for 300,000 shares a month or less, which is this account by a
+wide margin; the rate falls with volume, so using the top of the table is the
+conservative read.
+
+``exchange_per_share`` is Reg NMS Rule 610(c)'s access fee cap. The SEC cut it from
+0.003 to 0.001 in September 2024, but the compliance date has been pushed to
+**2026-11-02** and SIFMA was still asking for a further extension in May 2026. Today it
+is 0.003, so that is what is charged. See [ADR-0025] for the crossover this creates and
+for why the November date is a revisit trigger rather than something to preempt.
+
+[ADR-0025]: ../docs/decisions/0025-commission-is-modelled-per-plan.md
+
+"""
+
+SCHEDULES = {schedule.name: schedule for schedule in (FIXED, TIERED)}
+
+SCHEDULE = FIXED
+"""
+The plan every verdict is charged at, pinned the way the spread snapshot is.
+
+It stays ``FIXED`` until the account is actually switched, because a verdict priced on a
+plan the broker is not running is a verdict about a different account. [ADR-0025] records
+the switch and the revalidation it requires.
+
+"""
+
+# Retained under their old names because three modules and the verdict record read them.
+COMMISSION_PER_SHARE = SCHEDULE.per_share
+COMMISSION_MIN = SCHEDULE.minimum
+COMMISSION_MAX_PCT = SCHEDULE.max_pct
 
 
 class UncalibratedSymbolError(KeyError):
@@ -140,12 +275,33 @@ def split_factor(symbol: str, when: datetime) -> Decimal:
     return cumulative_factor(split_actions(symbol), when)
 
 
-def commission(real_shares: Decimal, notional: Decimal) -> Decimal:
+def commission(
+    real_shares: Decimal,
+    notional: Decimal,
+    schedule: CommissionSchedule = SCHEDULE,
+) -> Decimal:
     """
-    Return one side of an IB Pro fixed-tier US equity order.
+    Return one side of an IBKR Pro US equity order, on the pinned plan by default.
     """
-    fee = max(COMMISSION_MIN, COMMISSION_PER_SHARE * real_shares)
-    return min(fee, COMMISSION_MAX_PCT * notional)
+    return schedule.charge(real_shares, notional)
+
+
+def regulatory_fees(real_shares: Decimal, sale_value: Decimal) -> Decimal:
+    """
+    Return the pass-through charged once per round trip, on the sale.
+
+    Both plans pass these on, so they do not move the choice between them - but they are
+    the difference between a model that reproduces a measured trip and one that is a cent
+    light on every trade, and a cent is 0.05% of a round trip at this size.
+
+    The buy side carries only the CAT fee, three millionths of a dollar per share, which
+    rounds away against every other term and is left out rather than modelled to no
+    effect.
+
+    """
+    return (
+        SEC_FEE_RATE * sale_value + FINRA_TAF_PER_SHARE * real_shares + CAT_PER_SHARE * real_shares
+    )
 
 
 def round_trip_cost_r(
@@ -156,20 +312,24 @@ def round_trip_cost_r(
     opened_at: datetime,
     risk_amount: Decimal,
     bps_per_side: Decimal,
+    schedule: CommissionSchedule = SCHEDULE,
 ) -> Decimal:
     """
-    Return one round trip's cost in R: spread both ways plus commission both legs.
+    Return one round trip's cost in R.
+
+    Spread both ways, commission on both legs, and the regulatory pass-through once.
 
     Both commission legs are priced at the entry notional. The exit notional differs by
     the trade's own move, which touches only the 1% cap - never the minimum or the
-    per-share rate - and is far below the measurement error in the spread itself.
+    per-share rate - and is far below the measurement error in the spread itself. The
+    regulatory fee is charged on that same notional for the same reason.
 
     """
     notional = quantity * entry_price
     real_shares = quantity / split_factor(symbol, opened_at)
     spread = 2 * (bps_per_side / 10_000) * notional
-    fees = 2 * commission(real_shares, notional)
-    return (spread + fees) / risk_amount
+    fees = 2 * commission(real_shares, notional, schedule)
+    return (spread + fees + regulatory_fees(real_shares, notional)) / risk_amount
 
 
 def _from_measured(data: dict, percentile: str) -> dict[str, Decimal]:
@@ -222,12 +382,21 @@ class CostModel:
     bps_per_side: Mapping[str, Decimal]
     snapshot: str
     percentile: str
+    schedule: CommissionSchedule = SCHEDULE
+    """
+    The commission plan this model charges, defaulting to the pinned one.
+
+    Overridable so a plan change can be *measured* before it is made, which is what
+    [ADR-0025] required before the switch to Tiered.
+
+    """
 
     @classmethod
     def from_snapshot(
         cls,
         path: Path | None = None,
         percentile: str = PERCENTILE,
+        schedule: CommissionSchedule = SCHEDULE,
     ) -> CostModel:
         """
         Build the model from a snapshot file, defaulting to the pinned canonical one.
@@ -239,6 +408,7 @@ class CostModel:
             bps_per_side=reader(data, percentile),
             snapshot=resolved.name,
             percentile=percentile,
+            schedule=schedule,
         )
 
     def spread_bps_for(self, symbol: str) -> Decimal:
@@ -261,6 +431,7 @@ class CostModel:
             opened_at=trade.opened_at,  # type: ignore[attr-defined]
             risk_amount=trade.risk_amount,  # type: ignore[attr-defined]
             bps_per_side=self.spread_bps_for(symbol),
+            schedule=self.schedule,
         )
 
     def net_expectancy_for(self, symbol: str) -> Callable[[BacktestRunResult], Decimal]:
@@ -294,9 +465,5 @@ class CostModel:
             "snapshot": self.snapshot,
             "percentile": self.percentile,
             "bps_per_side": str(self.spread_bps_for(symbol)),
-            "commission": (
-                f"IB Pro fixed tier: max({COMMISSION_MIN}, {COMMISSION_PER_SHARE}/share) "
-                f"per order, capped at {COMMISSION_MAX_PCT * 100}% of notional, "
-                "split-corrected share counts"
-            ),
+            "commission": self.schedule.describe(),
         }
