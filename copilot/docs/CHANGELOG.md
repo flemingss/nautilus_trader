@@ -2,6 +2,29 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the pull that crossed venues
+
+### Fixed
+
+- **`--pull --dataset` can no longer write one venue's symbols into another's store.**
+  Found 2026-09-09 while repairing TLT: the flag overrode the per-symbol routing but not
+  the symbol selection, so every venue's symbols were fetched against the named dataset
+  and written under its directory. The store briefly held ten NYSE and ARCA names under
+  `XNAS.ITCH` and nothing complained; `patch` reporting *no source* is what exposed it.
+- **The reason nothing complained was a second defect.** Legs were grouped by venue, but
+  a leg writes to `store/<dataset>/<schema>/<start>_<end>.csv.zst` - a path naming the
+  dataset. Two venues resolving to one dataset produced two legs writing the same file,
+  the second silently replacing the first. Legs are now grouped by **dataset**, so the
+  collision cannot be expressed.
+- **The override is refused across venues, before any leg is priced**, because pricing is
+  metered and a refusal after it would cost money. The message names `--only` as the safe
+  form. Within one venue the flag still works: pulling a symbol's minute bars from the
+  consolidated feed rather than from its listing venue's is what it is for.
+- It matters for correctness rather than tidiness. A symbol's official closing auction
+  print exists only on the dataset of the venue that ran the auction, which is why the
+  routing exists at all - fetching XLF from `XNAS.ITCH` does not error, it just returns a
+  close that is not the official one.
+
 ## 2026-09-10, the operator's clock
 
 ### Changed
