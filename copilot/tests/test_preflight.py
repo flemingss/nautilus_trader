@@ -73,11 +73,30 @@ def test_a_stale_quote_fails() -> None:
     assert only(quote_checks({"AAPL=STK.SMART": edge}, now_ns=NOW)).passed
 
 
-def test_a_crossed_or_locked_quote_fails() -> None:
+def test_a_crossed_quote_fails() -> None:
+    """
+    A bid above the ask is pathological and is how a bracket lands on the wrong level.
+    """
     assert not only(
         quote_checks({"A=STK.SMART": sample(bid="100.12", ask="100.10")}, now_ns=NOW),
     ).passed
-    assert not only(
+
+
+def test_a_locked_quote_passes() -> None:
+    """
+    Locked is not crossed, and this test used to assert the opposite.
+
+    It was changed on 2026-09-10 because the behaviour it pinned was wrong, not because
+    it was inconvenient. The playbook's Before list asks for a *non-crossed* bid and
+    ask; a locked book, where the best bid equals the best offer, is a real two-sided
+    quote and is ordinary pre-market and around the open. The pre-open phase that
+    morning failed TLT on 80.96/80.96 at 09:02 ET, fifteen seconds before a delayed
+    sample of the same book passed at 80.96/80.97. Blocking the evening gate on that
+    would have taught the operator to ignore the gate, which is the one thing it cannot
+    afford.
+
+    """
+    assert only(
         quote_checks({"A=STK.SMART": sample(bid="100.10", ask="100.10")}, now_ns=NOW),
     ).passed
 

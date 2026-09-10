@@ -1,0 +1,73 @@
+{
+  "phase": "pre-open",
+  "run_at": "2026-09-10T13:02:09.628209+00:00",
+  "session": "2026-09-10",
+  "reference_price": "315.3400",
+  "forced": false,
+  "steps": [
+    {
+      "name": "quotes-realtime",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--market-data-type",
+        "REALTIME"
+      ],
+      "exit_code": 1,
+      "seconds": 40.71503676499998,
+      "skipped": false
+    },
+    {
+      "name": "quotes-delayed",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--market-data-type",
+        "DELAYED"
+      ],
+      "exit_code": 0,
+      "seconds": 40.39971474399999,
+      "skipped": false
+    },
+    {
+      "name": "alerting",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.alerting",
+        "--send-test",
+        "--severity",
+        "critical"
+      ],
+      "exit_code": 1,
+      "seconds": 0.04682528600000069,
+      "skipped": false
+    },
+    {
+      "name": "entitlements",
+      "command": [
+        "python",
+        "-m",
+        "copilot.calibration.entitlements"
+      ],
+      "exit_code": 0,
+      "seconds": 74.81271381599998,
+      "skipped": false
+    }
+  ],
+  "exit_code": 1
+}
