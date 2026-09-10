@@ -18,10 +18,14 @@ from pathlib import Path
 import pytest
 
 from copilot.calibration.cost_model import CANONICAL_SNAPSHOT
+from copilot.calibration.cost_model import FIXED
+from copilot.calibration.cost_model import SCHEDULE
 from copilot.calibration.cost_model import SNAPSHOT_DIR
+from copilot.calibration.cost_model import TIERED
 from copilot.calibration.cost_model import CostModel
 from copilot.calibration.cost_model import UncalibratedSymbolError
 from copilot.calibration.cost_model import commission
+from copilot.calibration.cost_model import regulatory_fees
 from copilot.calibration.cost_model import round_trip_cost_r
 from copilot.calibration.cost_model import split_factor
 from copilot.data.corporate_actions import ACTIONS
@@ -102,7 +106,11 @@ def test_early_aapl_commission_is_charged_on_real_shares() -> None:
         risk_amount=Decimal(1_000),
         bps_per_side=Decimal(0),
     )
-    assert cost == Decimal(2) / Decimal(1_000)
+    # 2.00 of commission plus the regulatory fee on the sale of 100 real shares at
+    # USD 70. Was exactly 2/1000 until ADR-0025 added the pass-through the broker
+    # actually charges; the shakedown's measured trips are what showed it missing.
+    expected = Decimal(2) + regulatory_fees(Decimal(100), Decimal(7_000))
+    assert cost == expected / Decimal(1_000)
 
 
 # --- the round trip -----------------------------------------------------------------
@@ -110,7 +118,8 @@ def test_early_aapl_commission_is_charged_on_real_shares() -> None:
 
 def test_round_trip_charges_spread_both_ways_and_commission_both_legs() -> None:
     # 10 shares at 100: notional 1,000. Spread 2 bps/side -> 2 * 0.0002 * 1000 = 0.40.
-    # Commission: minimum binds, 2 * 1.00. Total 2.40 against 100 risked = 0.024 R.
+    # Commission: minimum binds, 2 * 1.00. Plus the regulatory fee on the sale, which
+    # ADR-0025 added after the broker charged it on a measured trip.
     cost = round_trip_cost_r(
         symbol="TEST",
         quantity=Decimal(10),
@@ -119,7 +128,8 @@ def test_round_trip_charges_spread_both_ways_and_commission_both_legs() -> None:
         risk_amount=Decimal(100),
         bps_per_side=Decimal(2),
     )
-    assert cost == Decimal("0.024")
+    expected = Decimal("0.40") + Decimal(2) + regulatory_fees(Decimal(10), Decimal(1_000))
+    assert cost == expected / Decimal(100)
 
 
 # --- the model against the pinned snapshot ------------------------------------------
@@ -186,9 +196,17 @@ def test_the_net_objective_subtracts_exactly_the_round_trip_cost() -> None:
         percentile="p95",
     )
     objective = model.net_expectancy_for("TEST")
-    # One trade: gross R = 50/100 = 0.5; cost = 0.024 R (see the round-trip test).
+    # One trade: gross R = 50/100 = 0.5, less exactly what the round-trip test computes.
     result = BacktestRunResult(trades=(trade(),))
-    assert objective(result) == Decimal("0.5") - Decimal("0.024")
+    cost = round_trip_cost_r(
+        symbol="TEST",
+        quantity=Decimal(10),
+        entry_price=Decimal(100),
+        opened_at=datetime(2025, 6, 2, tzinfo=UTC),
+        risk_amount=Decimal(100),
+        bps_per_side=Decimal(2),
+    )
+    assert objective(result) == Decimal("0.5") - cost
 
 
 def test_the_net_objective_scores_an_empty_window_as_zero() -> None:
@@ -246,3 +264,137 @@ def test_every_price_adjustment_that_changes_shares_has_a_matching_factor() -> N
                 expected *= action.factor
         earliest = datetime(2005, 1, 3, tzinfo=UTC)
         assert split_factor(symbol, earliest) == expected, symbol
+
+
+# ------------------------------------------------------------- the commission plans
+
+
+def test_the_model_reproduces_the_measured_round_trips_to_the_cent() -> None:
+    """
+    The strongest test here, because the number came from the broker.
+
+    The 2026-09-10 shakedown ran two deliberate round trips on the paper account and the
+    statement charged USD 2.01 on one share and USD 2.02 on three. A bare
+    ``max(1.00, 0.005/share)`` both ways is 2.00 exactly, so the cent was the regulatory
+    pass-through the model did not have. It has it now, and both trips come back exact.
+
+    """
+    price = Decimal("322.52")
+    for shares, expected in ((Decimal(1), Decimal("2.01")), (Decimal(3), Decimal("2.02"))):
+        notional = shares * price
+        modelled = 2 * commission(shares, notional, FIXED) + regulatory_fees(shares, notional)
+        assert modelled.quantize(Decimal("0.01")) == expected, f"{shares} shares"
+
+
+def test_tiered_is_cheaper_at_this_accounts_order_sizes() -> None:
+    """
+    The whole economic case, at the sizes the charter actually trades.
+
+    USD 20 of risk on a stock near USD 320 with a stop a few dollars wide is two or
+    three shares. There the minimum is the entire cost and the two minimums differ
+    threefold.
+
+    """
+    for shares in (Decimal(1), Decimal(3), Decimal(9)):
+        notional = shares * Decimal("322.52")
+        assert commission(shares, notional, TIERED) < commission(shares, notional, FIXED)
+
+
+def test_fixed_becomes_cheaper_above_the_crossover() -> None:
+    """
+    Tiered is not simply Fixed with a lower minimum, and modelling it that way would
+    lie.
+
+    Tiered passes the exchange access fee through, so its all-in per-share rate is above
+    Fixed's flat one. Past roughly 150 shares the pass-through outweighs the lower
+    minimum and Fixed wins - which is why this account's sizing, not a preference,
+    decides the plan.
+
+    """
+    small = Decimal(100)
+    large = Decimal(1000)
+    price = Decimal("322.52")
+
+    assert commission(small, small * price, TIERED) < commission(small, small * price, FIXED)
+    assert commission(large, large * price, TIERED) > commission(large, large * price, FIXED)
+
+
+def test_the_pass_through_is_not_capped_with_the_commission() -> None:
+    """
+    IBKR's *maximum per order* caps what IBKR charges; an exchange fee is not IBKR's.
+
+    Folding the pass-through inside the cap would under-charge small high-priced orders,
+    which is exactly the shape this account trades.
+
+    """
+    shares = Decimal(100)
+    # A cap of 1% of USD 10 is 0.10, below the 0.35 minimum, so the cap genuinely binds.
+    # A first cut used USD 50, where the cap is 0.50 and never bit - the test passed its
+    # first assertion for the wrong reason.
+    notional = Decimal(10)
+
+    charged = commission(shares, notional, TIERED)
+    passed = (TIERED.exchange_per_share + TIERED.clearing_per_share) * shares
+
+    assert charged > TIERED.max_pct * notional
+    assert charged == TIERED.max_pct * notional + passed
+
+
+def test_fixed_passes_no_exchange_fee_through() -> None:
+    """
+    Its single per-share rate covers exchange and clearing; adding them would double-
+    count.
+    """
+    assert FIXED.exchange_per_share == 0
+    assert FIXED.clearing_per_share == 0
+
+
+def test_the_pinned_plan_is_the_one_the_account_is_on() -> None:
+    """
+    A verdict priced on a plan the broker is not running is about a different account.
+
+    The paper account is measurably on Fixed, confirmed by the round trips above. This
+    stays Fixed until the switch is actually made.
+
+    """
+    assert SCHEDULE is FIXED
+
+
+def test_the_access_fee_is_the_cap_in_force_today_not_the_one_adopted() -> None:
+    """
+    The SEC cut Rule 610(c)'s cap from 0.003 to 0.001 in September 2024 and the
+    compliance date has been pushed to 2026-11-02, with a further extension still being
+    asked for in May 2026.
+
+    Charging 0.001 today would price a rule that is not yet operative, and in the
+    direction that flatters Tiered.
+
+    """
+    assert TIERED.exchange_per_share == Decimal("0.003")
+
+
+def test_a_verdict_records_which_plan_priced_it() -> None:
+    """
+    Two plans means a bare R number is ambiguous; the record has to name its basis.
+    """
+    fixed = CostModel.from_snapshot().as_record("AAPL")["commission"]
+    tiered = CostModel.from_snapshot(schedule=TIERED).as_record("AAPL")["commission"]
+
+    assert "Fixed" in fixed
+    assert "Tiered" in tiered
+    assert "passed through" in tiered
+    assert "passed through" not in fixed
+
+
+def test_the_regulatory_fee_is_charged_once_not_per_leg() -> None:
+    """
+    SEC and TAF fees fall on the sale.
+
+    Charging them both ways would double them.
+
+    """
+    shares, notional = Decimal(100), Decimal(32252)
+    once = regulatory_fees(shares, notional)
+
+    assert once > 0
+    assert regulatory_fees(shares, notional) == once

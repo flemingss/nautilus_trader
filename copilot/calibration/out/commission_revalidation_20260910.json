@@ -1,0 +1,236 @@
+{
+  "plans": {
+    "fixed": "IBKR Pro Fixed: max(1.00, 0.005/share) per order, capped at 1.00% of notional, plus the regulatory fee on the sale, split-corrected share counts",
+    "tiered": "IBKR Pro Tiered: max(0.35, 0.0035/share) per order, capped at 1.00% of notional, plus 0.0032/share exchange and clearing passed through, plus the regulatory fee on the sale, split-corrected share counts"
+  },
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long",
+      "symbol": "AAPL",
+      "timing": "signal_close",
+      "fixed": {
+        "folds": 31,
+        "passed": 16,
+        "majority": true,
+        "mean_r": "0.046696",
+        "trades": 469
+      },
+      "tiered": {
+        "folds": 31,
+        "passed": 16,
+        "majority": true,
+        "mean_r": "0.046574",
+        "trades": 469
+      }
+    },
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "symbol": "AAPL",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 30,
+        "passed": 20,
+        "majority": true,
+        "mean_r": "0.101492",
+        "trades": 401
+      },
+      "tiered": {
+        "folds": 30,
+        "passed": 20,
+        "majority": true,
+        "mean_r": "0.101366",
+        "trades": 401
+      }
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "symbol": "EEM",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 12,
+        "passed": 4,
+        "majority": false,
+        "mean_r": "-0.111429",
+        "trades": 206
+      },
+      "tiered": {
+        "folds": 12,
+        "passed": 4,
+        "majority": false,
+        "mean_r": "-0.115129",
+        "trades": 206
+      }
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "symbol": "GLDM",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 10,
+        "passed": 4,
+        "majority": false,
+        "mean_r": "0.028650",
+        "trades": 127
+      },
+      "tiered": {
+        "folds": 10,
+        "passed": 3,
+        "majority": false,
+        "mean_r": "0.019965",
+        "trades": 127
+      }
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "symbol": "HYG",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 12,
+        "passed": 3,
+        "majority": false,
+        "mean_r": "-0.135946",
+        "trades": 183
+      },
+      "tiered": {
+        "folds": 12,
+        "passed": 3,
+        "majority": false,
+        "mean_r": "-0.142229",
+        "trades": 183
+      }
+    },
+    {
+      "activation": "msft-gap-fade-long",
+      "symbol": "MSFT",
+      "timing": "signal_close",
+      "fixed": {
+        "folds": 31,
+        "passed": 20,
+        "majority": true,
+        "mean_r": "0.085984",
+        "trades": 444
+      },
+      "tiered": {
+        "folds": 31,
+        "passed": 20,
+        "majority": true,
+        "mean_r": "0.082996",
+        "trades": 444
+      }
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "symbol": "MSFT",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 31,
+        "passed": 17,
+        "majority": true,
+        "mean_r": "0.062593",
+        "trades": 375
+      },
+      "tiered": {
+        "folds": 31,
+        "passed": 17,
+        "majority": true,
+        "mean_r": "0.059699",
+        "trades": 375
+      }
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "symbol": "SCHX",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 12,
+        "passed": 9,
+        "majority": true,
+        "mean_r": "0.046140",
+        "trades": 175
+      },
+      "tiered": {
+        "folds": 12,
+        "passed": 9,
+        "majority": true,
+        "mean_r": "0.043317",
+        "trades": 175
+      }
+    },
+    {
+      "activation": "spy-gap-fade-long",
+      "symbol": "SPY",
+      "timing": "signal_close",
+      "fixed": {
+        "folds": 30,
+        "passed": 17,
+        "majority": true,
+        "mean_r": "0.048213",
+        "trades": 490
+      },
+      "tiered": {
+        "folds": 30,
+        "passed": 16,
+        "majority": true,
+        "mean_r": "0.047145",
+        "trades": 490
+      }
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "symbol": "SPY",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 31,
+        "passed": 19,
+        "majority": true,
+        "mean_r": "0.051363",
+        "trades": 439
+      },
+      "tiered": {
+        "folds": 31,
+        "passed": 19,
+        "majority": true,
+        "mean_r": "0.050259",
+        "trades": 439
+      }
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "symbol": "TLT",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 11,
+        "passed": 2,
+        "majority": false,
+        "mean_r": "-0.050358",
+        "trades": 170
+      },
+      "tiered": {
+        "folds": 11,
+        "passed": 2,
+        "majority": false,
+        "mean_r": "-0.052114",
+        "trades": 170
+      }
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "symbol": "XLF",
+      "timing": "next_close",
+      "fixed": {
+        "folds": 7,
+        "passed": 3,
+        "majority": false,
+        "mean_r": "0.022186",
+        "trades": 94
+      },
+      "tiered": {
+        "folds": 7,
+        "passed": 3,
+        "majority": false,
+        "mean_r": "0.017964",
+        "trades": 94
+      }
+    }
+  ]
+}
