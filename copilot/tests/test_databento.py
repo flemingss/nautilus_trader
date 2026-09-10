@@ -15,6 +15,7 @@ it was written for.
 from __future__ import annotations
 
 import argparse
+import inspect
 from datetime import UTC
 from datetime import date
 from datetime import datetime
@@ -27,9 +28,12 @@ from copilot.data.databento import DatabentoClient
 from copilot.data.databento import DatabentoError
 from copilot.data.databento import Minute
 from copilot.data.databento import _cost
+from copilot.data.databento import _pull
 from copilot.data.databento import _symbol_for
 from copilot.data.databento import _wanted_symbols
 from copilot.data.databento import normalize_minute
+from copilot.data.databento import override_refusal
+from copilot.data.databento import pull_legs
 from copilot.data.databento_audit import audit_symbol
 from copilot.data.databento_probe import measure
 
@@ -430,3 +434,166 @@ class TestPullScope:
 
         _cost(Recorder(), ["SCHX"], "2018-05-01", "2026-09-03")
         assert seen == ["ohlcv-1m"]
+
+
+# ------------------------------------------------------------------ pull leg routing
+
+
+HELD_MULTI_VENUE = {
+    "AAPL": ("XNAS", None),
+    "MSFT": ("XNAS", None),
+    "SPY": ("ARCX", None),
+    "XLF": ("ARCX", None),
+    "HYG": ("XNYS", None),
+}
+
+
+def test_symbols_route_to_their_listing_venues_dataset() -> None:
+    routed, unroutable = pull_legs(HELD_MULTI_VENUE)
+
+    assert routed == {
+        "XNAS.ITCH": ["AAPL", "MSFT"],
+        "ARCX.PILLAR": ["SPY", "XLF"],
+        "XNYS.PILLAR": ["HYG"],
+    }
+    assert unroutable == {}
+
+
+def test_two_venues_on_one_dataset_become_one_leg() -> None:
+    """
+    The regression for legs overwriting each other.
+
+    A pull writes each leg to ``store/<dataset>/<schema>/<start>_<end>.csv.zst`` - a path
+    naming the dataset, not the venue. Grouped by venue, two venues resolving to one
+    dataset produced two legs writing the same file and the second silently replaced the
+    first. Grouped by dataset the collision cannot be expressed.
+
+    """
+    routed, _ = pull_legs(HELD_MULTI_VENUE)
+    paths = [f"{dataset}/ohlcv-1m/a_b.csv.zst" for dataset in routed]
+
+    assert len(paths) == len(set(paths)), "two legs would write the same file"
+
+
+def test_a_venue_with_no_listing_dataset_is_reported_not_forced() -> None:
+    """
+    Silently sending it somewhere is how the wrong venue's store gets polluted.
+    """
+    routed, unroutable = pull_legs({"FOO": ("XLON", None), "AAPL": ("XNAS", None)})
+
+    assert unroutable == {"XLON": ["FOO"]}
+    assert "FOO" not in [s for group in routed.values() for s in group]
+
+
+def test_pull_legs_takes_no_override() -> None:
+    """
+    The regression for the first cut of this fix.
+
+    Accepting an override here collapsed every symbol onto one dataset, which made the
+    caller's "does this span more than one venue" test unanswerable - after the collapse
+    it always spans one - and forced symbols with no listing dataset onto a dataset they
+    are not on. The decision belongs to the caller, before the collapse.
+
+    """
+    assert "override" not in inspect.signature(pull_legs).parameters
+
+
+class _RefusingClient:
+    """
+    A client that fails the test if the pull ever reaches it.
+    """
+
+    def cost(self, *_args: object, **_kwargs: object) -> float:
+        msg = "priced a leg after the pull should have refused"
+        raise AssertionError(msg)
+
+    def fetch_to_file(self, *_args: object, **_kwargs: object) -> int:
+        msg = "fetched after the pull should have refused"
+        raise AssertionError(msg)
+
+
+def _pull_args(**overrides: object) -> argparse.Namespace:
+    base = {
+        "catalog": "unused",
+        "only": None,
+        "schema": "ohlcv-1m",
+        "store": "unused",
+        "budget": 25.0,
+        "spend": False,
+        "start": "2018-05-01",
+        "end": "2018-06-01",
+        "dataset": None,
+    }
+    return argparse.Namespace(**{**base, **overrides})
+
+
+def test_a_dataset_override_across_venues_refuses_before_spending(monkeypatch, capsys) -> None:
+    """
+    The regression for the day ten NYSE names were written into the Nasdaq store.
+
+    ``--dataset XNAS.ITCH`` overrode the routing but not the symbol selection, so every
+    venue's symbols were fetched against the named dataset and written under its
+    directory, one leg replacing the last. Nothing complained; ``patch`` reporting *no
+    source* is what exposed it. The refusal has to come before any leg is priced,
+    because pricing is metered.
+
+    """
+    monkeypatch.setattr("copilot.data.databento.catalog_series", lambda _c: HELD_MULTI_VENUE)
+
+    code = _pull(_RefusingClient(), _pull_args(dataset="XNAS.ITCH"))
+
+    assert code == 2
+    err = capsys.readouterr().err
+    assert "refusing" in err
+    assert "--only" in err, "the refusal has to name the safe form"
+
+
+def test_a_dataset_override_within_one_venue_is_allowed(monkeypatch, capsys) -> None:
+    """
+    The flag has a legitimate use: one venue's symbols, a different dataset.
+
+    Pulling AAPL's minute bars from the consolidated feed rather than from Nasdaq's own
+    is a real choice, and refusing it would make the fix an obstacle rather than a guard.
+
+    """
+    monkeypatch.setattr(
+        "copilot.data.databento.catalog_series",
+        lambda _c: {"AAPL": ("XNAS", None), "MSFT": ("XNAS", None)},
+    )
+    priced: list[str] = []
+
+    class _Priced(_RefusingClient):
+        def cost(self, symbols, _schema, _start, _end, dataset):
+            priced.append(dataset)
+            return 1.0
+
+    code = _pull(_Priced(), _pull_args(dataset="EQUS.MINI"))
+
+    assert code == 0, "priced only, since --spend was not passed"
+    assert priced == ["EQUS.MINI"]
+    assert "Pass --spend" in capsys.readouterr().err
+
+
+def test_the_guard_permits_a_single_venue_and_refuses_several() -> None:
+    """
+    The decision on its own, with no client, catalog or captured stream.
+    """
+    one = {"XNAS.ITCH": ["AAPL", "MSFT"]}
+    several = {"XNAS.ITCH": ["AAPL"], "ARCX.PILLAR": ["SPY"]}
+
+    assert override_refusal(one, {}, "EQUS.MINI") is None
+    assert override_refusal(several, {}, "XNAS.ITCH") is not None
+
+
+def test_an_unroutable_venue_counts_toward_the_spread() -> None:
+    """
+    A symbol with no listing dataset is not a free pass for the override.
+
+    It routes nowhere, so forcing it onto the named dataset sends it to a venue it is
+    not listed on - the same failure, reached by a different path.
+
+    """
+    refusal = override_refusal({"XNAS.ITCH": ["AAPL"]}, {"XLON": ["FOO"]}, "XNAS.ITCH")
+
+    assert refusal is not None
+    assert "XLON" in refusal

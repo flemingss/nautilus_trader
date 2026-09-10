@@ -79,6 +79,7 @@ import base64
 import json
 import os
 import sys
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
@@ -649,36 +650,123 @@ def _wanted_symbols(args: argparse.Namespace) -> set[str] | None:
     return {token.strip().upper() for token in args.only.split(",") if token.strip()}
 
 
+def pull_legs(
+    held: Mapping[str, tuple[str, object]],
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    """
+    Group catalog symbols into one leg per **dataset**, plus what cannot be routed.
+
+    Grouping by dataset rather than by venue is what stops legs colliding. A pull writes
+    each leg to ``store/<dataset>/<schema>/<start>_<end>.csv.zst``, a path that names the
+    dataset and not the venue - so two venues resolving to one dataset produced two legs
+    writing the same file, the second silently overwriting the first. Found 2026-09-09
+    when ``--dataset XNAS.ITCH`` put ten NYSE and ARCA names into the Nasdaq store and
+    nothing complained; ``patch`` reporting *no source* is what exposed it.
+
+    This is the **natural** routing and takes no override, deliberately. A first cut
+    accepted one and collapsed every symbol onto it, which made the caller's "does this
+    span more than one venue" check unanswerable - after the collapse it always spans
+    one - and forced symbols with no listing dataset at all onto a dataset they are not
+    on. The override belongs to the caller, which has to decide whether it is allowed
+    before it is applied.
+
+    """
+    routed: dict[str, list[str]] = {}
+    unroutable: dict[str, list[str]] = {}
+    for symbol, (venue, _) in held.items():
+        dataset = LISTING_DATASETS.get(venue)
+        if dataset is None:
+            unroutable.setdefault(venue, []).append(symbol)
+            continue
+        routed.setdefault(dataset, []).append(symbol)
+    return (
+        {d: sorted(s) for d, s in routed.items()},
+        {v: sorted(s) for v, s in unroutable.items()},
+    )
+
+
+def override_refusal(
+    routed: Mapping[str, list[str]],
+    unroutable: Mapping[str, list[str]],
+    override: str,
+) -> str | None:
+    """
+    Say why ``--dataset`` must not be applied to this selection, or None if it may.
+
+    One dataset in the natural routing means one venue's symbols, and forcing them onto
+    a different dataset is a real choice - one symbol's minute bars from the consolidated
+    feed rather than from its listing venue's is exactly what the flag is for.
+
+    More than one means the override would send symbols to a venue they are not listed
+    on. That is a correctness failure rather than an untidy one: a symbol's official
+    closing auction print exists only on the dataset of the venue that ran the auction,
+    which is the whole reason the routing exists.
+
+    Returns the message rather than printing or raising, so the guard can be tested
+    without a client, a catalog or a captured stream.
+
+    """
+    spread = sorted(routed) + sorted(unroutable)
+    if len(spread) <= 1:
+        return None
+    return (
+        f"refusing: --dataset {override} would send symbols that route to "
+        f"{len(spread)} different datasets ({', '.join(spread)}) into one store. A "
+        f"symbol's official closing auction print exists only on the dataset of the "
+        f"venue that ran the auction, so the rest would be fetched against a venue they "
+        f"are not listed on and written under the named dataset's directory. Name one "
+        f"venue's symbols with --only, or drop --dataset and let each symbol route itself."
+    )
+
+
+def _selected_series(args: argparse.Namespace) -> dict[str, tuple[str, object]]:
+    """
+    Return the catalog series a pull covers, after ``--only``, naming what it dropped.
+
+    A symbol named in ``--only`` that the catalog does not hold is reported rather than
+    silently ignored: the common reason to name symbols is onboarding, and a typo there
+    would otherwise look like a successful pull of nothing.
+
+    """
+    held = catalog_series(args.catalog)
+    wanted = _wanted_symbols(args)
+    if wanted is None:
+        return held
+    missing = sorted(wanted - held.keys())
+    if missing:
+        print(f"  not in the catalog, so not priced: {', '.join(missing)}")
+    return {s: v for s, v in held.items() if s in wanted}
+
+
 def _pull(client: DatabentoClient, args: argparse.Namespace) -> int:
     """
     Buy one schema over the catalog's universe, routed per listing venue.
+
+    ``--dataset`` is refused when the selection spans more than one listing venue.
 
     Prints the metered price of every leg before buying any of it, because a bundle is
     where a mistake compounds: four legs at the wrong schema is four times the surprise.
 
     """
-    held = catalog_series(args.catalog)
-    wanted = _wanted_symbols(args)
-    if wanted is not None:
-        missing = sorted(wanted - held.keys())
-        if missing:
-            print(f"  not in the catalog, so not priced: {', '.join(missing)}")
-        held = {s: v for s, v in held.items() if s in wanted}
-        if not held:
-            print("  nothing to pull")
-            return 0
-    by_venue: dict[str, list[str]] = {}
-    for symbol, (venue, _) in held.items():
-        by_venue.setdefault(venue, []).append(symbol)
+    held = _selected_series(args)
+    if not held:
+        print("  nothing to pull")
+        return 0
+    routed, unroutable = pull_legs(held)
+    for venue, symbols in sorted(unroutable.items()):
+        print(f"  no listing dataset for venue {venue}; skipped {symbols}")
+
+    if args.dataset:
+        refusal = override_refusal(routed, unroutable, args.dataset)
+        if refusal is not None:
+            print(f"\n  {refusal}", file=sys.stderr)
+            return 2
+        routed = {args.dataset: sorted(s for group in routed.values() for s in group)}
 
     legs = []
-    for venue, symbols in sorted(by_venue.items()):
-        dataset = args.dataset or LISTING_DATASETS.get(venue)
-        if dataset is None:
-            print(f"  no listing dataset for venue {venue}; skipped {sorted(symbols)}")
-            continue
-        price = client.cost(sorted(symbols), args.schema, args.start, args.end, dataset)
-        legs.append((dataset, sorted(symbols), price))
+    for dataset, symbols in sorted(routed.items()):
+        price = client.cost(symbols, args.schema, args.start, args.end, dataset)
+        legs.append((dataset, symbols, price))
         print(f"  {dataset:<14}{len(symbols):>3} symbols  {args.schema:<10}${price:>9.4f}")
 
     total = sum(price for _, _, price in legs)
