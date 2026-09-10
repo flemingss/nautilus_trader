@@ -25,6 +25,8 @@ from dataclasses import dataclass
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from copilot.validation.evidence import Evidence
+from copilot.validation.evidence import assess
 from copilot.validation.insample import DEFAULT_CLIFF_DROP
 from copilot.validation.insample import DEFAULT_MIN_TRADES
 from copilot.validation.insample import expectancy
@@ -53,13 +55,57 @@ class HoldoutResult:
     holdout_bars: int
     purge_bars: int
     warmup_bars: int
+    evidence: Evidence
+    """
+    How much the score is worth, which the score alone cannot say.
+    """
+    threshold: Decimal = Decimal(0)
+    """
+    The bar the score and its interval had to clear, predeclared by the activation.
+    """
+
+    @property
+    def cleared_threshold(self) -> bool:
+        """
+        Whether the point estimate beat the bar.
+
+        The whole of the old test, kept because it is still a necessary condition and
+        because the record should say which of the two conditions a result failed.
+
+        """
+        return self.fold.passed
+
+    @property
+    def verdict(self) -> str:
+        """
+        ``pass``, ``insufficient_evidence`` or ``fail`` - the charter's three outcomes.
+
+        Passing requires both a score above the bar **and** an interval that stays above
+        it. A score above the bar whose interval straddles it is not a pass and is not a
+        failure either: it is a measurement that did not resolve, and calling it either
+        one throws away what was actually learned. [ADR-0024] records why the middle
+        outcome exists.
+
+        [ADR-0024]: ../docs/decisions/0024-a-holdout-pass-needs-an-interval.md
+
+        """
+        if not self.cleared_threshold:
+            return "fail"
+        if not self.evidence.clears(self.threshold):
+            return "insufficient_evidence"
+        return "pass"
 
     @property
     def passed(self) -> bool:
         """
-        Whether the frozen candidate cleared the fold threshold on the holdout.
+        Whether the holdout was cleared outright.
+
+        Narrower than it was before ADR-0024: this was ``score > 0``, which passed the
+        AAPL next-close premise on +0.035 R over 111 trades at a third of a standard
+        error from zero. It now also requires the interval to clear the bar.
+
         """
-        return self.fold.passed
+        return self.verdict == "pass"
 
     @property
     def score(self) -> Decimal:
@@ -158,6 +204,8 @@ def spend_holdout(
         holdout_bars=len(holdout),
         purge_bars=purge_bars,
         warmup_bars=warmup_bars,
+        evidence=assess(result.test_trade_details),
+        threshold=threshold,
     )
 
 

@@ -10,6 +10,7 @@ whatever a real engine happens to produce.
 
 from __future__ import annotations
 
+import random
 from datetime import timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -326,3 +327,124 @@ def test_a_voided_record_does_not_count_as_spent(tmp_path: Path):
     (tmp_path / "voided" / f"{activation.name}.json").write_text("{}")
     assert not is_spent(activation.name, tmp_path)
     assert refusal(activation, tmp_path) is None
+
+
+# ------------------------------------------------------------------- the verdict
+
+
+def noisy_replay(window, _params) -> BacktestRunResult:
+    """
+    A thin positive mean buried in noise - the AAPL next-close shape.
+
+    Seeded so the test is deterministic, and irregular on purpose: a strictly
+    alternating win/loss series is periodic, so every block of even length carries the
+    same mean and the bootstrap correctly reports a zero-width interval. Real returns
+    are not periodic, and a fixture that is would test the wrong thing.
+
+    The seed is chosen so the *scored* slice means about +0.027 R - thin, positive, and
+    swamped by a standard error near 0.1. That is the AAPL number to within rounding,
+    and it is the case the old rule passed.
+
+    """
+    rng = random.Random(30)  # noqa: S311 - deterministic fixture, not a secret
+    trades = [trade_at(b.closed_at, str(round(rng.gauss(0.03, 1.0), 6))) for b in window]
+    return BacktestRunResult(trades=tuple(trades))
+
+
+def test_a_thin_positive_score_is_insufficient_evidence_not_a_pass():
+    """
+    The regression for the whole change.
+
+    Before ADR-0024 this returned ``passed=True`` on a mean the sample cannot support,
+    which is how +0.035 R over 111 trades spent AAPL's holdout.
+
+    """
+    result = spend_holdout(
+        carved_history(400, 80),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=noisy_replay,
+        min_trades=1,
+    )
+
+    assert result.score > 0, "the point estimate still clears the bar"
+    assert result.cleared_threshold is True
+    assert result.verdict == "insufficient_evidence"
+    assert result.passed is False
+
+
+def test_a_clean_edge_still_passes():
+    """
+    The gate has to be passable, or it is a refusal dressed as a standard.
+    """
+    result = spend_holdout(
+        carved_history(100, 20),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=winning_replay,
+        min_trades=1,
+    )
+
+    assert result.verdict == "pass"
+    assert result.passed is True
+
+
+def test_a_negative_score_fails_rather_than_being_called_unresolved():
+    """
+    The middle outcome must not swallow a result that did resolve, downward.
+    """
+
+    def losing_replay(window, _params) -> BacktestRunResult:
+        return BacktestRunResult(trades=tuple(trade_at(b.closed_at, "-0.5") for b in window))
+
+    result = spend_holdout(
+        carved_history(100, 20),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=losing_replay,
+        min_trades=1,
+    )
+
+    assert result.verdict == "fail"
+    assert result.cleared_threshold is False
+
+
+def test_a_predeclared_bar_above_the_score_fails_it():
+    """
+    The one knob raises the bar; it cannot lower it.
+    """
+    result = spend_holdout(
+        carved_history(100, 20),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=winning_replay,
+        min_trades=1,
+        threshold=Decimal("2.0"),
+    )
+
+    assert result.verdict == "fail"
+    assert result.threshold == Decimal("2.0")
+
+
+def test_the_record_carries_the_interval_and_not_only_the_verdict():
+    """
+    A reader has to be able to see how close it was, which a bit cannot say.
+    """
+    result = spend_holdout(
+        carved_history(400, 80),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=noisy_replay,
+        min_trades=1,
+    )
+    evidence = result.evidence
+
+    assert evidence.trades == result.trades
+    assert evidence.lower_r < result.score < evidence.upper_r
+    assert evidence.effective_trades <= evidence.trades
+    assert evidence.standard_error_r > 0
