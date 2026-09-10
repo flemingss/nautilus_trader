@@ -2,6 +2,24 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the full-day battery
+
+### Answered
+
+- **The pre-open quote check passes before the bell.** Open since 2026-09-04, when the
+  question was whether IB's delayed feed quotes pre-market at all - if it did not, the
+  evening gate would block every night and the check would train the operator to ignore
+  it. Measured at 09:02 ET: **15 of 15** delayed, 14 of 15 realtime. The one failure was a
+  finding rather than a fault - TLT quoted 80.96/80.96, a locked book, and the gate
+  demanded a bid strictly below the ask where the playbook asks only for non-crossed.
+- **The broker's tape corroborates the Databento-derived spread coefficient.** Fifty
+  minutes inside the execution window: AAPL median 1.2491 bps per side over 21,249
+  samples, MSFT 1.7374, SPY 0.1320. The model charges 1.9107, above the median and below
+  the p95 - conservative without being punitive.
+- **The commission structure is confirmed empirically.** A one-share round trip cost 2.02
+  USD in commission, the per-order minimum charged twice, so the account is still on IB
+  Pro Fixed.
+
 ## 2026-09-09, closing the battery's last gap
 
 ### Built

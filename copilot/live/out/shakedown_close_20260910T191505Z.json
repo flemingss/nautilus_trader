@@ -1,0 +1,39 @@
+{
+  "phase": "close",
+  "run_at": "2026-09-10T19:15:05.864344+00:00",
+  "session": "2026-09-10",
+  "reference_price": "315.3400",
+  "forced": false,
+  "steps": [
+    {
+      "name": "spread-close",
+      "command": [
+        "python",
+        "-m",
+        "copilot.calibration.spread_snapshot"
+      ],
+      "exit_code": 0,
+      "seconds": 911.7243125120003,
+      "skipped": false
+    },
+    {
+      "name": "sweep",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.cancel_working",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--all"
+      ],
+      "exit_code": 0,
+      "seconds": 12.522432197001763,
+      "skipped": false
+    }
+  ],
+  "exit_code": 0
+}

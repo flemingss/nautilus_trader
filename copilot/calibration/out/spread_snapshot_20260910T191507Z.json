@@ -1,0 +1,71 @@
+{
+  "measured_at": "2026-09-10T19:15:07.463187+00:00",
+  "finished_at": "2026-09-10T19:30:17.430076+00:00",
+  "duration_seconds": 910.0,
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "market_data_type": "REALTIME",
+  "delayed_caveat": false,
+  "partial": false,
+  "symbols": [
+    {
+      "instrument_id": "AAPL=STK.SMART",
+      "samples": 4076,
+      "rejected": 103,
+      "full_spread_bps": {
+        "median": 0.9215,
+        "mean": 0.9492,
+        "p25": 0.6146,
+        "p75": 1.2282,
+        "p95": 1.5369,
+        "min": 0.3068,
+        "max": 4.6101
+      },
+      "per_side_bps": {
+        "median": 0.4607,
+        "p95": 0.7684
+      },
+      "incumbent_per_side_bps": 5.0,
+      "incumbent_overstatement_x": 10.85
+    },
+    {
+      "instrument_id": "MSFT=STK.SMART",
+      "samples": 2227,
+      "rejected": 5,
+      "full_spread_bps": {
+        "median": 1.4259,
+        "mean": 1.4659,
+        "p25": 1.0188,
+        "p75": 1.8341,
+        "p95": 2.6483,
+        "min": 0.2037,
+        "max": 5.0936
+      },
+      "per_side_bps": {
+        "median": 0.713,
+        "p95": 1.3241
+      },
+      "incumbent_per_side_bps": 5.0,
+      "incumbent_overstatement_x": 7.01
+    },
+    {
+      "instrument_id": "SPY=STK.SMART",
+      "samples": 5781,
+      "rejected": 238,
+      "full_spread_bps": {
+        "median": 0.264,
+        "mean": 0.2286,
+        "p25": 0.132,
+        "p75": 0.264,
+        "p95": 0.396,
+        "min": 0.1319,
+        "max": 3.5622
+      },
+      "per_side_bps": {
+        "median": 0.132,
+        "p95": 0.198
+      },
+      "incumbent_per_side_bps": 5.0,
+      "incumbent_overstatement_x": 37.89
+    }
+  ]
+}
