@@ -1,0 +1,21 @@
+{
+  "phase": "open",
+  "run_at": "2026-09-10T13:30:05.647576+00:00",
+  "session": "2026-09-10",
+  "reference_price": "315.3400",
+  "forced": false,
+  "steps": [
+    {
+      "name": "spread-window",
+      "command": [
+        "python",
+        "-m",
+        "copilot.calibration.spread_snapshot"
+      ],
+      "exit_code": 0,
+      "seconds": 3010.678190132,
+      "skipped": false
+    }
+  ],
+  "exit_code": 0
+}

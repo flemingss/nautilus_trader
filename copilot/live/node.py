@@ -49,6 +49,8 @@ paper session that decides anything is an actor publishing the catalog's own bar
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
 from typing import Protocol
 
 from copilot.live.session import PaperSession
@@ -180,6 +182,46 @@ def build_paper_node(
     return node, risk_engine
 
 
+CANCEL_DEADLINE_SECS = 120
+"""
+How long to wait for the broker's cancellation acknowledgements before giving up.
+
+Measured, not guessed. On 2026-09-10 a stranded order was swept three times: the
+acknowledgement had not arrived 30s after the cancel, nor 90s after a second one, and the
+order was gone by the next connection. The old fixed 30s window therefore reported *the
+cancel was refused* for an order the broker did cancel, which is the worst kind of wrong -
+it sends the operator to the TWS order list to fix something that is already fixed, and it
+teaches them that the probe's FAIL means nothing.
+
+Waiting longer is not the whole of the fix. A fixed sleep cannot tell slow from refused at
+any length, which is why :func:`wait_for_settlement` polls and returns whether it settled.
+
+"""
+
+
+async def wait_for_settlement(
+    settled: Callable[[], bool],
+    *,
+    deadline_secs: int,
+    poll_secs: float = 1.0,
+) -> bool:
+    """
+    Wait until ``settled`` is true, and report whether it became true in time.
+
+    Returns as soon as it does, so the common case costs one poll rather than the whole
+    deadline. A ``False`` return means the deadline genuinely passed with the condition
+    unmet - which is the distinction a fixed sleep cannot draw.
+
+    """
+    deadline = asyncio.get_running_loop().time() + deadline_secs
+    while True:
+        if settled():
+            return True
+        if asyncio.get_running_loop().time() >= deadline:
+            return False
+        await asyncio.sleep(poll_secs)
+
+
 def apply_order_switch(risk_engine: SupportsTradingState, *, orders_enabled: bool) -> None:
     """
     Halt the risk engine unless orders are explicitly enabled.
@@ -196,10 +238,12 @@ def apply_order_switch(risk_engine: SupportsTradingState, *, orders_enabled: boo
 
 
 __all__ = [
+    "CANCEL_DEADLINE_SECS",
     "CONNECTION_TIMEOUT_SECS",
     "NODE_NAME",
     "TRADER_ID",
     "SupportsTradingState",
     "apply_order_switch",
     "build_paper_node",
+    "wait_for_settlement",
 ]

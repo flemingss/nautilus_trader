@@ -1,0 +1,65 @@
+{
+  "phase": "order-window",
+  "run_at": "2026-09-10T15:21:57.565406+00:00",
+  "session": "2026-09-10",
+  "reference_price": "315.3400",
+  "forced": false,
+  "steps": [
+    {
+      "name": "controlled-order",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.controlled_order",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--reference-price",
+        "315.3400"
+      ],
+      "exit_code": 0,
+      "seconds": 40.74263654199967,
+      "skipped": false
+    },
+    {
+      "name": "order-types",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.order_types",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--reference-price",
+        "315.3400"
+      ],
+      "exit_code": 0,
+      "seconds": 55.75835696499962,
+      "skipped": false
+    },
+    {
+      "name": "round-trip",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.supervised_session",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 0,
+      "seconds": 100.67494245499984,
+      "skipped": false
+    }
+  ],
+  "exit_code": 0
+}

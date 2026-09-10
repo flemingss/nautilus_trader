@@ -30,6 +30,19 @@ A failure in phase 3 with a success in phase 2 is a real and useful verdict: ado
 works, remote cancel does not, and the operator cancels by hand in TWS. The record says
 which phase failed rather than collapsing them into one bit.
 
+**Phase 3 waits on a deadline, not a fixed sleep.** On 2026-09-10 it reported the cancel
+refused after 30s for an order the broker had in fact cancelled. A verdict of *refused*
+that means *not yet* is worse than no verdict, because it sends the operator to TWS to fix
+what is already fixed. The phase now ends the moment the acknowledgement lands and fails
+only when `CANCEL_DEADLINE_SECS` genuinely passes without one.
+
+**That does not make a FAIL here trustworthy yet.** The same day's evidence points at the
+acknowledgement never arriving for an adopted order, from the originating client id or a
+foreign one, while the cancel takes effect regardless - and no deadline fixes a verdict
+that waits for an event the broker does not send. Confirming the sweep against the
+broker's own order list, on a second connection, is the open roadmap row. Until it lands,
+read a phase 3 FAIL as *unconfirmed*, and confirm it in TWS.
+
 What this does not prove
 ------------------------
 The stranded order is acknowledged and working at TWS. An order held unsent by a TWS
@@ -46,6 +59,7 @@ import argparse
 import asyncio
 import json
 import os
+from collections.abc import Callable
 from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
@@ -55,7 +69,9 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
+from copilot.live.node import wait_for_settlement
 from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
@@ -293,9 +309,22 @@ class RecoverAndSweep(Strategy):
         self.outcome.left_open = [str(o.client_order_id) for o in self.cache.orders_open()]
 
 
-async def _run_node(session: PaperSession, strategy: Strategy, settle_secs: int, **kwargs: Any):
+async def _run_node(
+    session: PaperSession,
+    strategy: Strategy,
+    settle_secs: int,
+    *,
+    settled: Callable[[], bool] | None = None,
+    **kwargs: Any,
+):
     """
     Run one node for a bounded window and stop it cleanly.
+
+    ``settled`` shortens the window once the phase has what it came for. The strand phase
+    passes none, because leaving the order working is the point and there is nothing to
+    wait for; the sweep phase passes one, because a cancel that is merely slow must not
+    be recorded as a cancel that was refused.
+
     """
     node, _risk_engine = build_paper_node(
         session,
@@ -306,7 +335,10 @@ async def _run_node(session: PaperSession, strategy: Strategy, settle_secs: int,
     handle = node.handle()
     task = asyncio.create_task(node.run_async())
     try:
-        await asyncio.sleep(settle_secs)
+        if settled is None:
+            await asyncio.sleep(settle_secs)
+        else:
+            await wait_for_settlement(settled, deadline_secs=settle_secs)
     finally:
         handle.stop()
         try:
@@ -323,6 +355,7 @@ async def run_probe(
     instrument_id: Any,
     limit_price: Decimal,
     settle_secs: int,
+    cancel_deadline_secs: int,
 ) -> Outcome:
     """
     Strand on one pair of client ids, recover and sweep on another.
@@ -368,7 +401,8 @@ async def run_probe(
             instrument_ids=(str(instrument_id),),
         ),
         recover,
-        settle_secs,
+        cancel_deadline_secs,
+        settled=lambda: outcome.cancel_acknowledged,
     )
     recover.snapshot_leftovers()
     return outcome
@@ -393,6 +427,13 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--venue", default="XNAS", help="Research (MIC) venue; mapped to IB")
     parser.add_argument("--reference-price", required=True, help="Last known price, for the offset")
     parser.add_argument("--settle-secs", type=int, default=30)
+    parser.add_argument(
+        "--cancel-deadline-secs",
+        type=int,
+        default=CANCEL_DEADLINE_SECS,
+        help="Deadline for the sweep's acknowledgement; the phase ends as soon as it "
+        "arrives, so a longer deadline costs nothing when the cancel is honoured",
+    )
     args = parser.parse_args(argv)
 
     if not args.account:
@@ -414,6 +455,7 @@ def main(argv: list[str] | None = None) -> int:
             instrument_id=instrument_id,
             limit_price=limit_price,
             settle_secs=args.settle_secs,
+            cancel_deadline_secs=args.cancel_deadline_secs,
         ),
     )
 
