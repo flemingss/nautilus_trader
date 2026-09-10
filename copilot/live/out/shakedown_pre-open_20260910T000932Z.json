@@ -1,0 +1,59 @@
+{
+  "phase": "pre-open",
+  "run_at": "2026-09-10T00:09:32.373319+00:00",
+  "session": "2026-09-09",
+  "reference_price": "315.3400",
+  "forced": true,
+  "steps": [
+    {
+      "name": "quotes-realtime",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--market-data-type",
+        "REALTIME"
+      ],
+      "exit_code": 0,
+      "seconds": 40.6765971470013,
+      "skipped": false
+    },
+    {
+      "name": "quotes-delayed",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--market-data-type",
+        "DELAYED"
+      ],
+      "exit_code": 0,
+      "seconds": 40.42698934299915,
+      "skipped": false
+    },
+    {
+      "name": "entitlements",
+      "command": [
+        "python",
+        "-m",
+        "copilot.calibration.entitlements"
+      ],
+      "exit_code": 0,
+      "seconds": 74.502321932001,
+      "skipped": false
+    }
+  ],
+  "exit_code": 0
+}

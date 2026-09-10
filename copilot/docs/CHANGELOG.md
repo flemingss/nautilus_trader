@@ -2,6 +2,31 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, last (a day's shakedown, and what Lite costs)
+
+### Built
+
+- **[`live/shakedown.py`](../live/shakedown.py)**: one open session spent proving the
+  broker path, in five phases pinned to the session clock. Each phase declares the window
+  it is valid in and refuses to run outside it, because `warmup` already taught that a
+  check wrong at the hour it is used trains you to ignore it. `--plan` prints the whole
+  day first, marking every step that places an order. Reference prices come from the
+  catalog's last close, which is what the probes mean by one, so the drill is
+  deterministic and needs no node to prepare. Twenty-five tests, one of which scans every
+  step's flags against the flags its probe actually registers - the regression for handing
+  `--account` to a probe that opens a data client only.
+- It targets three questions no other day answers: whether the feed quotes before the
+  open, whether the broker's realtime tape agrees with the spread ADR-0019 charges from
+  history **in the same window**, and what a round trip actually costs.
+
+### Researched
+
+- **IBKR Lite is disqualified, and not on cost.** It has no API access, which this system
+  is built on end to end. The choice is Fixed against Tiered inside Pro, the account is
+  measurably on Fixed, and Tiered's USD 0.35 per-order minimum against Fixed's USD 1.00
+  moves a round trip at USD 20 risk from 0.100 R to roughly 0.04 R. Filed as a row, because
+  changing the constant moves every verdict's cost basis and needs an ADR of its own.
+
 ## 2026-09-09, later still (where a model may and may not act)
 
 ### Drafted
