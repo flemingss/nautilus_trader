@@ -210,8 +210,11 @@ def pre_open_steps(connection: Connection) -> tuple[ShakedownStep, ...]:
             module="copilot.live.preflight",
             argv=(*connection.argv, "--market-data-type", "DELAYED"),
             why=(
-                "the control. Zero realtime quotes is indistinguishable from a broken "
-                "subscription without it, which is the lesson of 2026-09-02"
+                "the delayed path still works. It was the control while realtime was "
+                "unentitled - zero realtime quotes being indistinguishable from a broken "
+                "subscription, the lesson of 2026-09-02 - and it is a weaker one now: IB "
+                "returns realtime to a delayed request when the subscription exists, "
+                "measured 2026-09-09 when both runs quoted the same prices"
             ),
         ),
         ShakedownStep(
