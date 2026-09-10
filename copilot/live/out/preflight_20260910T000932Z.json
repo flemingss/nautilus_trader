@@ -1,0 +1,117 @@
+{
+  "started_at": "2026-09-10T00:09:32.475281+00:00",
+  "finished_at": "2026-09-10T00:10:12.982768+00:00",
+  "stage": "1-2",
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "market_data_type": "REALTIME",
+  "orders_enabled": false,
+  "passed": true,
+  "failed_checks": [],
+  "checks": [
+    {
+      "name": "halt_applied_before_start",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "orders disabled at build time"
+    },
+    {
+      "name": "halt_survives_startup",
+      "passed": true,
+      "observed": "HALTED",
+      "expected": "HALTED",
+      "note": "the claim stage one exists to settle"
+    },
+    {
+      "name": "instruments_resolved",
+      "passed": true,
+      "observed": "9",
+      "expected": "9",
+      "note": "resolved: ['AAPL=STK.SMART', 'EEM=STK.SMART', 'GLDM=STK.SMART', 'HYG=STK.SMART', 'MSFT=STK.SMART', 'SCHX=STK.SMART', 'SPY=STK.SMART', 'TLT=STK.SMART', 'XLF=STK.SMART']"
+    },
+    {
+      "name": "account_reported_by_broker",
+      "passed": true,
+      "observed": "DUT067974",
+      "expected": "DUT067974",
+      "note": "venues searched: ['IB', 'SMART']; found: IB-DUT067974"
+    },
+    {
+      "name": "account_has_balances",
+      "passed": true,
+      "observed": "1",
+      "expected": ">0",
+      "note": "account_type=MARGIN. A paper account may not carry the live account's type - see docs/PAPER_CAMPAIGN.md on what paper cannot reproduce."
+    },
+    {
+      "name": "quote_AAPL",
+      "passed": true,
+      "observed": "37 quotes, last 4.1s ago, 317.86/318.03",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_EEM",
+      "passed": true,
+      "observed": "18 quotes, last 1.8s ago, 68.29/68.89",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_GLDM",
+      "passed": true,
+      "observed": "18 quotes, last 1.6s ago, 86.87/86.93",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_HYG",
+      "passed": true,
+      "observed": "3 quotes, last 17.0s ago, 78.72/79.02",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_MSFT",
+      "passed": true,
+      "observed": "5 quotes, last 13.8s ago, 492.15/492.75",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SCHX",
+      "passed": true,
+      "observed": "3 quotes, last 17.2s ago, 30.01/30.40",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_SPY",
+      "passed": true,
+      "observed": "35 quotes, last 1.1s ago, 763.35/763.42",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_TLT",
+      "passed": true,
+      "observed": "3 quotes, last 17.1s ago, 81.67/81.73",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "quote_XLF",
+      "passed": true,
+      "observed": "3 quotes, last 16.8s ago, 56.95/57.15",
+      "expected": ">=2 quotes, <=300s old, 0<bid<ask",
+      "note": "market closed: after the close; REALTIME feed, age measured from arrival"
+    },
+    {
+      "name": "clean_shutdown",
+      "passed": true,
+      "observed": "stopped",
+      "expected": "stopped",
+      "note": ""
+    }
+  ]
+}
