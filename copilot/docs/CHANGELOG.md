@@ -2,6 +2,38 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, later (alerting, and where the always-on host goes)
+
+### Built
+
+- **An alerting path, which the project has never had.** `live/alerting.py` carries three
+  severities that bind rather than decorate, Pushover as the first transport, and a
+  self-check the operator runs to prove the path works before relying on it. `CRITICAL`
+  goes out at emergency priority: it retries until acknowledged and returns a receipt, so
+  the playbook's *acknowledge critical alerts within the deadline* is a fact the code can
+  read instead of a procedure someone follows. The declared deadline is one hour at
+  two-minute retries. An unconfigured system reports failure and writes to stderr rather
+  than swallowing alerts, alerting never raises into a trading session, and repeats are
+  collapsed and counted except `CRITICAL`, which is never muted. Thirty tests
+  ([ADR-0023](decisions/0023-a-critical-alert-demands-acknowledgement.md)).
+
+### Decided
+
+- **The always-on host is a dedicated VM, not the production cluster**
+  ([ADR-0022](decisions/0022-the-always-on-host-is-a-dedicated-vm.md)). The owner's
+  proposal, and better than the two alternatives argued: the production cluster couples
+  this system's blast radius and change cadence to everything else there, and deferring
+  the host entirely keeps the campaign's eight-week system clock stopped. Containers are
+  permitted on the VM and not required; Kubernetes stays late-stage, now gated on a full
+  unattended paper campaign rather than on a date. One host streams market data at a time,
+  which follows from IB's one-session rule rather than from taste.
+
+### Groomed
+
+- **The roadmap's item count had drifted one below the sum of its groups**, and the
+  operator kill command had been a named GAP in the operator-day draft since 2026-09-04
+  without ever getting a row. Both corrected. Sixteen items, twelve ready to build.
+
 ## 2026-09-09 (the second machine, and the data subscriptions)
 
 ### Measured

@@ -36,6 +36,15 @@ Machine state with the same backup obligation.
 
 MARKETSTACK_API_KEY_ENV = "MARKETSTACK_API_KEY"
 DATABENTO_API_KEY_ENV = "DATABENTO_API_KEY"
+PUSHOVER_TOKEN_ENV = "PUSHOVER_TOKEN"  # noqa: S105 - the variable's name, never its value
+PUSHOVER_USER_KEY_ENV = "PUSHOVER_USER_KEY"
+"""
+The alerting transport's credentials.
+
+Named here, read at the CLI boundary in
+``live/alerting.py``, and never held by anything below it.
+
+"""
 
 
 def catalog_path() -> str:
@@ -69,6 +78,8 @@ __all__ = [
     "DEFAULT_CATALOG",
     "DEFAULT_STORE",
     "MARKETSTACK_API_KEY_ENV",
+    "PUSHOVER_TOKEN_ENV",
+    "PUSHOVER_USER_KEY_ENV",
     "add_catalog_argument",
     "catalog_path",
     "store_path",

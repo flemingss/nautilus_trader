@@ -427,6 +427,11 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/live/preflight.py" = [
   "T201",
 ] # Operator CLI: the check table it prints is the product
+"copilot/live/alerting.py" = [
+  "PLR0913",
+  "T201",
+] # Operator CLI: the self-check report it prints is the product; the transport takes
+# credentials, the declared deadline and the endpoint as explicit keyword args
 "copilot/live/run_activation.py" = [
   "PLR0913",
   "T201",
