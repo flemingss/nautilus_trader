@@ -132,6 +132,49 @@ which signal deserves the budget when four correlated wrappers fire at once.
 **Evidence standard:** forward only, model pinned at the moment the clock starts, cost
 modelled first as a sweep across account sizes.
 
+## The model policy, decided 2026-09-09
+
+The owner's call, and it shapes what the repo has to hold:
+
+- **OpenRouter is the route**, and its third-party vendors are preferred over the direct
+  frontier keys the owner also holds.
+- **The GLM and Kimi families are the default**, chosen per use for cost. Frontier models
+  are for tasks that genuinely need frontier capability, which most of tier 1 does not.
+- **Zero data retention is enforced at the account level**, so privacy is a property of the
+  account's routing rather than something each call has to remember to ask for.
+- **The repository carries model IDs, the base URL and static extras. Nothing else.** No
+  selection logic, no fallback ladder, no "pick the best available". The models are
+  dictated, and dictation lives in configuration.
+
+That last point is the right shape and it matches the pinning rule already argued here: a
+model is a parameter, and a parameter that a program chooses at run time is a degree of
+freedom exercised after the fact. Two consequences follow that are worth stating before
+anything is built.
+
+**ZDR is in the most tension with exactly this model preference.** OpenRouter's ZDR is a
+routing constraint applied per model group, and its *non-frontier* scope removes non-ZDR
+endpoints for precisely the class GLM and Kimi sit in. Frontier groups degrade gracefully,
+because disabling first-party Anthropic, OpenAI or Google endpoints leaves the cloud-hosted
+ones reachable. The non-frontier group has no such fallback. So the cheap-model preference
+and the ZDR requirement have to be reconciled **empirically against this account's own
+settings**, not assumed: the models-for-user endpoint returns what the account can actually
+reach, and that is the first call to make when tier 1 starts. Picking IDs before running it
+would be guessing.
+
+**Cheap models change what tier 1 has to output.** Its most valuable job is reading the
+filed record and flagging what deserves attention, and the failure mode there is not a
+refusal, it is a confident wrong summary: a clean-looking account of a session that
+contained a defect. The whole point of the record is that it is checkable, and a summary
+that cannot be checked against it inherits none of that. So **tier 1 output cites the
+record and the field it is drawn from**, and anything it flags can be verified against the
+file without asking the model again. That constraint follows from choosing cheap models and
+would be worth keeping even with expensive ones.
+
+**Where the IDs live matters for tier 2 and not for tier 1.** A tier 1 model change is a
+configuration change with low stakes. A tier 2 model change is a new experiment ID, which
+means the IDs have to sit where the fingerprint machinery can see them, beside the other
+parameters a verdict digests. Deciding that is part of building tier 2, not before.
+
 ## What already exists, so this does not rebuild it
 
 The original proposed a deterministic risk gate as new work. Most of it is built.
@@ -223,11 +266,14 @@ Neither condition holds on 2026-09-09. Recording that plainly is the point of na
 
 ## Open questions that are genuinely open
 
-- **Model pinning across providers.** An alias can silently resolve to different weights,
-  which is a parameter change nobody authorised. The rule should match
-  [ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md)'s: nothing is chosen
-  at run time, and a model change is a new experiment ID. Whether that needs its own ADR
-  depends on whether tier 2 is ever built.
+- **Model pinning across providers.** Half settled by the policy above: the models are
+  dictated and the repo holds only their IDs. What stays open is that an alias can resolve
+  to a different **endpoint** without the ID changing, and ZDR moves which endpoints are
+  eligible, so the same ID can be served by different weights on different days. The rule
+  should match [ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md)'s:
+  nothing chosen at run time. In practice that means naming the provider explicitly,
+  refusing fallbacks, and recording the endpoint that actually served each call. Whether it
+  needs its own ADR depends on whether tier 2 is ever built.
 - **Where an assisted decision is recorded.** Extend the JSON record convention or
   introduce a store. Its own ADR, as above.
 - **Whether tier 1 output is ever filed as evidence** or stays ephemeral. Filing it makes it

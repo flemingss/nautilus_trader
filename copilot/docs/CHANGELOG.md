@@ -2,6 +2,23 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, the model policy
+
+### Decided
+
+- **OpenRouter is the route, its third-party vendors preferred over direct frontier keys.
+  GLM and Kimi families by default, frontier only where frontier capability is genuinely
+  needed. ZDR enforced at the account level. The repository carries model IDs, the base
+  URL and static extras, and nothing else** - no selection logic, no fallback ladder.
+  Recorded in [`DRAFT_ASSISTED_DECISIONS.md`](DRAFT_ASSISTED_DECISIONS.md).
+- Two consequences written down before anything is built. **ZDR is in the most tension with
+  exactly this preference**: its non-frontier scope removes non-ZDR endpoints for the class
+  GLM and Kimi sit in, and unlike the frontier groups there is no cloud-hosted fallback, so
+  the reachable roster has to be read from the account rather than assumed. And **cheap
+  models change what tier 1 must output**: its failure mode is a confident wrong summary of
+  a session that had a defect, so its output cites the record and field it draws from and
+  stays checkable against the file.
+
 ## 2026-09-09, last (a day's shakedown, and what Lite costs)
 
 ### Built
