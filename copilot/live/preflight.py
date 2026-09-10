@@ -29,7 +29,17 @@ provided it until the walk ran it and found that none of the six checks looked a
 A stale or crossed quote is how a bracket gets placed around the wrong level, and this
 account is on delayed data. So the node now carries a quote watcher, and one check per
 instrument asks for at least :data:`MIN_QUOTES` quotes, the last of them within
-:data:`MAX_QUOTE_AGE_SECS`, with a positive bid strictly below the ask.
+:data:`MAX_QUOTE_AGE_SECS`, with a positive bid **at or below** the ask.
+
+**At or below, not below, and the difference is not pedantry.** The first version demanded
+``bid < ask`` and the pre-open phase of 2026-09-10 failed TLT on ``80.96/80.96`` at 09:02
+ET, fifteen seconds before a delayed sample of the same book passed at ``80.96/80.97``.
+That is a **locked** market, not a crossed one: a real, two-sided, fresh quote where the
+best bid equals the best offer, which is ordinary pre-market and around the open. The
+playbook asks for *non-crossed*, and locked is not crossed. Rejecting it would have blocked
+the evening gate on a book that was working perfectly, which is the failure mode the whole
+check exists to avoid teaching. A crossed book, ``bid > ask``, still fails: that one is
+pathological and is how a bracket gets placed around the wrong level.
 
 Delayed data suffices for the check and shapes it. IB's delayed feed carries no exchange
 timestamp for a quote, so age is measured from arrival rather than from the print, and
@@ -216,13 +226,17 @@ def quote_checks(
     note: str = "",
 ) -> list[Check]:
     """
-    One check per instrument: enough quotes, the newest fresh, bid positive and below ask.
+    One check per instrument: enough quotes, the newest fresh, bid positive and not crossed.
 
     Pure, so the rules can be tested without a feed. Age is measured from ``ts_init``,
     the instant the quote reached us, because a delayed feed carries no exchange time.
 
+    A locked book, where bid equals ask, passes. It is ordinary pre-market and around the
+    open, and the playbook asks for *non-crossed* rather than strictly-increasing. Only
+    ``bid > ask`` fails.
+
     """
-    expected = f">={min_quotes} quotes, <={max_age_secs}s old, 0<bid<ask"
+    expected = f">={min_quotes} quotes, <={max_age_secs}s old, 0<bid<=ask"
     checks: list[Check] = []
     for instrument_id, sample in samples.items():
         symbol = instrument_id.split("=")[0].split(".")[0]
@@ -240,7 +254,7 @@ def quote_checks(
         age = Decimal(now_ns - sample.ts_init) / NANOS_PER_SECOND
         fresh = age <= max_age_secs
         enough = sample.count >= min_quotes
-        uncrossed = 0 < sample.bid < sample.ask
+        uncrossed = 0 < sample.bid <= sample.ask
         checks.append(
             Check(
                 name=f"quote_{symbol}",
