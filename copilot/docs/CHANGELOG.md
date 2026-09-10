@@ -2,6 +2,29 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the operator's clock
+
+### Changed
+
+- **The operator's own clock is a setting, `COPILOT_OPERATOR_TZ`, defaulting to Tokyo.**
+  It was fixed at `Asia/Tokyo` in code, which was right while the operator was in Japan
+  and became noise when they moved to Florida on 2026-09-09. Display only: every session
+  decision keys off `EASTERN`, so this cannot move a window, a fold or an order, which is
+  why it is a setting rather than a decision. A misspelt zone falls back to the default
+  and says so on stderr - refusing to run the trading day over a display preference would
+  be the tail wagging the dog, and falling back silently would leave the operator reading
+  Tokyo while believing otherwise.
+- **The second column is dropped when it repeats the first.** An operator in Eastern
+  reading `09:30 EDT   09:30 EDT` learns nothing from the repetition and has to check
+  each line to be sure it *is* one. The fixed Tokyo column was noise; echoing Eastern
+  back would be the same noise in different clothes.
+- **`IBAPI_TIMEZONE_ALIASES` is untouched and is not this.** Both say `Asia/Tokyo` and
+  they are different concerns: the alias is required on every IB connect wherever the
+  operator sits, and without it connects fail naming nothing. A test pins them apart, so
+  a cosmetic preference can never break a broker connection.
+- The `day` docstring's schedule now names Eastern and JST side by side, anchored to the
+  session rather than to one wall clock.
+
 ## 2026-09-10, the full-day battery
 
 ### Answered
