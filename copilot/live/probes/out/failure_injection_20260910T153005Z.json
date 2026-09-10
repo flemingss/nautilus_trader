@@ -1,0 +1,41 @@
+{
+  "started_at": "2026-09-10T15:30:05.408292+00:00",
+  "finished_at": "2026-09-10T15:31:15.691930+00:00",
+  "stage": "6",
+  "source": "interactive_brokers 172.25.160.1:7497",
+  "passed": true,
+  "not_testable_on_paper": {
+    "name": "rejected_by_broker",
+    "status": "NOT TESTABLE HERE",
+    "detail": "Paper does not enforce buying power on a far-from-market limit: measured 2026-09-01, IB paper accepted USD 1.2M and USD 24M of orders on a USD 1M account. The probe is still submitted, because that is how we would notice if it ever started. **Verify the rejection path on the live account before any size increase** - it has not been tested."
+  },
+  "unconfirmed": {
+    "name": "recover_unknown_working_order",
+    "status": "HALF",
+    "detail": "Measured 2026-09-02 by live/probes/strand_recovery.py, which strands an order on purpose. Adoption is CONFIRMED: a fresh node on different client ids receives the external SUBMITTED order through reconciliation into its cache. The cancel is a KNOWN FAILURE: the IB adapter cannot cancel an adopted order whose IB order id belongs to another client id partition ('Instrument ID not found for pending cancel order'), the failure raises no order event, and the order is cancelled by hand in TWS. The remaining fix is in the adapter's execution core, not in reconciliation."
+  },
+  "result": {
+    "probes": [
+      {
+        "name": "denied_by_risk_engine",
+        "expected": "denied",
+        "observed": "denied",
+        "detail": "NOTIONAL_EXCEEDS_MAX_PER_ORDER: max=1000.00 USD, notional=1580.00 USD"
+      },
+      {
+        "name": "stale_feed_detected",
+        "expected": "stale",
+        "observed": "stale",
+        "detail": "no quote for 20.8s"
+      }
+    ],
+    "quotes_seen": 3,
+    "stale_detected": true,
+    "max_quote_age_secs": 48.783781,
+    "orders_left_working": [],
+    "cancel_rejections": [],
+    "unscored": {
+      "rejected_by_broker": "accepted"
+    }
+  }
+}

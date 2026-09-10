@@ -10,9 +10,15 @@ having sent a cancel.
 
 from __future__ import annotations
 
+import asyncio
+
+import pytest
+
 from copilot.live.cancel_working import CancelWorking
 from copilot.live.cancel_working import CancelWorkingConfig
 from copilot.live.cancel_working import instruments_to_sweep
+from copilot.live.node import CANCEL_DEADLINE_SECS
+from copilot.live.node import wait_for_settlement
 from copilot.live.symbology import registered_instruments
 from nautilus_trader.model import InstrumentId
 
@@ -64,3 +70,52 @@ def test_every_configured_instrument_is_reported_even_when_clear() -> None:
     # covered nine instruments or one.
     strategy = _sweeper("AAPL=STK.SMART", "SCHX=STK.SMART")
     assert set(strategy.before) == {"AAPL=STK.SMART", "SCHX=STK.SMART"}
+
+
+# --------------------------------------------------------------- the settlement wait
+
+
+@pytest.mark.asyncio
+async def test_settlement_returns_as_soon_as_the_condition_holds() -> None:
+    """
+    The common case must not cost the whole deadline.
+
+    A sweep that always burns its deadline is a sweep nobody runs at the end of a
+    session, and the monitoring-end policy is not optional.
+
+    """
+    calls = {"n": 0}
+
+    def settled() -> bool:
+        calls["n"] += 1
+        return calls["n"] >= 2
+
+    loop = asyncio.get_running_loop()
+    started = loop.time()
+    assert await wait_for_settlement(settled, deadline_secs=60, poll_secs=0.01) is True
+    assert loop.time() - started < 1.0
+
+
+@pytest.mark.asyncio
+async def test_settlement_reports_false_when_the_deadline_passes() -> None:
+    """
+    The distinction a fixed sleep cannot draw: not yet, against refused.
+    """
+    assert await wait_for_settlement(lambda: False, deadline_secs=0, poll_secs=0.01) is False
+
+
+@pytest.mark.asyncio
+async def test_settlement_checks_before_it_waits() -> None:
+    """
+    An already-settled condition must not sleep once, or every sweep pays a poll.
+    """
+    assert await wait_for_settlement(lambda: True, deadline_secs=0, poll_secs=30) is True
+
+
+def test_the_sweeps_deadline_is_long_enough_for_the_acknowledgement_seen() -> None:
+    """
+    2026-09-10: the acknowledgement had not arrived 90s after a cancel, and had by the
+    next connection. A 30s deadline called that a refusal and sent the operator to TWS
+    to cancel an order the broker had already cancelled.
+    """
+    assert CANCEL_DEADLINE_SECS > 90

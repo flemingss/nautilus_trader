@@ -1,0 +1,61 @@
+{
+  "phase": "midday",
+  "run_at": "2026-09-10T15:30:05.314869+00:00",
+  "session": "2026-09-10",
+  "reference_price": "315.3400",
+  "forced": false,
+  "steps": [
+    {
+      "name": "failure-injection",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.failure_injection",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 0,
+      "seconds": 70.4854794490002,
+      "skipped": false
+    },
+    {
+      "name": "strand-recovery",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.strand_recovery",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974",
+        "--reference-price",
+        "315.3400"
+      ],
+      "exit_code": 1,
+      "seconds": 80.54339922599866,
+      "skipped": false
+    },
+    {
+      "name": "subscription-interference",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.probes.subscription_interference",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497"
+      ],
+      "exit_code": 0,
+      "seconds": 370.369404852001,
+      "skipped": false
+    }
+  ],
+  "exit_code": 1
+}

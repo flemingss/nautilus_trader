@@ -61,7 +61,9 @@ from datetime import UTC
 from datetime import datetime
 from typing import Any
 
+from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
+from copilot.live.node import wait_for_settlement
 from copilot.live.session import PaperSession
 from copilot.live.session import add_broker_arguments
 from copilot.live.symbology import broker_instrument_id
@@ -149,7 +151,7 @@ async def sweep(
     settle_secs: int,
 ) -> CancelWorking:
     """
-    Run the node long enough to cancel on every instrument and hear back.
+    Run the node until every acknowledgement is in, or the deadline passes.
     """
     strategy = CancelWorking(CancelWorkingConfig(instrument_ids=instrument_ids))
     node, _risk_engine = build_paper_node(
@@ -160,7 +162,10 @@ async def sweep(
     handle = node.handle()
     task = asyncio.create_task(node.run_async())
     try:
-        await asyncio.sleep(settle_secs)
+        await wait_for_settlement(
+            lambda: not strategy.outstanding(),
+            deadline_secs=settle_secs,
+        )
     finally:
         handle.stop()
         try:
@@ -208,7 +213,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--symbol", help="One symbol instead of the registry")
     parser.add_argument("--venue", default="XNAS", help="Listing venue for --symbol")
-    parser.add_argument("--settle-secs", type=int, default=30)
+    parser.add_argument(
+        "--settle-secs",
+        type=int,
+        default=CANCEL_DEADLINE_SECS,
+        help="Deadline for the broker's acknowledgements; the sweep returns as soon as "
+        "they are all in",
+    )
     args = parser.parse_args(argv)
 
     if not args.account:

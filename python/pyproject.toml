@@ -146,6 +146,7 @@ no-build-package = [
   "urllib3",
   "uvicorn",
   "uvloop",
+  "zstandard",
 ]
 
 [dependency-groups]
