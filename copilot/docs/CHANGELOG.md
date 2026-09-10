@@ -2,6 +2,36 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, later still (where a model may and may not act)
+
+### Drafted
+
+- **[`DRAFT_ASSISTED_DECISIONS.md`](DRAFT_ASSISTED_DECISIONS.md)**, grounding an owner
+  proposal for an LLM decision layer. The architecture it proposed was right and three of
+  its facts were not: the deterministic risk gate it called for largely exists as five
+  modules in `copilot/risk/`, `schema/sql/` is upstream's directory while strategy verdicts
+  are JSON records, and the repo has no RFC process because that issue template was
+  deliberately removed.
+- **Two boundaries the original left open now decide the scope.** The holdout runs
+  2022-01-01 to 2025-12-31 and every pinnable model trained across it, so leakage is a fact
+  about the data rather than a protocol to fix, and the only clean evidence for a model is
+  forward. And the cost, charged the way ADR-0009 charges everything: against a pooled
+  nine-symbol premise at 178 trades a year, a USD 30 per month layer costs **0.101 R per
+  trade**, which is the commission burden that made the gap fade negative, while a USD 10
+  layer consumes the whole 0.035 R the AAPL holdout returned.
+- **The reframe that follows:** operator assistance, which makes no market claim and needs
+  no holdout, is ordinary work. Decision influence waits on a frozen candidate and on an
+  account the layer's cost does not dominate. Neither condition holds today.
+
+### Groomed
+
+- Two rows filed from the draft: **attribution against market and style factors**, which
+  needs no model and is a free read on premises already measured, and **whether to build
+  the second tier**, which is the first item to sit in *Waiting on a decision* since the
+  five of 2026-09-05 were closed. The operator kill command's row now carries the admission
+  point, with the reminder that `max_notional_per_order` is inert on IB. Eighteen items,
+  thirteen ready to build.
+
 ## 2026-09-09, later (alerting, and where the always-on host goes)
 
 ### Built
