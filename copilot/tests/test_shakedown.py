@@ -126,6 +126,33 @@ def test_every_step_passes_only_flags_its_probe_accepts():
     assert offenders == []
 
 
+def test_the_pre_open_phase_exercises_alerting():
+    """
+    The scorecard wants alerts arriving and acknowledged, and nothing had ever fired
+    one.
+    """
+    step = next(s for s in phase_named("pre-open", _phases()).steps if s.name == "alerting")
+
+    assert step.module == "copilot.live.alerting"
+    assert "--send-test" in step.argv
+    assert "critical" in step.argv, "CRITICAL is what exercises the receipt and the deadline"
+    assert step.stops_on_failure is False
+    assert step.places_orders is False
+
+
+def test_the_plan_says_it_is_not_the_operating_day(capsys, monkeypatch):
+    """
+    The drill files no session record, so it must not read as a substitute for the day.
+    """
+    monkeypatch.setattr("copilot.live.shakedown.reference_price", lambda *_: PRICE)
+    main(["--plan", "--account", "DUT067974"])
+    out = capsys.readouterr().out
+
+    assert "not the operating day" in out
+    assert "copilot.live.day morning" in out
+    assert "copilot.live.day evening" in out
+
+
 def test_the_interference_probe_is_given_no_account():
     """
     It opens a data client only, which is why it can run beside anything else.

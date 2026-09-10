@@ -218,6 +218,18 @@ def pre_open_steps(connection: Connection) -> tuple[ShakedownStep, ...]:
             ),
         ),
         ShakedownStep(
+            name="alerting",
+            module="copilot.live.alerting",
+            argv=("--send-test", "--severity", "critical"),
+            why=(
+                "the scorecard wants *all alerts arriving and acknowledged inside the "
+                "declared deadline* and nothing had ever fired one. CRITICAL goes out at "
+                "emergency priority, so acknowledging it on the phone exercises the "
+                "receipt as well as the delivery. Exits non-zero on a box where alerting "
+                "is not configured, which is the honest answer for the unattended gate"
+            ),
+        ),
+        ShakedownStep(
             name="entitlements",
             module="copilot.calibration.entitlements",
             why=(
@@ -477,6 +489,14 @@ def print_plan(available: Sequence[Phase], price: Decimal) -> None:
             for name, value in sorted(step.env.items()):
                 print(f"      {'':<26}{name}={value}")
         print()
+    print(
+        "This is a drill and not the operating day. It does not run the morning's replay\n"
+        "comparison, which is the scorecard's *signal-to-intent parity against an\n"
+        "independent replay*, and it files no session record, so nothing here counts\n"
+        "toward the campaign's reconciled-event total. Run the day as well:\n\n"
+        "    python -m copilot.live.day morning     # before the open, with the pre-open phase\n"
+        "    python -m copilot.live.day evening     # after the close, for the next session\n",
+    )
 
 
 @dataclass
