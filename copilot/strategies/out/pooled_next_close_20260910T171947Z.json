@@ -1,0 +1,63 @@
+{
+  "run_at": "2026-09-10T17:19:47.290591+00:00",
+  "runtime_seconds": 108.2,
+  "members": [
+    "aapl-gap-fade-long-next-close",
+    "eem-gap-fade-long-next-close",
+    "gldm-gap-fade-long-next-close",
+    "hyg-gap-fade-long-next-close",
+    "msft-gap-fade-long-next-close",
+    "schx-gap-fade-long-next-close",
+    "spy-gap-fade-long-next-close",
+    "tlt-gap-fade-long-next-close",
+    "xlf-gap-fade-long-next-close"
+  ],
+  "symbols": [
+    "AAPL",
+    "EEM",
+    "GLDM",
+    "HYG",
+    "MSFT",
+    "SCHX",
+    "SPY",
+    "TLT",
+    "XLF"
+  ],
+  "spine_bars": 5066,
+  "spine_range": [
+    "2005-01-03",
+    "2024-12-31"
+  ],
+  "folds": 38,
+  "folds_evaluated": 14,
+  "folds_passed": 6,
+  "majority": false,
+  "mean_oos_net_r": "0.024134",
+  "trades": 1461,
+  "trades_by_symbol": {
+    "MSFT.XNAS": 99,
+    "AAPL.XNAS": 101,
+    "HYG.ARCX": 186,
+    "SCHX.ARCX": 189,
+    "TLT.XNAS": 223,
+    "EEM.ARCX": 239,
+    "SPY.ARCX": 117,
+    "GLDM.ARCX": 182,
+    "XLF.ARCX": 125
+  },
+  "evidence": {
+    "effective_trades": "401.1",
+    "concurrency": "3.642363",
+    "block_trades": 11,
+    "confidence": "0.90",
+    "lower_r": "-0.014857",
+    "upper_r": "0.105421",
+    "standard_error_r": "0.036972",
+    "clears_zero": false
+  },
+  "cost_model": {
+    "snapshot": "spread_history_20260904T112723Z.json",
+    "percentile": "p95"
+  },
+  "holdout": "not spent, and not spendable here. AAPL's holdout window has been viewed (ADR-0014), so a pooled holdout containing it is not out of sample. Excluding the spent symbols or accepting a contaminated window is an owner decision, not a default."
+}
