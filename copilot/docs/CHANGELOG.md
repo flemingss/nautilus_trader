@@ -2,6 +2,26 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-09, closing the battery's last gap
+
+### Built
+
+- **The shakedown now fires a real alert.** Mapping it against the system scorecard's seven
+  clauses left two unexercised, and one of them was code: *all alerts arriving and
+  acknowledged inside the declared deadline*, which nothing had ever tested against a real
+  condition. The pre-open phase now sends a `CRITICAL`, which goes out at emergency priority,
+  so acknowledging it on the phone exercises the receipt and the deadline rather than only
+  the delivery. It exits non-zero on a box where alerting is unconfigured, which is the
+  honest answer for the unattended gate.
+- **The plan now says what it is not.** The drill files no session record and does not run
+  the morning's replay comparison, which is the scorecard's other unexercised clause, so
+  nothing in it counts toward the campaign's reconciled-event total. `--plan` names the two
+  day commands to run alongside it. That was the second gap, and it is a sequencing fact
+  rather than missing code.
+- Restart and reconnect are already covered: `strand_recovery` strands a live order, brings
+  up a fresh node on different client ids, and confirms reconciliation adopts it, which is
+  that clause end to end.
+
 ## 2026-09-09, the TLT repair
 
 ### Fixed
