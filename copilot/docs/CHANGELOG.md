@@ -2,6 +2,34 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, operator-day pass five: a live strategy no longer subscribes to broker bars
+
+### Fixed
+
+- **The broker's daily bar reached the strategy before its warm-up.** The fifth pass's morning
+  comparison disagreed on all nine activations, on skip counts alone. `GapReversalStrategy`
+  subscribed to broker bars in `on_start`, and since the 2026-09-09 market-data subscriptions IB
+  answers instead of refusing with 2188; its bar reached `on_bar` in the settle wait. One arriving
+  after the warm-up would have replaced the previous close and decided on a bar the replay never
+  sees. `GapReversalConfig.subscribe_bars` defaults to true for every replay, and `build_strategy`
+  sets it false: the catalog is a live session's only bar source (ADR-0017).
+
+### Measured
+
+- **Morning, 17:16 ET:** 2m40s. TLT's 2026-09-10 close refused (80.652); twelve verdicts refiled
+  after #92's code change with every number identical; comparison 9 of 9 *DISAGREE*.
+- **TLT's hole filled** from a Databento pull priced at USD 0.0000, 8.67 bps from the venue print.
+- **Evening for Monday's session, 17:25 ET, with the fix:** 6 of 6 PASS in 2m20s, sweep *BROKER
+  CLEAR*, and the comparison **9 of 9 AGREE**. No live record carries an `insufficient_history`
+  skip, and every budget records the settled-cash basis *not applicable: a margin account has no
+  settled-cash cap*, the first basket to exercise #92's read.
+
+### Changed
+
+- **`DRAFT_OPERATOR_DAY.md`, fifth pass:** both tables re-walked; the kill switch, alerting and the
+  pre-open quote question marked closed; the Eastern-time note; a new question on whether the
+  append should patch a refused close itself.
+
 ## 2026-09-11, EODHD probed on the demo token
 
 ### Added

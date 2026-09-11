@@ -12,12 +12,16 @@ decided.
 
 Why the bars come from a file
 -----------------------------
-Because the broker will not supply them. ``GapReversalStrategy.on_start`` subscribes to
-``1-DAY-LAST-EXTERNAL``, the adapter routes any spec other than five seconds to
-``reqHistoricalData``, and IB refuses US equity historical bars on this account with
-**2188** - re-probed 2026-09-04 across five request shapes, on REALTIME and DELAYED, SMART
-and directed. The subscription is left in place and its refusal is recorded, because a
-session that quietly did without it would hide the constraint that shapes this whole module.
+First because the broker would not supply them: IB refused US equity historical bars on
+this account with **2188**, re-probed 2026-09-04 across five request shapes. The
+market-data subscriptions of 2026-09-09 lifted that - and then the subscription became a
+hazard rather than a record. ``GapReversalStrategy.on_start`` subscribed to
+``1-DAY-LAST-EXTERNAL``, the broker now answered, and on 2026-09-11 its bar reached
+``on_bar`` during the settle wait in all nine activations, before the warm-up: one
+``insufficient_history`` skip each, and the next morning's comparison disagreed nine times of
+nine. A bar arriving after the warm-up would have replaced the previous close and decided on
+a bar the replay never sees. So a live strategy is built with ``subscribe_bars=False``, and
+the catalog is its only bar source.
 
 So the catalog is the data client for daily bars. That is not a workaround so much as the
 arrangement [ADR-0017] made possible: research and execution read one series, kept current
@@ -340,7 +344,9 @@ def build_strategy(activation: Activation, instrument_id: InstrumentId) -> Strat
 
     """
     return activation.setup.factory(
-        {**activation.parameters, "order_id_tag": _tag_for(activation)},
+        # No broker bar subscription: the catalog is this session's only bar source, handed
+        # over through warm_up and decide, and a subscribed bar arrives unordered with them.
+        {**activation.parameters, "order_id_tag": _tag_for(activation), "subscribe_bars": False},
         instrument_id=instrument_id,
         bar_type=broker_bar_type(instrument_id),
         risk_registry=None,

@@ -1,0 +1,29 @@
+{
+  "run_at": "2026-09-11T21:26:38.246343+00:00",
+  "account": "DUT067974",
+  "instruments": [
+    "AAPL=STK.SMART",
+    "EEM=STK.SMART",
+    "GLDM=STK.SMART",
+    "HYG=STK.SMART",
+    "MSFT=STK.SMART",
+    "SCHX=STK.SMART",
+    "SPY=STK.SMART",
+    "TLT=STK.SMART",
+    "XLF=STK.SMART"
+  ],
+  "swept": true,
+  "found": {},
+  "acknowledged": [],
+  "never_acknowledged": {},
+  "verdict": "BROKER CLEAR",
+  "exit_code": 0,
+  "censuses": [
+    {
+      "open": {},
+      "elsewhere": [],
+      "account": "IB-DUT067974"
+    }
+  ],
+  "alert": null
+}

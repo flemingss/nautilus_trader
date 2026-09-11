@@ -1,0 +1,117 @@
+{
+  "phase": "evening",
+  "run_at": "2026-09-11T21:25:04.042600+00:00",
+  "session": "2026-09-14",
+  "dry_run": false,
+  "clock": [
+    "open          09:30 EDT",
+    "window ends   11:30 EDT",
+    "close         16:00 EDT"
+  ],
+  "steps": [
+    {
+      "name": "append",
+      "command": [
+        "python",
+        "-m",
+        "copilot.data.append",
+        "--catalog",
+        "~/.nautilus_copilot/catalog"
+      ],
+      "exit_code": 0,
+      "seconds": 0.37005852600123035,
+      "skipped": false
+    },
+    {
+      "name": "corporate actions",
+      "command": [
+        "python",
+        "-m",
+        "copilot.data.corporate_actions",
+        "AAPL,EEM,GLDM,HYG,MSFT,SCHX,SPY,TLT,XLF",
+        "--catalog",
+        "~/.nautilus_copilot/catalog",
+        "--from",
+        "2005-01-01",
+        "--to",
+        "2026-09-14"
+      ],
+      "exit_code": 0,
+      "seconds": 2.2270311290012614,
+      "skipped": false
+    },
+    {
+      "name": "preflight",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.preflight",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 0,
+      "seconds": 40.41212519699911,
+      "skipped": false
+    },
+    {
+      "name": "warmup",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.warmup",
+        "--catalog",
+        "~/.nautilus_copilot/catalog",
+        "--session",
+        "2026-09-14"
+      ],
+      "exit_code": 0,
+      "seconds": 0.14625717899980373,
+      "skipped": false
+    },
+    {
+      "name": "basket",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.run_activation",
+        "--all",
+        "--catalog",
+        "~/.nautilus_copilot/catalog",
+        "--session",
+        "2026-09-14",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 0,
+      "seconds": 50.950415409002744,
+      "skipped": false
+    },
+    {
+      "name": "sweep",
+      "command": [
+        "python",
+        "-m",
+        "copilot.live.cancel_working",
+        "--all",
+        "--host",
+        "172.25.160.1",
+        "--port",
+        "7497",
+        "--account",
+        "DUT067974"
+      ],
+      "exit_code": 0,
+      "seconds": 45.47179854299975,
+      "skipped": false
+    }
+  ],
+  "exit_code": 0
+}

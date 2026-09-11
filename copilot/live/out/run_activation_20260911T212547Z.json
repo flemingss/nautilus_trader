@@ -1,0 +1,792 @@
+{
+  "run_at": "2026-09-11T21:25:47.856179+00:00",
+  "session": "2026-09-14",
+  "orders_enabled": false,
+  "basket": [
+    "aapl-gap-fade-long-next-close",
+    "eem-gap-fade-long-next-close",
+    "gldm-gap-fade-long-next-close",
+    "hyg-gap-fade-long-next-close",
+    "msft-gap-fade-long-next-close",
+    "schx-gap-fade-long-next-close",
+    "spy-gap-fade-long-next-close",
+    "tlt-gap-fade-long-next-close",
+    "xlf-gap-fade-long-next-close"
+  ],
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "broker_instrument": "AAPL=STK.SMART",
+      "research_instrument": "AAPL.XNAS",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "aapl-gap-fade-long-next-close_20260911T211626Z.json",
+        "inputs": {
+          "data": "c8d523a6e536a70bd4d5c9a877e5cf07579cc81c192d33cfc4e1c90e741f5e7d",
+          "identity": "ceafc12966dae9c6727abb227ac4235a473c9b51a661fe4ad14bbac7ea85aa6c",
+          "cost": "e640b46bfbde1c2bc9c5a637a5ef6ce322b8625c3511149dff7cba9c3a961eac",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "22e26e2e885bedd07684772180577cd4bbca65fb49b511769332b301657a7e2b"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "7.843571428571432",
+      "previous_close": "332.27",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 1,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "broker_instrument": "EEM=STK.SMART",
+      "research_instrument": "EEM.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "eem-gap-fade-long-next-close_20260911T211653Z.json",
+        "inputs": {
+          "data": "024556e0acad4fdd6c2f13d619493d21ba3daf4b1243a06067d367c34df3201f",
+          "identity": "4ef4e1fa96182c31671cce692f9aab705b78af5e3ba1e06403f04e4797640133",
+          "cost": "470e79a8f7f4b8e012678951d8e36fdce6872c58ac9300953db61a7f3a5d9bcd",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "193776ad94d3c64f673e61e86377f6cfd1bf98b155bb9b3390a05074efe338a5"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "0.8678571428571453",
+      "previous_close": "67.84",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 2,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "broker_instrument": "GLDM=STK.SMART",
+      "research_instrument": "GLDM.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "gldm-gap-fade-long-next-close_20260911T211700Z.json",
+        "inputs": {
+          "data": "886fe3d0829287f5aec3baa0b1cf1853fc39b123b54c1e92a42e5b460af80114",
+          "identity": "4ba203749836fcd41fff1117d1bbf63b417856b948e85fd6568ea2f634e6125c",
+          "cost": "fb4f31e6a25fe7951722912c73adace233eecfcd66549d811fab4544b7f29e82",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "6317185af4d746c66acf2cf28bfd469822a7788277c8229dba0c893ff06e7f21"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "1.6992857142857116",
+      "previous_close": "86.00",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 3,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "broker_instrument": "HYG=STK.SMART",
+      "research_instrument": "HYG.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "hyg-gap-fade-long-next-close_20260911T211708Z.json",
+        "inputs": {
+          "data": "44a3f6a6dc01d5231884cd5c5ecaf0e5c2e9628fadf686bf35089a8562b1a509",
+          "identity": "e0be305d3e00a40a0fa0c2c2e6019406030c0877a3d9d6fdfd1ad2c15d451f79",
+          "cost": "6746828c666b6b0e449ac6ea4206c49857236d0723869196ce5e96060848ff2d",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "c60bb727ceefac71fd3daa712d205b4e2efd9e1222d7c7dcc1e0f87be0aa9cf2"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "0.22857142857142979",
+      "previous_close": "78.60",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 4,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "broker_instrument": "MSFT=STK.SMART",
+      "research_instrument": "MSFT.XNAS",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "msft-gap-fade-long-next-close_20260911T211725Z.json",
+        "inputs": {
+          "data": "7fb472a9616869364e753cc6c10454ec163965e8e11338c58ff7e8a95b151318",
+          "identity": "07cace60ffadfc7b2649873e304059426ea8c1a30ad7b460595e4e0763245046",
+          "cost": "1d9070d744835781f4e8a975953d87f801ce87cf38773d27dd0efaff3c9943b2",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "b1cfe47ac48cb65a8ecffd47dc0c0d339f9b9800b7e4be393cfebea586a20f0c"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "10.055714285714284",
+      "previous_close": "495.63",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 5,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "broker_instrument": "SCHX=STK.SMART",
+      "research_instrument": "SCHX.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "schx-gap-fade-long-next-close_20260911T211751Z.json",
+        "inputs": {
+          "data": "ea230080374bdf98dab089734ffce6630ca880c296bbbfa92ae54ed1d839f9bf",
+          "identity": "15f367ead352982d485417585f561c8ee126dc3346411239375bc7793543985c",
+          "cost": "1f3323075cb44ec0a1080197758db84c82c23d7f77e67a74b0f5372c2d932d66",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "6054f29388347854d0787c8a7f5bf14e16717c1976c929884265352048d7d6cc"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "0.22357142857142875",
+      "previous_close": "30.11",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 6,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "broker_instrument": "SPY=STK.SMART",
+      "research_instrument": "SPY.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "spy-gap-fade-long-next-close_20260911T211811Z.json",
+        "inputs": {
+          "data": "e34c0522b3c298a9ac58609336e99e40faa51c79374129b56aed832d0e3ec975",
+          "identity": "fb42697c0a65bfbdc4faf5753766074f326808e922166e3e55f8f54690e02cf1",
+          "cost": "0bd3ae2869fb1c94332ba731ecce3d7704e43d0f16586132c2b70206928cc3b1",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "c7f3653fb7be13900918157fa26b91cf83bf5d10939a4fdbe59f00b89995c9b5"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "5.597857142857135",
+      "previous_close": "764.29",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 7,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "broker_instrument": "TLT=STK.SMART",
+      "research_instrument": "TLT.XNAS",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "tlt-gap-fade-long-next-close_20260911T211839Z.json",
+        "inputs": {
+          "data": "bf1434f9556c6cb0f38578589dab41cfe118b7a0fca41e4f61dd9293dc246835",
+          "identity": "6a546acc05e73f6ad6dbec7b26a706a37d52c9cc2d771d0630506851028e657b",
+          "cost": "e9d57155a29b5846c220775a17b1e96cb402f6e6bd74a5584b64cc2e4b58f2fe",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "a18a59c3ca4ebf94a2c5f9099a8911e527d457077195d480246cb4d9d92dc5df"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "0.7278571428571438",
+      "previous_close": "80.87",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 8,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "broker_instrument": "XLF=STK.SMART",
+      "research_instrument": "XLF.ARCX",
+      "decision_bar": "2026-09-11",
+      "warmup_bars": 16,
+      "warmup_from": "2026-08-19",
+      "warmup_to": "2026-09-10",
+      "parameters": {
+        "long": "True",
+        "entry_timing": "next_close",
+        "require_unfilled": "False",
+        "atr_period": "14",
+        "stop_atr": "1.5",
+        "entry_buffer_atr": "0.25",
+        "risk_budget": "1000"
+      },
+      "parameters_source": {
+        "source": "seeded",
+        "record": null,
+        "unfixed_axes": {
+          "min_gap_atr": "0.25",
+          "target_1_atr": "1.0"
+        }
+      },
+      "manifest": {
+        "code_commit": "615a404cfd0167f99e5b16e01989622c76559ec3",
+        "tree_clean": false,
+        "verdict": "xlf-gap-fade-long-next-close_20260911T211844Z.json",
+        "inputs": {
+          "data": "845c7d662ad41b519ebd839ac734e57076202ce0011183fe9f22f2fd25bbb642",
+          "identity": "60e5a3025e716ec1db8540ee4cd649100928065962b4cfa38e2dbe5d43f7c091",
+          "cost": "cf5bd8b489ae950934f283b136ea556c0773962458fdc95d9dfb08be0c8d3c93",
+          "code": "9fb5ed76dacd18cbc2fb478056aabe60ddd403a27c68f982b2016904bfa50e97",
+          "combined": "52b792049ae773246b2553095250db6de4ea0604aa22c2db8802ed42a02a44d3"
+        },
+        "moved": [
+          "code"
+        ]
+      },
+      "atr_initialized": true,
+      "atr_value": "0.6628571428571435",
+      "previous_close": "57.25",
+      "deferred_atr": null,
+      "outcome": "setup_not_triggered",
+      "skips": {
+        "setup_not_triggered": 1
+      },
+      "largest_rounding": "0.0050",
+      "instrument_resolved": true,
+      "budget": {
+        "equity": "1000854.29",
+        "allocation": "1000854.29",
+        "requested_allocation": "",
+        "allocation_capped": "False",
+        "risk_fraction": "0.0010",
+        "max_position_fraction": "0.10",
+        "risk_budget": "1000.85",
+        "max_notional": "100085.42",
+        "max_total_risk_fraction": "0.0050",
+        "max_total_risk": "5004.27",
+        "max_new_entries": "2",
+        "settled_cash": "",
+        "spendable_cash": "",
+        "settled_cash_basis": "not applicable: a margin account has no settled-cash cap"
+      },
+      "basket_position": 9,
+      "exposure_after": {
+        "max_total_risk": "5004.27",
+        "max_new_entries": 2,
+        "entries": 0,
+        "reserved": {},
+        "total": "0",
+        "settled_cash": "",
+        "committed_cash": {},
+        "cash_committed": "0",
+        "refusals": []
+      },
+      "protection": {
+        "ledger": "/home/apex-admin/.nautilus_copilot/risk/outcomes_DUT067974.jsonl",
+        "account_value": "1000854.29",
+        "breach": "none"
+      },
+      "note": "",
+      "orders": []
+    }
+  ]
+}

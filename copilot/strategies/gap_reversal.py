@@ -205,6 +205,7 @@ class GapReversalConfig(StrategyConfig):
         "require_unfilled",
         "long",
         "entry_timing",
+        "subscribe_bars",
     )
 
     def __new__(cls, *args: object, **kwargs: object):  # noqa: ANN204 - pyo3 base
@@ -229,10 +230,16 @@ class GapReversalConfig(StrategyConfig):
         require_unfilled: bool = False,
         long: bool = True,
         entry_timing: str = "signal_close",
+        subscribe_bars: bool = True,
         **_kwargs: object,
     ) -> None:
         """
         Configure one leg of the fade.
+
+        ``subscribe_bars`` is true for every replay, where the engine delivers the bars, and
+        false for a live session, where the catalog does and a broker bar would be a second,
+        unordered decision path (see :mod:`copilot.live.run_activation`).
+
         """
         if entry_timing not in ENTRY_TIMINGS:
             # A misspelled mode would otherwise run the optimistic bound while the
@@ -252,6 +259,7 @@ class GapReversalConfig(StrategyConfig):
         self.require_unfilled = require_unfilled
         self.long = long
         self.entry_timing = entry_timing
+        self.subscribe_bars = subscribe_bars
 
 
 def _cash_for(quantity: Decimal, price: Decimal) -> Decimal:
@@ -401,8 +409,18 @@ class GapReversalStrategy(Strategy):
 
     def on_start(self) -> None:
         """
-        Subscribe and let the engine feed the indicator.
+        Subscribe and let the engine feed the indicator - in a replay only.
+
+        A live session hands the strategy its bars from the catalog, through ``warm_up`` and
+        ``decide``, and does not subscribe. Since the market-data subscriptions of
+        2026-09-09 the broker answers a daily-bar subscription instead of refusing it with
+        2188, and on 2026-09-11 its bar reached ``on_bar`` during the node's settle wait, in
+        every activation, before the warm-up. Arriving after it, the same bar would have
+        replaced the previous close and run the rule on a bar the replay never sees.
+
         """
+        if not self.config.subscribe_bars:
+            return
         self.register_indicator_for_bars(self.config.bar_type, self._atr)
         self.subscribe_bars(self.config.bar_type)
 
@@ -711,6 +729,7 @@ def strategy_factory(
             require_unfilled=bool(parameters.get("require_unfilled", False)),
             long=bool(parameters.get("long", True)),
             entry_timing=str(parameters.get("entry_timing", "signal_close")),
+            subscribe_bars=bool(parameters.get("subscribe_bars", True)),
             # Forwarded only when given: the base config's own default applies otherwise,
             # and a basket of same-class strategies in one node needs distinct tags or
             # the second registration silently replaces the first.
