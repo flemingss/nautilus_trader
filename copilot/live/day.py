@@ -112,6 +112,7 @@ from copilot.live.halt import read_latch
 from copilot.live.heartbeat import ping
 from copilot.live.kill import acknowledgement_check
 from copilot.live.kill import describe as describe_latch
+from copilot.live.session import BASKET_ORDERS_ENABLED
 from copilot.live.session import PAPER_ACCOUNT_ENV
 from copilot.live.session import add_connection_arguments
 from copilot.live.warmup import session_to_prepare
@@ -135,10 +136,10 @@ PHASES = (MORNING, EVENING, SWEEP)
 Three phases. ``sweep`` is the monitoring-end command on its own.
 
 While orders are denied nothing can be working after the basket, so the evening runs the
-sweep as its last step. The day orders are enabled, the sweep moves to the end of the
-charter's window - 10:30 Eastern, 00:30 JST, an hour before a Tokyo operator sleeps - and
-this phase is that command, existing before it is needed rather than being written the
-night it is.
+sweep as its last step. The day orders are enabled (``session.BASKET_ORDERS_ENABLED``), the
+evening drops it and the sweep is this phase alone, at the end of the charter's window - 10:30
+Eastern, 00:30 JST, an hour before a Tokyo operator sleeps. The 10:30 timer runs it every
+weekday either way.
 
 """
 
@@ -510,7 +511,9 @@ def evening_steps(
 
     The sweep runs whatever happened before it. It is the monitoring-end policy's last
     line, and a basket that crashed is the case in which an order is most likely to have
-    been left behind.
+    been left behind. **Only while the basket's orders are denied**: a basket that places
+    entries for the session about to open must not have them cancelled an hour before it
+    does, so then the sweep is ``day sweep`` alone.
 
     """
     sizing: tuple[str, ...] = ()
@@ -518,7 +521,7 @@ def evening_steps(
         sizing += ("--allocation", str(allocation))
     if risk_fraction is not None:
         sizing += ("--risk-fraction", str(risk_fraction))
-    return (
+    steps = (
         _append_step(catalog),
         _corporate_actions_step(
             catalog,
@@ -552,6 +555,11 @@ def evening_steps(
             stops_on_failure=False,
             why="a strategy did not run cleanly; the sweep still runs",
         ),
+    )
+    if BASKET_ORDERS_ENABLED:
+        return steps
+    return (
+        *steps,
         Step(
             "sweep",
             "copilot.live.cancel_working",
@@ -695,7 +703,9 @@ def notify(
     alerter = alerter_from_environment()
     pending = alerts_for(phase, session, steps, results)
     latch = read_latch()
-    if latch is not None:
+    if latch is not None and phase == MORNING:
+        # Once a day. Every phase prints the latch; a WARNING from each of them, every day
+        # the host stays halted, is the noise that teaches the operator to ignore the app.
         pending.append(
             Alert(
                 severity=Severity.WARNING,

@@ -31,6 +31,7 @@ import datetime as dt
 import os
 from dataclasses import dataclass
 
+from copilot.live.client_ids import ENTITLEMENTS_BASE
 from nautilus_trader.adapters import interactive_brokers as ib
 from nautilus_trader.model import InstrumentId
 
@@ -138,7 +139,7 @@ async def main() -> None:
         default="REALTIME,DELAYED",
         help="Comma-separated MarketDataType names to test.",
     )
-    parser.add_argument("--client-id-base", type=int, default=1200)
+    parser.add_argument("--client-id-base", type=int, default=ENTITLEMENTS_BASE)
     parser.add_argument(
         "--end",
         default=DEFAULT_END.isoformat(),

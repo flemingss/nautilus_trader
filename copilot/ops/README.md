@@ -6,39 +6,43 @@ Ubuntu host ([ADR-0022](../docs/decisions/0022-the-always-on-host-is-a-dedicated
 plan and its reasoning are [`DRAFT_PAPER_VM.md`](../docs/DRAFT_PAPER_VM.md); this file is the
 commands.
 
-| Path                   | What                                                                                       |
-| ---------------------- | ------------------------------------------------------------------------------------------ |
-| `systemd/`             | User services for `day` and the shakedown, and the eight timers that fire them, in Eastern |
-| `install-units.sh`     | Renders the units with this clone's path and installs them; `--enable` starts the timers   |
-| `gateway/compose.yaml` | IB Gateway under IBC, paper, pinned by digest at stand-up                                  |
-| `env/*.example`        | Every variable the services read, secrets named and never valued                           |
+| Path                   | What                                                                                                                 |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `systemd/`             | User services for `day`, the shakedown, the acknowledgement check and unit failures, and the nine timers, in Eastern |
+| `install-units.sh`     | Renders the units with this clone's path and installs them; `--enable` starts the timers                             |
+| `gateway/compose.yaml` | IB Gateway under IBC, paper, pinned by digest at stand-up                                                            |
+| `env/*.example`        | Every variable the services read, secrets named and never valued                                                     |
 
 The host check, `python -m copilot.live.host_check`, reports what a host is missing against all
 of it and changes nothing.
 
 ## The schedule
 
-| Eastern | Unit                             | Days      |
-| ------- | -------------------------------- | --------- |
-| 07:35   | `copilot-shakedown@pre-open`     | Weekdays  |
-| 08:30   | `copilot-day@evening`            | Weekdays  |
-| 09:31   | `copilot-shakedown@open`         | Weekdays  |
-| 10:30   | `copilot-day@sweep`              | Weekdays  |
-| 10:45   | `copilot-shakedown@order-window` | Weekdays  |
-| 11:35   | `copilot-shakedown@midday`       | Weekdays  |
-| 15:20   | `copilot-shakedown@close`        | Weekdays  |
-| 17:00   | `copilot-day@morning`            | Every day |
+| Eastern      | Unit                             | Days      |
+| ------------ | -------------------------------- | --------- |
+| 07:35        | `copilot-shakedown@pre-open`     | Weekdays  |
+| 08:30        | `copilot-day@evening`            | Weekdays  |
+| 09:31        | `copilot-shakedown@open`         | Weekdays  |
+| 10:30        | `copilot-day@sweep`              | Weekdays  |
+| 10:45        | `copilot-shakedown@order-window` | Weekdays  |
+| 11:35        | `copilot-shakedown@midday`       | Weekdays  |
+| 15:20        | `copilot-shakedown@close`        | Weekdays  |
+| 17:00        | `copilot-day@morning`            | Every day |
+| every 15 min | `copilot-acknowledgements`       | Every day |
 
-Every service runs with `--scheduled`, so a holiday, an early close or a late timer is
+Every day and shakedown unit takes one broker lock and runs one at a time, waits up to five
+minutes for the Gateway's port first, and reports its own failure through
+`copilot-unit-failed@` ([ADR-0030](../docs/decisions/0030-the-host-runs-one-broker-session-at-a-time.md)).
+Every phase runs with `--scheduled`, so a holiday, an early close or a late timer is
 *nothing to do* and exit 0, decided by the code rather than the calendar line. An engaged halt
 latch skips only the shakedown phases that place orders; `day` prints the latch and runs its
 phase with every node built `HALTED`. The morning runs on weekends too, so the heartbeat never
 goes quiet.
 
-**Closed before stand-up (2026-09-11 audit, batch A):** the sweep's cancel runs and reaches every
-open order on the account through IB's global cancel, the acknowledgement check cannot stop a
-phase, and an undelivered CRITICAL halts the host. Batch B, in `ROADMAP.md`, is what stage seven
-still needs.
+**Closed before stand-up (2026-09-11 audit, batches A and B):** the sweep's cancel runs and
+reaches every open order on the account through IB's global cancel; the acknowledgement check
+cannot stop a phase and runs on its own timer; an undelivered CRITICAL halts the host; a running
+node halts when the latch appears; and the protection guard runs in the basket.
 
 ## Stand-up
 
@@ -154,17 +158,17 @@ recovery checklist it prints, then `python -m copilot.live.kill --release <id>` 
 command: `kill` exits with the sweep's code, which is non-zero whenever the census is not
 clear, so chaining the release on it would leave the host latched.
 
-Stopping the `copilot-*` timers also stops the only consumer of the unacknowledged-CRITICAL
-trigger, until that check has a timer of its own (roadmap row).
+The acknowledgement check has its own timer and keeps running when the phase timers are
+paused; stopping it stops the kill switch's consumer of an unanswered CRITICAL.
 
 ## Day to day
 
-| Want to                         | Run                                              |
-| ------------------------------- | ------------------------------------------------ |
-| Stop all trading on this host   | `python -m copilot.live.kill --reason "..."`     |
-| See whether it is halted        | `python -m copilot.live.kill --status`           |
-| See what the last sweep found   | `ls -t copilot/live/out/sweep_*.json \| head -1` |
-| See what ran                    | `journalctl --user -u 'copilot-*' --since today` |
-| See what is scheduled           | `systemctl --user list-timers 'copilot-*'`       |
-| Pause the schedule, not trading | `systemctl --user stop 'copilot-*.timer'`        |
-| Check the host                  | `python -m copilot.live.host_check`              |
+| Want to                         | Run                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------- |
+| Stop all trading on this host   | `python -m copilot.live.kill --reason "..."`                              |
+| See whether it is halted        | `python -m copilot.live.kill --status`                                    |
+| See what the last sweep found   | `ls -t copilot/live/out/sweep_*.json \| head -1`                          |
+| See what ran                    | `journalctl --user -u 'copilot-*' --since today`                          |
+| See what is scheduled           | `systemctl --user list-timers 'copilot-*'`                                |
+| Pause the schedule, not trading | `systemctl --user stop 'copilot-day-*.timer' 'copilot-shakedown-*.timer'` |
+| Check the host                  | `python -m copilot.live.host_check`                                       |

@@ -16,12 +16,14 @@ runs while the operator sleeps should meet its gaps here instead.
 
 from __future__ import annotations
 
+import argparse
 import os
 import shutil
 import socket
 import stat
 import subprocess
 import sys
+import time
 from collections.abc import Callable
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -51,6 +53,7 @@ Below this the source build locked a 15 GB WSL box up four times on 2026-09-10.
 """
 
 TIMERS = (
+    "copilot-acknowledgements.timer",
     "copilot-day-morning.timer",
     "copilot-day-evening.timer",
     "copilot-day-sweep.timer",
@@ -206,6 +209,32 @@ def check_broker_port(
     )
 
 
+WAIT_POLL_SECS = 5.0
+
+
+def wait_for_broker(
+    address: tuple[str, int],
+    *,
+    deadline_secs: int,
+    connect: Callable[..., object] = socket.create_connection,
+    sleep: Callable[[float], None] = time.sleep,
+    clock: Callable[[], float] = time.monotonic,
+) -> Finding:
+    """
+    Wait until the broker port accepts a connection or the deadline passes.
+
+    A unit's pre-step, so a Gateway still logging in after a reboot is waited for rather
+    than handed a preflight it will fail.
+
+    """
+    deadline = clock() + deadline_secs
+    while True:
+        finding = check_broker_port(*address, connect=connect)
+        if finding.ok or clock() >= deadline:
+            return finding
+        sleep(WAIT_POLL_SECS)
+
+
 def check_host(run_command: Run = run) -> list[Finding]:
     """
     Check the machine: clock, linger, timers, Docker, memory and disk.
@@ -341,12 +370,26 @@ def report(findings: list[Finding]) -> int:
 
 def main(argv: list[str] | None = None) -> int:
     """
-    Check this host.
+    Check this host, or wait for its broker port.
     """
-    del argv
+    parser = argparse.ArgumentParser(
+        prog="python -m copilot.live.host_check",
+        description="Report what this host is missing, changing nothing.",
+    )
+    parser.add_argument(
+        "--wait-for-broker",
+        type=int,
+        metavar="SECONDS",
+        help="only wait up to SECONDS for the broker port, and exit 0 once it answers",
+    )
+    args = parser.parse_args(argv)
     environ = os.environ
     host = environ.get("IB_V2_HOST", "127.0.0.1")
     port = int(environ.get("IB_V2_PORT", "4002"))
+    if args.wait_for_broker is not None:
+        finding = wait_for_broker((host, port), deadline_secs=args.wait_for_broker)
+        print(finding.detail)
+        return 0 if finding.ok else 1
     findings = [
         *check_environment(environ),
         *check_secret_files(Path(OPS_CONFIG_DIR).expanduser()),
@@ -375,4 +418,5 @@ __all__ = [
     "check_secret_files",
     "main",
     "report",
+    "wait_for_broker",
 ]

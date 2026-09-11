@@ -42,6 +42,16 @@ at this stage: the charter's *System* gate asks whether the code does what the r
 says, and that question is answerable without a frozen candidate. Enabling orders is paper
 stage seven, which needs one.
 
+The account-wide breaker rides along
+------------------------------------
+A :class:`~copilot.risk.guard.ProtectionGuard` runs in the basket's node, with its outcome
+ledger (``paths.risk_ledger_path``), so a run of stop-outs or a drawdown pauses the account and
+the evidence survives the one-process-per-step day. Until 2026-09-11 no node had it
+(``docs/AUDIT_2026-09-11.md``). It is configured once the equity is read - the drawdown limit is
+a fraction of the capital the session sizes against - and before any strategy is handed a bar.
+While orders are denied it is inert in effect and live in evidence: every session record says
+whether a breach is in force.
+
 Two prices, one instrument
 --------------------------
 Research names the instrument ``AAPL.XNAS`` and the broker resolves ``AAPL=STK.SMART``
@@ -78,20 +88,26 @@ from copilot.data.catalog import equity_for
 from copilot.data.catalog import read_series
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import reported_equity
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.manifest import Manifest
 from copilot.live.manifest import current_commit
 from copilot.live.manifest import manifest_for
 from copilot.live.node import build_paper_node
+from copilot.live.session import BASKET_ORDERS_ENABLED
 from copilot.live.session import PaperSession
 from copilot.live.session import add_broker_arguments
 from copilot.live.symbology import broker_instrument_id
 from copilot.live.warmup import load as load_warmup
 from copilot.live.warmup import session_to_prepare
 from copilot.paths import add_catalog_argument
+from copilot.paths import risk_ledger_path
 from copilot.risk.budget import DEFAULT_RISK_FRACTION
 from copilot.risk.budget import RiskPolicy
 from copilot.risk.budget import budget_for
 from copilot.risk.exposure import ExposureLedger
+from copilot.risk.guard import ProtectionGuard
+from copilot.risk.guard import ProtectionGuardSettings
+from copilot.risk.protections import ProtectionPolicy
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
 from copilot.strategies.activations import load_activations
@@ -106,6 +122,7 @@ from nautilus_trader.model import Equity
 from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import Venue
 from nautilus_trader.trading import Strategy
+from nautilus_trader.trading import StrategyConfig
 
 
 OUT_DIR = Path(__file__).parent / "out"
@@ -225,6 +242,10 @@ class SessionRecord:
     """
     The shared ledger as it stood once this activation had decided.
     """
+    protection: dict[str, str] = field(default_factory=dict)
+    """
+    The account-wide breaker as the basket ran: its ledger, its denominator, any breach.
+    """
     note: str = ""
 
     @property
@@ -337,6 +358,93 @@ def _tag_for(activation: Activation) -> str:
     return activation.symbol.lower()
 
 
+GUARD_TAG = "guard"
+
+
+def protection_settings(
+    plans: tuple[Plan, ...],
+    *,
+    account_value: Decimal,
+    account_id: str,
+) -> ProtectionGuardSettings:
+    """
+    Return the breaker's settings for one basket: its instruments, one ledger.
+    """
+    instrument_ids = tuple(
+        dict.fromkeys(
+            broker_instrument_id(plan.activation.symbol, plan.activation.venue) for plan in plans
+        ),
+    )
+    return ProtectionGuardSettings(
+        policy=ProtectionPolicy(),
+        instrument_ids=instrument_ids,
+        account_value=account_value,
+        ledger_path=risk_ledger_path(account_id),
+    )
+
+
+def protection_record(settings: ProtectionGuardSettings, guard: object) -> dict[str, str]:
+    """
+    Return what a session record says about the breaker.
+    """
+    breach = getattr(guard, "breach", None)
+    return {
+        "ledger": str(settings.ledger_path),
+        "account_value": str(settings.account_value),
+        "breach": "none"
+        if breach is None
+        else f"{breach.trigger} until {breach.until.isoformat()}",
+    }
+
+
+def session_records(plans: tuple[Plan, ...]) -> dict[str, SessionRecord]:
+    """
+    Return one session record per activation, filled in as the basket runs.
+    """
+    return {
+        plan.activation.name: SessionRecord(
+            activation=plan.activation.name,
+            broker_instrument=str(
+                broker_instrument_id(plan.activation.symbol, plan.activation.venue),
+            ),
+            research_instrument=str(equity_for(plan.activation.symbol, plan.activation.venue).id),
+            decision_bar=plan.decision.closed_at.date().isoformat(),
+            warmup_bars=len(plan.warmup),
+            warmup_from=plan.warmup[0].closed_at.date().isoformat(),
+            warmup_to=plan.warmup[-1].closed_at.date().isoformat(),
+            parameters={k: str(v) for k, v in plan.activation.parameters.items()},
+            parameters_source=plan.provenance.as_record(),
+            manifest=plan.manifest.as_record() if plan.manifest else {},
+            basket_position=index + 1,
+        )
+        for index, plan in enumerate(plans)
+    }
+
+
+def record_decision(record: SessionRecord, strategy: Strategy, cache: object) -> None:
+    """
+    Copy what the strategy decided, and the orders it submitted, into its record.
+    """
+    decided = strategy.decision_record()
+    record.atr_value = decided["atr_value"]
+    record.previous_close = decided["previous_close"]
+    record.deferred_atr = decided["deferred_atr"]
+    record.outcome = decided["outcome"]
+    record.skips = dict(decided["skips"])
+    record.orders = [
+        OrderRecord(
+            client_order_id=str(order.client_order_id),
+            side=str(order.side),
+            quantity=str(order.quantity),
+            order_type=str(order.order_type),
+            status=str(order.status),
+            price=str(order.price) if hasattr(order, "price") else None,
+        )
+        for order in cache.orders()
+        if str(order.strategy_id) == str(strategy.strategy_id)
+    ]
+
+
 async def run_session(
     session: PaperSession,
     plans: tuple[Plan, ...],
@@ -366,29 +474,13 @@ async def run_session(
         )
         for plan in plans
     }
-    records = {
-        plan.activation.name: SessionRecord(
-            activation=plan.activation.name,
-            broker_instrument=str(
-                broker_instrument_id(plan.activation.symbol, plan.activation.venue),
-            ),
-            research_instrument=str(equity_for(plan.activation.symbol, plan.activation.venue).id),
-            decision_bar=plan.decision.closed_at.date().isoformat(),
-            warmup_bars=len(plan.warmup),
-            warmup_from=plan.warmup[0].closed_at.date().isoformat(),
-            warmup_to=plan.warmup[-1].closed_at.date().isoformat(),
-            parameters={k: str(v) for k, v in plan.activation.parameters.items()},
-            parameters_source=plan.provenance.as_record(),
-            manifest=plan.manifest.as_record() if plan.manifest else {},
-            basket_position=index + 1,
-        )
-        for index, plan in enumerate(plans)
-    }
+    records = session_records(plans)
 
-    node, _risk_engine = build_paper_node(
+    guard = ProtectionGuard(StrategyConfig(order_id_tag=GUARD_TAG))
+    node, risk_engine = build_paper_node(
         session,
         market_data_type=MarketDataType.DELAYED,
-        strategies=tuple(strategies.values()),
+        strategies=(*strategies.values(), guard),
     )
     # Captured before the run, for the same reason ``build_paper_node`` returns the risk
     # engine handle: a hosted run takes ownership of the node, and ``node.cache`` raises
@@ -411,6 +503,14 @@ async def run_session(
             max_total_risk=budget.max_total_risk,
             max_new_entries=policy.max_new_entries,
         )
+        # Before any bar: a cooldown in force from an earlier session must bar this one's first
+        # order, and the guard's start-time evaluation is what reads it.
+        settings = protection_settings(
+            plans,
+            account_value=budget.allocation,
+            account_id=session.account_id,
+        )
+        guard.configure(settings, risk_engine=risk_engine)
 
         for plan in plans:
             name = plan.activation.name
@@ -442,30 +542,13 @@ async def run_session(
             record.atr_initialized = bool(strategy.decision_record()["atr_initialized"])
             strategy.decide(decision_bars[0])
             record.exposure_after = ledger.as_record()
+            record.protection = protection_record(settings, guard)
 
         await asyncio.sleep(drain_secs)
 
         for plan in plans:
             name = plan.activation.name
-            strategy, record = strategies[name], records[name]
-            decided = strategy.decision_record()
-            record.atr_value = decided["atr_value"]
-            record.previous_close = decided["previous_close"]
-            record.deferred_atr = decided["deferred_atr"]
-            record.outcome = decided["outcome"]
-            record.skips = dict(decided["skips"])
-            record.orders = [
-                OrderRecord(
-                    client_order_id=str(order.client_order_id),
-                    side=str(order.side),
-                    quantity=str(order.quantity),
-                    order_type=str(order.order_type),
-                    status=str(order.status),
-                    price=str(order.price) if hasattr(order, "price") else None,
-                )
-                for order in cache.orders()
-                if str(order.strategy_id) == str(strategy.strategy_id)
-            ]
+            record_decision(records[name], strategies[name], cache)
     finally:
         handle.stop()
         try:
@@ -564,7 +647,11 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.run_activation",
         description="Run a registered activation on the paper broker, orders denied.",
     )
-    add_broker_arguments(parser, data_client_id=871, exec_client_id=872)
+    add_broker_arguments(
+        parser,
+        data_client_id=BROKER_PAIRS["run_activation"].data,
+        exec_client_id=BROKER_PAIRS["run_activation"].execution,
+    )
     parser.add_argument(
         "activations",
         nargs="*",
@@ -668,7 +755,7 @@ def main(argv: list[str] | None = None) -> int:
         port=args.port,
         data_client_id=args.data_client_id,
         exec_client_id=args.exec_client_id,
-        orders_enabled=False,
+        orders_enabled=BASKET_ORDERS_ENABLED,
         instrument_ids=tuple(
             dict.fromkeys(str(broker_instrument_id(a.symbol, a.venue)) for a in activations),
         ),
@@ -692,7 +779,7 @@ def main(argv: list[str] | None = None) -> int:
     payload = {
         "run_at": started.isoformat(),
         "session": first_session.isoformat(),
-        "orders_enabled": False,
+        "orders_enabled": BASKET_ORDERS_ENABLED,
         "basket": [a.name for a in activations],
         "activations": [
             {
@@ -724,6 +811,8 @@ __all__ = [
     "SessionRecord",
     "broker_bar_type",
     "build_strategy",
+    "protection_record",
+    "protection_settings",
     "run_session",
     "to_broker_bars",
 ]

@@ -630,3 +630,90 @@ def test_every_phase_checks_the_halt_first_and_says_so(monkeypatch, capsys) -> N
     assert checked == [True]
     assert "HALT LATCH ENGAGED" in out
     assert out.index("HALT LATCH ENGAGED") < out.index("nothing to do")
+
+
+def test_the_halt_reminder_goes_out_once_a_day_not_from_every_phase(monkeypatch) -> None:
+    """
+    Audit F10: a WARNING from every phase, every day the host stays halted, is noise.
+    """
+    from copilot.live.day import notify
+    from copilot.live.halt import OPERATOR
+    from copilot.live.halt import Latch
+
+    sent: list[str] = []
+
+    class _Alerter:
+        def send(self, alert):  # stands in for Alerter.send
+            sent.append(alert.title)
+            return type("D", (), {"outcome": "sent"})()
+
+    monkeypatch.setattr("copilot.live.day.alerter_from_environment", _Alerter)
+    monkeypatch.setattr(
+        "copilot.live.day.read_latch",
+        lambda: Latch("3f9a1c2e", "t", OPERATOR, "drill", "vm"),
+    )
+    monkeypatch.setattr("copilot.live.day.beat", lambda _latch: None)
+
+    notify(EVENING, "2026-09-11", (), ())
+    notify(SWEEP, "2026-09-11", (), ())
+    assert "halt latch still engaged" not in sent
+
+    notify(MORNING, "2026-09-11", (), ())
+    assert sent.count("halt latch still engaged") == 1
+
+
+def test_an_engaged_latch_does_not_make_a_scheduled_evening_nothing_to_do(
+    monkeypatch,
+    capsys,
+) -> None:
+    """
+    Audit F9: the runbook said it did. The phase prints the latch and runs, every node HALTED.
+    """
+    from copilot.live.halt import OPERATOR
+    from copilot.live.halt import Latch
+
+    monday = eastern(2026, 9, 14, 8, 30)
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN206 - matches datetime.now
+            return monday.astimezone(tz)
+
+    monkeypatch.setattr("copilot.live.day.datetime", Frozen)
+    monkeypatch.setattr("copilot.live.day.acknowledgement_check", list)
+    monkeypatch.setattr(
+        "copilot.live.day.read_latch",
+        lambda: Latch("3f9a1c2e", "t", OPERATOR, "drill", "vm"),
+    )
+    monkeypatch.setattr("copilot.live.day.completed_record", lambda *_a, **_k: None)
+    for name in (PUSHOVER_TOKEN_ENV, PUSHOVER_USER_KEY_ENV):
+        monkeypatch.delenv(name, raising=False)
+
+    code = main(["evening", "--scheduled"])
+
+    out = capsys.readouterr().out
+    assert "HALT LATCH ENGAGED" in out
+    assert "nothing to do" not in out
+    assert code == 2, "it went on to the environment check, and refused there"
+
+
+def test_the_evening_does_not_sweep_away_the_entries_its_basket_placed(monkeypatch) -> None:
+    """
+    Audit F8: the day orders are enabled, an evening sweep cancels the entries before the open.
+    """
+    from copilot.live.session import BASKET_ORDERS_ENABLED
+
+    kwargs = {
+        "session": date(2026, 9, 8),
+        "connection": CONNECTION,
+        "allocation": None,
+        "risk_fraction": None,
+    }
+    denied = [s.name for s in evening_steps("~/cat", **kwargs)]
+    monkeypatch.setattr("copilot.live.day.BASKET_ORDERS_ENABLED", True)
+    placing = [s.name for s in evening_steps("~/cat", **kwargs)]
+
+    assert denied[-1] == "sweep"
+    assert "sweep" not in placing
+    assert placing == denied[:-1]
+    assert BASKET_ORDERS_ENABLED is False, "stage seven is a charter gate; this test says so"

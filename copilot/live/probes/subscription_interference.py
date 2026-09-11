@@ -39,6 +39,7 @@ from datetime import datetime
 from datetime import timedelta
 from pathlib import Path
 
+from copilot.live.client_ids import DATA_ONLY
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientFactory
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersInstrumentProviderConfig
@@ -359,7 +360,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default=os.getenv("IB_V2_HOST", "172.17.112.1"))
     parser.add_argument("--port", type=int, default=int(os.getenv("IB_V2_PORT", "7497")))
-    parser.add_argument("--client-id", type=int, default=721)
+    parser.add_argument(
+        "--client-id",
+        type=int,
+        default=DATA_ONLY["subscription_interference"],
+    )
     parser.add_argument("--treated", default="AAPL=STK.SMART")
     parser.add_argument("--control", default="MSFT=STK.SMART")
     parser.add_argument("--treatment", choices=TREATMENTS, default="trades")

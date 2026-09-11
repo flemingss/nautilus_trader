@@ -69,6 +69,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
 from copilot.live.node import wait_for_settlement
@@ -369,8 +370,8 @@ async def run_probe(
             account_id=account,
             host=host,
             port=port,
-            data_client_id=831,
-            exec_client_id=832,
+            data_client_id=BROKER_PAIRS["strand_recovery_strand"].data,
+            exec_client_id=BROKER_PAIRS["strand_recovery_strand"].execution,
             orders_enabled=True,
             instrument_ids=(str(instrument_id),),
         ),
@@ -393,8 +394,8 @@ async def run_probe(
             account_id=account,
             host=host,
             port=port,
-            data_client_id=841,
-            exec_client_id=842,
+            data_client_id=BROKER_PAIRS["strand_recovery_recover"].data,
+            exec_client_id=BROKER_PAIRS["strand_recovery_recover"].execution,
             # Deliberately left disabled: cancel commands bypass the risk engine, so the
             # sweep works with the halt in place, and a recovery node that cannot submit
             # is a recovery node that cannot make the situation worse.

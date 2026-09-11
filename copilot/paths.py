@@ -92,6 +92,12 @@ ALERT_RECEIPTS_PATH = "~/.nautilus_copilot/alerts/receipts.jsonl"
 Every ``CRITICAL`` alert's receipt, so an unacknowledged one can engage the halt latch.
 """
 
+ALERT_FLOOD_PATH = "~/.nautilus_copilot/alerts/flood.json"
+"""
+When each alert last went out, so repeats collapse across the one-shot processes that
+send them.
+"""
+
 HEARTBEAT_URL_ENV = "COPILOT_HEARTBEAT_URL"
 """
 A push-monitor URL the morning pings, so an external watcher notices when it stops.
@@ -141,6 +147,7 @@ def add_catalog_argument(parser: argparse.ArgumentParser) -> None:
 
 
 __all__ = [
+    "ALERT_FLOOD_PATH",
     "ALERT_RECEIPTS_PATH",
     "CATALOG_PATH_ENV",
     "DATABENTO_API_KEY_ENV",
