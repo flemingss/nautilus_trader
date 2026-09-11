@@ -2,7 +2,7 @@
 Cancel every working order on the registered instruments, and confirm the broker agrees.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.cancel_working --all --account DUT067974
+    python -m copilot.live.cancel_working --all --account "$COPILOT_PAPER_ACCOUNT"
 
 ``playbook/OPERATIONS.md`` makes this the non-optional end of every monitoring window:
 *"Block new entry intents; cancel every working entry order; wait for and verify broker

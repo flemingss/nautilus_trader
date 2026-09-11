@@ -2,6 +2,42 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, audit batch D: hygiene, and the audit closed
+
+### Changed
+
+- **The paper account id is out of code and templates.** Every command's usage line, three code
+  comments, the env template (now `CHANGE-ME`), `DRAFT_OPERATOR_DAY.md`, `MAINTENANCE.md`,
+  `playbook/PREFLIGHT.md` and the register read `$COPILOT_PAPER_ACCOUNT` or `IB-<account>`. Filed
+  records and dated logs keep the id as evidence.
+- **Calibration retention.** `spread_snapshot_20260831T173204Z.json` is cited where the roadmap
+  quotes its numbers; `account_sweep_20260903T131926Z.json`, priced before the measured-history
+  spread and the per-plan commission and quoted nowhere, is pruned. The *Run the account sweep under
+  both commission plans* row refiles a current one.
+- **The roadmap's stale detail sections are dated** - the first verdict, what a paper run needs,
+  the risk breakers, the `set_trading_state` decision, the toolchain, the environment facts, the
+  paper run - each saying what superseded it.
+- **`python/pyproject.toml`**: a two-line comment split across the `shakedown.py` entry is rejoined.
+
+### Fixed
+
+- **The VM's env templates and unit installer were never committed** (found closing this batch).
+  The root `.gitignore` ignores `env/` directories and `*.sh`, so `copilot/ops/env/*.example` and
+  `copilot/ops/install-units.sh` lived only on the dev box from #83 on, and the VM's clone would
+  have had neither. A nested `copilot/ops/.gitignore` re-includes them, and a test fails if any
+  overlay file is hidden by an inherited ignore rule again.
+
+### Regrouped
+
+- **Waiting on the VM (5)**, a new group: IB Gateway headless and records back to the repository,
+  moved from *Ready to build*, and the three stand-up questions as rows of their own - where the
+  heartbeat is watched, whether the timezone alias is still needed, whether IBC's paper login
+  prompts for two-factor.
+- **The audit is closed.** Thirty-three rows filed on 2026-09-11 and closed the same day across
+  four pull requests; two moved to decisions and five to the VM. Open work is twenty-five items:
+  ten ready to build, five waiting on the VM, two on the account, two on a decision, one charter
+  conflict, one on spend, four deferred.
+
 ## 2026-09-11, audit batch C: the evidence and the attribution say what they measure
 
 The fifteen research rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before the next

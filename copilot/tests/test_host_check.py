@@ -452,3 +452,27 @@ class _Socket:
 
     def __exit__(self, *_args: object) -> None:
         return None
+
+
+def test_no_overlay_file_is_hidden_by_an_inherited_ignore_rule() -> None:
+    """
+    Audit batch D: the root ``env/`` and ``*.sh`` rules kept the VM's env templates and its unit
+    installer out of the repository from the pull request that wrote them. Every check here
+    passed on the machine that had the files, and a fresh clone on the VM would not.
+    """
+    import subprocess
+
+    listed = subprocess.run(
+        ["git", "status", "--ignored", "--porcelain", "--untracked-files=all", "copilot"],  # noqa: S607
+        cwd=REPO,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    hidden = [
+        line[3:]
+        for line in listed
+        if line.startswith("!! ") and "__pycache__" not in line and not line.endswith(".pyc")
+    ]
+
+    assert hidden == []

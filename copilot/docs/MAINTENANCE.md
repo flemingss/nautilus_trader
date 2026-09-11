@@ -407,7 +407,7 @@ directory was an API key.
    PYTHONPATH=. python -m copilot.tools.upstream_delta --check
    git status --porcelain -uall | grep -c trade-copilot     # must print 0
    PYTHONPATH=. python -m copilot.strategies.validate --all # reproduces the recorded verdicts
-   PYTHONPATH=. python -m copilot.live.preflight --account DUT067974   # needs a session
+   PYTHONPATH=. python -m copilot.live.preflight --account "$COPILOT_PAPER_ACCOUNT"   # needs a session
    ```
 
    The first line is the one worth understanding: it is the

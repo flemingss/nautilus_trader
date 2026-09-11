@@ -2,7 +2,7 @@
 Paper stage six: make things go wrong on purpose, and check the system notices.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.probes.failure_injection --account DUT067974
+    python -m copilot.live.probes.failure_injection --account "$COPILOT_PAPER_ACCOUNT"
 
 Stages one to five confirmed the happy path, which was never seriously in doubt. **This is
 the stage worth the eight weeks.** An unattended system is not defined by what it does when
