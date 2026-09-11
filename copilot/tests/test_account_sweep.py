@@ -23,6 +23,10 @@ from decimal import Decimal
 from copilot.calibration.account_sweep import Priced
 from copilot.calibration.account_sweep import crossing_equity
 from copilot.calibration.account_sweep import reprice
+from copilot.calibration.account_sweep import sweep
+from copilot.calibration.cost_model import FIXED
+from copilot.calibration.cost_model import SCHEDULE
+from copilot.calibration.cost_model import TIERED
 
 
 @dataclass(frozen=True)
@@ -156,6 +160,73 @@ def test_a_premise_viable_nowhere_reports_nothing_rather_than_the_top_of_the_ran
     ]
 
     assert crossing_equity(rows) is None
+
+
+def test_the_default_plan_is_the_pinned_one() -> None:
+    """
+    A sweep that names no plan prices what every verdict is charged at.
+    """
+    trades = [trade("1.00")]
+
+    assert reprice(trades, "SPY", Decimal(20), Decimal(2)) == reprice(
+        trades,
+        "SPY",
+        Decimal(20),
+        Decimal(2),
+        SCHEDULE,
+    )
+
+
+def test_tiered_is_cheaper_where_the_minimum_binds() -> None:
+    """
+    Twenty shares at USD 100: Fixed pays its USD 1.00 minimum, Tiered its USD 0.35 plus
+    0.0032 a share passed through, 0.414 a side.
+
+    0.828 against USD 20 at risk is 0.0414 R, against Fixed's 0.10 R.
+
+    """
+    trades = [trade("1.00")]
+
+    fixed = reprice(trades, "SPY", Decimal(20), Decimal(2), FIXED)
+    tiered = reprice(trades, "SPY", Decimal(20), Decimal(2), TIERED)
+
+    assert fixed.commission_r == Decimal("0.10")
+    assert tiered.commission_r == Decimal("0.0414")
+    assert fixed.spread_r == tiered.spread_r
+    assert fixed.gross_r == tiered.gross_r
+
+
+def test_fixed_is_cheaper_once_the_per_share_rate_binds() -> None:
+    """
+    The crossover ADR-0025 measured, from the other side.
+
+    Ten thousand shares: Fixed's flat 0.005 is USD 50 a side, while Tiered's 0.0035 plus
+    0.0032 passed through is USD 67. A plan comparison that only looked at small accounts
+    would call Tiered cheaper everywhere.
+
+    """
+    trades = [trade("1.00")]
+
+    fixed = reprice(trades, "SPY", Decimal(10_000), Decimal(2), FIXED)
+    tiered = reprice(trades, "SPY", Decimal(10_000), Decimal(2), TIERED)
+
+    assert fixed.commission_r == Decimal("0.01")
+    assert tiered.commission_r == Decimal("0.0134")
+
+
+def test_the_plan_reaches_every_row_of_a_sweep() -> None:
+    trades = [trade("1.00")]
+
+    rows = sweep(
+        trades,
+        "SPY",
+        Decimal(2),
+        Decimal("0.0010"),
+        equities=(Decimal(20_000),),
+        schedule=TIERED,
+    )
+
+    assert rows[0][1] == reprice(trades, "SPY", Decimal(20), Decimal(2), TIERED)
 
 
 def test_zero_is_not_viable() -> None:
