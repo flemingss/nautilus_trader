@@ -498,14 +498,14 @@ verdicts where 14 were current, seven calibration outputs nothing referenced, an
 session record per run. Git history keeps every version regardless; the question is only
 what the working tree should present as *the* record.
 
-| Directory              | Keep                                                                            | Why                                                                         |
-| ---------------------- | ------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `strategies/verdicts/` | The newest per activation, plus any a `holdouts/` record names, voided included | The newest is what `--changed` compares against; a spend cites its base     |
-| `calibration/out/`     | Anything a module pins or an ADR, playbook or roadmap names by filename         | A pinned snapshot is a dependency; a named one is evidence                  |
-| `live/out/`            | Everything                                                                      | Session records are the paper campaign's evidence and are never rewritten   |
-| `strategies/holdouts/` | Everything, `voided/` included                                                  | Single-use by construction; a void is a record of why it was not            |
-| `strategies/out/`      | The newest pooled run and attribution, plus any a test or document names        | Same rule as verdicts; added 2026-09-11 when two superseded runs were found |
-| `data/out/`            | Every vendor probe                                                              | An adoption decision cites the probe it rests on; added 2026-09-11          |
+| Directory              | Keep                                                                                                                                | Why                                                                                                                                    |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `strategies/verdicts/` | The newest per activation, plus any a `holdouts/` record names, voided included, and any the newest pooled run or attribution names | The newest is what `--changed` compares against; a spend cites its base; an attribution is only reproducible from the verdicts it read |
+| `calibration/out/`     | Anything a module pins or an ADR, playbook or roadmap names by filename                                                             | A pinned snapshot is a dependency; a named one is evidence                                                                             |
+| `live/out/`            | Everything                                                                                                                          | Session records are the paper campaign's evidence and are never rewritten                                                              |
+| `strategies/holdouts/` | Everything, `voided/` included                                                                                                      | Single-use by construction; a void is a record of why it was not                                                                       |
+| `strategies/out/`      | The newest pooled run and attribution, plus any a test or document names                                                            | Same rule as verdicts; added 2026-09-11 when two superseded runs were found                                                            |
+| `data/out/`            | Every vendor probe                                                                                                                  | An adoption decision cites the probe it rests on; added 2026-09-11                                                                     |
 
 Prune verdicts and calibration outputs when a filing supersedes them, in the same commit
 as the filing. A superseded file is not deleted history - it is one `git log` away - but
