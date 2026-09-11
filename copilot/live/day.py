@@ -4,6 +4,7 @@ The operator's day as two commands, so the sequence lives in code.
     python -m copilot.live.day morning      # after the US close
     python -m copilot.live.day evening      # an hour before the US open
     python -m copilot.live.day sweep        # monitoring end, once orders are enabled
+    python -m copilot.live.day evening --scheduled   # from a timer: decides for itself
 
 The schedule is anchored to the session, not to a wall clock. Written both ways, because
 the playbook's tables are in JST and the operator is not always there:
@@ -33,6 +34,16 @@ terminal, its exit code read, and its seconds recorded. Nothing here re-implemen
 step; a step that fails prints what it always printed. What this adds is the *gating*:
 the scan blocking the verdict, the preflight blocking the basket, and the sweep running
 whatever happened before it.
+
+Fired by a timer
+----------------
+A timer fires on a clock, and a clock does not know the exchange's calendar. Without a
+guard, a Saturday ``day evening`` prepares Monday's session and Monday's prepares it again,
+filing two decision records for one session; a holiday morning recomputes the session
+before it. ``--scheduled`` makes each phase decide for itself: it acts only on **today's**
+session in Eastern time - a morning after today's close, an evening before today's open, a
+sweep after it - and exits 0 saying there is nothing to do otherwise. A morning or evening
+that already passed for its session is not run again. Hand-run phases are unchanged.
 
 What the day needs exported, checked first
 ------------------------------------------
@@ -70,6 +81,7 @@ from zoneinfo import ZoneInfoNotFoundError
 
 from copilot.data.calendar import EASTERN
 from copilot.data.calendar import early_closes
+from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import session_close
 from copilot.data.calendar import session_open
 from copilot.data.calendar import trading_days
@@ -247,6 +259,72 @@ def session_clock(session: date) -> SessionClock:
     )
 
 
+def scheduled_session(phase: str, now: datetime) -> tuple[date | None, str]:
+    """
+    Return the session a timer-fired ``phase`` acts on, or None and why there is none.
+
+    Only ever **today's** session, by the Eastern date. The morning after it closes, the
+    evening before it opens, the sweep once it has opened. A late evening - the timer
+    fired after the open because the host was down - has nothing to do: a decision made
+    inside the session it was meant to precede is not the decision the research scored.
+    A late sweep still runs, because cancelling is safe at any hour and skipping it is not.
+
+    """
+    today = now.astimezone(EASTERN).date()
+    if not is_trading_day(today):
+        return None, f"{today.isoformat()} ({today:%A}) is not a trading session"
+    named = f"the session of {today.isoformat()}"
+    opens, closes = session_open(today), session_close(today)
+    blocked, reason = {
+        MORNING: (now < closes, f"{named} has not closed yet"),
+        EVENING: (
+            now >= opens,
+            (
+                f"{named} has already opened; an evening run now would decide inside the "
+                "session it was meant to precede"
+            ),
+        ),
+        SWEEP: (now < opens, f"{named} has not opened yet"),
+    }[phase]
+    return (None, reason) if blocked else (today, "")
+
+
+def monitoring_session(now: datetime) -> date:
+    """
+    Return the session a hand-run sweep is ending: today's once it has opened.
+
+    ``session_to_prepare`` answers the evening's question and returns the *next* session
+    once today's has opened, so a sweep at 10:30 using it named tomorrow in its record.
+
+    """
+    today = now.astimezone(EASTERN).date()
+    if is_trading_day(today) and now >= session_open(today):
+        return today
+    return session_to_prepare(now)
+
+
+def completed_record(phase: str, session: date, out_dir: Path = OUT_DIR) -> Path | None:
+    """
+    Return a filed record of ``phase`` passing for ``session``, if there is one.
+
+    Passing means exit 0 and not a dry run. A failed run is not a completed one, so a timer
+    that fires again after a fix - or an operator re-running by hand - is not refused.
+
+    """
+    for path in sorted(out_dir.glob(f"day_{phase}_*.json"), reverse=True):
+        try:
+            record = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if (
+            record.get("session") == session.isoformat()
+            and record.get("exit_code") == 0
+            and not record.get("dry_run")
+        ):
+            return path
+    return None
+
+
 def closed_session(now: datetime) -> date | None:
     """
     Return the most recent session whose close is behind ``now``.
@@ -287,7 +365,7 @@ def required_environment(
     Return what the phase needs exported and does not have, one line each.
     """
     missing: list[str] = []
-    if phase == MORNING and not environ.get(MARKETSTACK_API_KEY_ENV):
+    if phase in (MORNING, EVENING) and not environ.get(MARKETSTACK_API_KEY_ENV):
         missing.append(f"{MARKETSTACK_API_KEY_ENV}: append and the corporate-actions scan need it")
     if phase in (EVENING, SWEEP):
         aliases = environ.get(TIMEZONE_ALIASES_ENV, "")
@@ -308,6 +386,33 @@ def registered_symbols() -> tuple[str, ...]:
     return tuple(dict.fromkeys(a.symbol for a in load_activations()))
 
 
+def _append_step(catalog: str) -> Step:
+    return Step(
+        "append",
+        "copilot.data.append",
+        ("--catalog", catalog),
+        stops_on_failure=False,
+        why="the catalog is behind the last published session; the warm-up will refuse",
+    )
+
+
+def _corporate_actions_step(catalog: str, *, today: date, why: str) -> Step:
+    return Step(
+        "corporate actions",
+        "copilot.data.corporate_actions",
+        (
+            ",".join(registered_symbols()),
+            "--catalog",
+            catalog,
+            "--from",
+            CORPORATE_ACTIONS_FROM,
+            "--to",
+            today.isoformat(),
+        ),
+        why=why,
+    )
+
+
 def morning_steps(catalog: str, *, today: date) -> tuple[Step, ...]:
     """
     Return the morning: catalog current, actions checked, verdicts recomputed, compared.
@@ -319,25 +424,10 @@ def morning_steps(catalog: str, *, today: date) -> tuple[Step, ...]:
 
     """
     return (
-        Step(
-            "append",
-            "copilot.data.append",
-            ("--catalog", catalog),
-            stops_on_failure=False,
-            why="the catalog is behind the last published session; the warm-up will refuse",
-        ),
-        Step(
-            "corporate actions",
-            "copilot.data.corporate_actions",
-            (
-                ",".join(registered_symbols()),
-                "--catalog",
-                catalog,
-                "--from",
-                CORPORATE_ACTIONS_FROM,
-                "--to",
-                today.isoformat(),
-            ),
+        _append_step(catalog),
+        _corporate_actions_step(
+            catalog,
+            today=today,
             why="a split is sitting in a stored series; no verdict may be filed over it",
         ),
         Step(
@@ -365,7 +455,18 @@ def evening_steps(
     risk_fraction: Decimal | None,
 ) -> tuple[Step, ...]:
     """
-    Return the evening: prove the environment and the catalog, run the basket, sweep.
+    Return the evening: bring the catalog current, prove it and the broker, run, sweep.
+
+    **The evening appends before it warms.** The vendor publishes a session's bar about
+    9.5 hours after its close (measured in :mod:`copilot.data.append`), so the morning's
+    append at 17:00 Eastern always finds that session pending, and the warm-up for the next
+    open needs exactly that bar. Measured 2026-09-10: every activation refused, every
+    evening, because nothing appended between publication and the evening. The append is
+    idempotent and reports rather than stops; the warm-up remains the gate.
+
+    **And it scans before it warms**, because the bar just appended is one the morning's
+    scan never saw, and an unregistered split in it reads to the strategy as a gap. The scan
+    runs to the session being prepared, which on a scheduled evening is today.
 
     The sweep runs whatever happened before it. It is the monitoring-end policy's last
     line, and a basket that crashed is the case in which an order is most likely to have
@@ -378,6 +479,12 @@ def evening_steps(
     if risk_fraction is not None:
         sizing += ("--risk-fraction", str(risk_fraction))
     return (
+        _append_step(catalog),
+        _corporate_actions_step(
+            catalog,
+            today=session,
+            why="a split is sitting in the newest bars; the warm-up would read it as a gap",
+        ),
         Step(
             "preflight",
             "copilot.live.preflight",
@@ -509,6 +616,58 @@ class DayRecord:
     exit_code: int = 0
 
 
+def _nothing_scheduled(args: argparse.Namespace, now: datetime) -> str:
+    """
+    Return why a timer-fired phase has nothing to do, or set its session and return "".
+    """
+    scheduled, reason = scheduled_session(args.phase, now)
+    if scheduled is None:
+        return reason
+    done = completed_record(args.phase, scheduled) if args.phase != SWEEP else None
+    if done is not None:
+        return f"the {args.phase} for {scheduled.isoformat()} passed ({done.name})"
+    args.session = scheduled.isoformat()
+    return ""
+
+
+def _phase_steps(args: argparse.Namespace, now: datetime, record: DayRecord) -> tuple[Step, ...]:
+    """
+    Print the phase's heading, record its session and clock, and return its steps.
+    """
+    if args.phase == MORNING:
+        closed = closed_session(now)
+        record.session = closed.isoformat() if closed else None
+        print(
+            f"Morning of {now.astimezone(operator_zone()):%Y-%m-%d %a %H:%M %Z}: the session of "
+            f"{closed.isoformat() if closed else '?'} has closed; next session "
+            f"{session_to_prepare(now).isoformat()}",
+        )
+        return morning_steps(args.catalog, today=now.astimezone(EASTERN).date())
+
+    connection = Connection(host=args.host, port=args.port, account=args.account)
+    if args.phase == SWEEP:
+        session = date.fromisoformat(args.session) if args.session else monitoring_session(now)
+        heading = f"Monitoring end for the session of {session.isoformat()} ({session:%A})"
+    else:
+        session = date.fromisoformat(args.session) if args.session else session_to_prepare(now)
+        heading = f"Evening for the session of {session.isoformat()} ({session:%A})"
+    clock = session_clock(session)
+    record.session = session.isoformat()
+    record.clock = clock.lines()
+    print(heading)
+    for line in record.clock:
+        print(f"  {line}")
+    if args.phase == SWEEP:
+        return sweep_steps(connection)
+    return evening_steps(
+        args.catalog,
+        session=session,
+        connection=connection,
+        allocation=args.allocation,
+        risk_fraction=args.risk_fraction,
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """
     Run one phase of the operator's day.
@@ -524,9 +683,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--allocation", type=Decimal, default=None, help="Passed to the basket")
     parser.add_argument("--risk-fraction", type=Decimal, default=None, help="Passed to the basket")
     parser.add_argument("--dry-run", action="store_true", help="Print the sequence; run nothing")
+    parser.add_argument(
+        "--scheduled",
+        action="store_true",
+        help="Fired by a timer: act only on today's session, and only once",
+    )
     args = parser.parse_args(argv)
 
     now = datetime.now(tz=UTC)
+    if args.scheduled:
+        if args.session:
+            parser.error("--scheduled decides the session itself; do not pass --session")
+        nothing = _nothing_scheduled(args, now)
+        if nothing:
+            print(f"nothing to do: {nothing}")
+            return 0
+
     missing = required_environment(args.phase, environ=os.environ, account=args.account)
     if missing and not args.dry_run:
         print("refused: the day needs these exported first")
@@ -535,39 +707,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     record = DayRecord(phase=args.phase, run_at=now.isoformat(), session=None, dry_run=args.dry_run)
-    if args.phase == MORNING:
-        closed = closed_session(now)
-        record.session = closed.isoformat() if closed else None
-        print(
-            f"Morning of {now.astimezone(operator_zone()):%Y-%m-%d %a %H:%M %Z}: the session of "
-            f"{closed.isoformat() if closed else '?'} has closed; next session "
-            f"{session_to_prepare(now).isoformat()}",
-        )
-        steps = morning_steps(args.catalog, today=now.astimezone(EASTERN).date())
-    elif args.phase == SWEEP:
-        session = date.fromisoformat(args.session) if args.session else session_to_prepare(now)
-        clock = session_clock(session)
-        record.session = session.isoformat()
-        record.clock = clock.lines()
-        print(f"Monitoring end for the session of {session.isoformat()} ({session:%A})")
-        for line in clock.lines():
-            print(f"  {line}")
-        steps = sweep_steps(Connection(host=args.host, port=args.port, account=args.account))
-    else:
-        session = date.fromisoformat(args.session) if args.session else session_to_prepare(now)
-        clock = session_clock(session)
-        record.session = session.isoformat()
-        record.clock = clock.lines()
-        print(f"Evening for the session of {session.isoformat()} ({session:%A})")
-        for line in clock.lines():
-            print(f"  {line}")
-        steps = evening_steps(
-            args.catalog,
-            session=session,
-            connection=Connection(host=args.host, port=args.port, account=args.account),
-            allocation=args.allocation,
-            risk_fraction=args.risk_fraction,
-        )
+    steps = _phase_steps(args, now, record)
 
     if args.dry_run:
         print("\nWould run, in order:")
@@ -601,13 +741,16 @@ __all__ = [
     "Step",
     "StepResult",
     "closed_session",
+    "completed_record",
     "evening_steps",
+    "monitoring_session",
     "morning_steps",
     "operator_zone",
     "registered_symbols",
     "required_environment",
     "run_module",
     "run_steps",
+    "scheduled_session",
     "session_clock",
     "summarise",
     "sweep_steps",

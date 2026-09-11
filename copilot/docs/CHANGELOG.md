@@ -2,6 +2,31 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the day on a timer
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 1 and 2).
+
+### Added
+
+- **`day <phase> --scheduled`** is what a timer runs. Each phase acts only on today's session
+  by the Eastern date - the morning after its close, the evening before its open, the sweep
+  after it opens - and exits 0 with *nothing to do* on a weekend, a holiday, or the wrong
+  side of the bell, before asking for any credential. A morning or evening that already
+  passed for its session is not run again; a failed one is. Unguarded, a Saturday evening
+  prepared Monday's session and Monday's prepared it again.
+
+### Fixed
+
+- **The evening appends and scans before it warms.** The vendor publishes a session's bar
+  about 9.5 hours after its close, so the morning's 17:00 append always found it pending and
+  nothing appended again before the 08:30 evening, whose warm-up needs that bar - the
+  2026-09-10 refusal of all twelve activations. The append reports rather than stops; the
+  warm-up stays the gate. The corporate-actions scan now also runs in the evening, because
+  a split in the newly appended bar would read to the strategy as a gap. The evening
+  therefore needs `MARKETSTACK_API_KEY` too.
+- **A sweep after the open named tomorrow's session** in its record, because it used the
+  evening's rule for which session is next. It now names the session it is ending.
+
 ## 2026-09-10, the owner's decisions on the gap-fade family
 
 ### Decided

@@ -66,8 +66,8 @@ last column is what makes it done.
 
 | #   | Item                                                      | Done when                                                                                                                            |
 | --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Make `day` safe to fire from a timer**                  | On a weekend, a holiday or a second run for the same session, each phase exits 0 saying there is nothing to do, and a test proves it |
-| 2   | **Fix the evening's ordering**                            | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
+| 1   | **Make `day` safe to fire from a timer** (done)           | On a weekend, a holiday or a second run for the same session, each phase exits 0 saying there is nothing to do, and a test proves it |
+| 2   | **Fix the evening's ordering** (done)                     | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
 | 3   | **Wire alerting into its callers**                        | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
 | 4   | **The heartbeat's summary**                               | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
 | 5   | **Review the guard's cooldown across a restart**          | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
