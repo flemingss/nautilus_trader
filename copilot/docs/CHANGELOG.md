@@ -2,6 +2,32 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, the randomised-signal control
+
+### Added
+
+- **`copilot.validation.null_control`**, the baseline the research playbook has required since it
+  was written and nothing built. It draws entry sessions at random from the development window,
+  runs the premise's own machinery on each draw through a caller-supplied replicate, and reports
+  where the premise's mean sits among them: the null mean, the percentile, a one-sided p that
+  counts the premise itself, and a named reading.
+  - **Why it matters.** ADR-0026's per-trade attribution regresses a trade on the factor returns
+    of its own window, so a long position in a broad ETF returns a market loading near one and
+    alpha near zero however well its entries were chosen. On the charter's universe every premise
+    is a timing premise, and this is the test that can judge one.
+  - **Declared once:** a one-sided p at or below 0.10, the complement of the 90% confidence every
+    interval here uses. The seed is fixed and filed with the result.
+  - **Two refusals:** fewer than a hundred replicates is refused outright, and more than one
+    replicate in twenty scoring nothing withholds the reading, for the reason ADR-0031 skips a
+    singular resample.
+  - It is filed beside a verdict, never instead of one.
+- **The playbook's baselines section** now names the control, what it answers and its threshold.
+
+### Regrouped
+
+- Open work is twenty items: three ready to build, five waiting on the VM, one on the account,
+  none on a decision, one charter conflict, one on spend, nine deferred.
+
 ## 2026-09-11, six decisions taken
 
 The owner concurred with each recommendation put to them, and answered the account question.
