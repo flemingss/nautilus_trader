@@ -59,6 +59,20 @@ the record had drifted. The rows are in [`ROADMAP.md`](ROADMAP.md).
   retention rule did not cover `strategies/out/`, and one superseded pooled record nothing
   cited is pruned under it. One entry below dated the VM to the 16th.
 
+### Filed, second pass
+
+The audit's full record is [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md): thirty-one findings
+with their evidence, what was checked and found sound, and a correction plan in four batches
+so each row can be delegated on its own. Eighteen further rows filed for what #84 named but
+did not file: the latch read only at build, the flood guard inert across processes,
+`OnFailure=` and unit ordering, client-id collisions, locking, the ops package's tests, the
+builder rule ADR-0027 relies on, the bracket as an agreement test, the pool's two means and
+shifting membership, multiplicity across the thirteen attributions, the attribution floor,
+fold-boundary trades, `signal_created_at`, six small defects, validation test gaps,
+`calibration/out/` retention, and docs hygiene. Forty-seven ready to build; fifty-six open.
+The pull-request checklist now requires a changelog entry per pull request, since eight had
+none.
+
 ### Not logged at the time
 
 Eight pull requests in the window had no entry here. For the record: #55 restored the lint

@@ -290,6 +290,8 @@ Before opening a PR, confirm all five:
 4. `SKIP=python-test-collection UV_PROJECT_ENVIRONMENT="$PWD/.venv" prek run --files <changed files>`
    reports nothing (never `--all-files` on this box; see above)
 5. The full overlay test suite passes
+6. `docs/CHANGELOG.md` has an entry for the change, and anything it surfaces as an action has
+   a row in `docs/ROADMAP.md` (the 2026-09-11 audit found eight pull requests with no entry)
 
 State any check that could not be run, and why. An unrunnable check is a limitation to
 declare, never a box to tick.
