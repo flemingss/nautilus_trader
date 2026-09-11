@@ -76,6 +76,7 @@ from copilot.validation.types import DailyBar
 
 
 if TYPE_CHECKING:
+    from collections.abc import Mapping
     from collections.abc import Sequence
 
 
@@ -159,13 +160,22 @@ class PatchResult:
     """
     Holes refused because the two schemas disagree about the day.
     """
+    no_auction: tuple[date, ...] = ()
+    """
+    Holes where the listing venue traded but ran no closing auction.
+
+    No official close exists for these, so no pull will ever price them. GLDM's thirteen
+    2018-2019 holes are all this kind: the store holds its venue bar with volume on every one
+    of them, and no closing-auction statistic.
+
+    """
 
     @property
     def remaining(self) -> int:
         """
         Holes still open after this patch.
         """
-        return len(self.unsourced) + len(self.incoherent)
+        return len(self.unsourced) + len(self.incoherent) + len(self.no_auction)
 
 
 def read_official_closes(store: Path, dataset: str) -> dict[tuple[str, date], Decimal]:
@@ -209,18 +219,45 @@ def plan(catalog_path: str, symbol: str, venue: str, store: Path) -> PatchResult
             f"no listing dataset for venue {venue!r}; known: {sorted(LISTING_DATASETS)}",
         )
     holes, held = holes_in(catalog_path, symbol, venue)
-    closes = read_official_closes(store, dataset)
-    bars = read_venue_bars(store, dataset)
+    return classify_holes(
+        symbol,
+        venue,
+        held,
+        holes,
+        closes=read_official_closes(store, dataset),
+        bars=read_venue_bars(store, dataset),
+    )
 
+
+def classify_holes(  # noqa: PLR0913 - the result's own fields, passed through
+    symbol: str,
+    venue: str,
+    held: int,
+    holes: Sequence[date],
+    *,
+    closes: Mapping[tuple[str, date], Decimal],
+    bars: Mapping[tuple[str, date], tuple[Decimal, ...]],
+) -> PatchResult:
+    """
+    Sort each hole into filled, refused, no auction, or no source.
+
+    What the store holds for the day decides which. Separated from :func:`plan` so the
+    sorting can be tested without a catalog or a store.
+
+    """
     fills: list[Fill] = []
     unsourced: list[date] = []
+    no_auction: list[date] = []
     incoherent: list[tuple[date, str]] = []
     for day in holes:
         key = (symbol, day)
         official = closes.get(key)
         venue_bar = bars.get(key)
-        if official is None or venue_bar is None:
+        if venue_bar is None:
             unsourced.append(day)
+            continue
+        if official is None:
+            no_auction.append(day)
             continue
         low, high = venue_bar[2], venue_bar[1]
         if not low <= official <= high:
@@ -244,10 +281,11 @@ def plan(catalog_path: str, symbol: str, venue: str, store: Path) -> PatchResult
         symbol=symbol,
         venue=venue,
         held=held,
-        holes=holes,
+        holes=tuple(holes),
         fills=tuple(fills),
         unsourced=tuple(unsourced),
         incoherent=tuple(incoherent),
+        no_auction=tuple(no_auction),
     )
 
 
@@ -319,18 +357,29 @@ def report(results: Sequence[PatchResult], *, written: bool) -> int:
             )
         for day, why in r.incoherent:
             print(f"      REFUSED  {day}  {why}")
-        if r.unsourced:
-            shown = ", ".join(d.isoformat() for d in r.unsourced[:UNSOURCED_SHOWN])
-            hidden = len(r.unsourced) - UNSOURCED_SHOWN
-            more = f" (+{hidden} more)" if hidden > 0 else ""
-            print(f"      no source {shown}{more}")
+        for label, days in (("no auction", r.no_auction), ("no source", r.unsourced)):
+            if days:
+                shown = ", ".join(d.isoformat() for d in days[:UNSOURCED_SHOWN])
+                hidden = len(days) - UNSOURCED_SHOWN
+                more = f" (+{hidden} more)" if hidden > 0 else ""
+                print(f"      {label:<12}{shown}{more}")
         left += r.remaining
-    if left:
+    no_auction = sum(len(r.no_auction) for r in results)
+    unsourced = sum(len(r.unsourced) for r in results)
+    if no_auction:
         print(
-            f"\n{left} hole(s) the store cannot price. Databento's US equity history "
-            f"starts 2018-05-01; anything earlier needs a different source, and a "
-            f"refusal needs looking at rather than forcing.",
+            f"\n{no_auction} hole(s) are sessions the listing venue traded without a closing "
+            f"auction, so no official close exists. No pull prices them; filling them would "
+            f"take a different close rule, which is a decision rather than a fix.",
         )
+    if unsourced:
+        print(
+            f"\n{unsourced} hole(s) the store holds nothing for. Databento's US equity history "
+            f"starts 2018-05-01; anything earlier needs a different source, and one inside "
+            f"that window needs its pull.",
+        )
+    if left > no_auction + unsourced:
+        print("\nA refusal needs looking at rather than forcing.")
     return 1 if left else 0
 
 

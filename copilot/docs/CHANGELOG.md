@@ -2,6 +2,33 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, GLDM's holes are sessions without a closing auction
+
+### Found
+
+- **The store already covered GLDM's thirteen 2018-2019 holes.** The row expected a pull to
+  fill them; a re-pull of ARCX statistics and daily bars for 2018-06 to 2019-07 bought USD
+  0.0009 of rows the 2018-2026 store files already held, and was deleted. ARCX's venue bar is
+  there for every hole, with 13,466 to 1,018,342 shares traded, and **no closing-auction
+  statistic on any of them**. In 2018 GLDM's listing venue ran a closing auction on about three
+  sessions in four. No official close exists for these days, so `patch` cannot fill them under
+  ADR-0018's rule.
+
+### Changed
+
+- **`patch` names a hole with no auction as one.** `PatchResult.no_auction` counts sessions the
+  venue traded without a closing auction, apart from holes the store holds nothing for, and the
+  report says which is which. It previously blamed Databento's 2018-05-01 start for holes inside
+  its window. The per-hole sorting is now `classify_holes`, testable without a catalog.
+
+### Regrouped
+
+- **The GLDM row moves to *Deferred by decision*, recommended rather than decided:** leave the
+  holes open. Filling them needs a new close rule on an instrument whose premise is rejected;
+  revisit if a thin ETF's early history carries a candidate. Open work stays twenty-two items:
+  six ready to build, five waiting on the VM, two on the account, two on a decision, one charter
+  conflict, one on spend, six deferred.
+
 ## 2026-09-11, onboarding takes the steps it reports
 
 ### Added
