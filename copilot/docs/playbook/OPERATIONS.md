@@ -128,10 +128,13 @@ has never been confirmed against the broker.
 `cancel_working --all` sweeps every registered instrument in one node (2026-09-05); a
 sweep that took one symbol per invocation was six minutes of commands and a forgotten one.
 
-**A clean sweep is still not proof the broker has nothing working**, and this does not
-depend on that fix. An order held by a TWS precautionary size setting never reaches the
-broker at all and no API call can see it. Confirm against the broker's own order list, and
-treat an order whose status cannot be confirmed as an alert rather than a pass.
+**The sweep's verdict is the broker's, asked on a fresh connection** (2026-09-10). A cancel
+acknowledgement may never arrive for an adopted order, so the sweep ends with a census: a new
+node, orders denied, reading what reconciliation reports open, retried for about ten minutes.
+`BROKER CLEAR` exits 0, `STILL WORKING` 1, and `UNCONFIRMED` - no census could be read - 3,
+which is an alert rather than a pass. One case is still beyond it: an order held by a TWS or
+Gateway precautionary size setting never reaches the broker, so the Gateway that runs
+unattended bypasses order precautions for API orders.
 
 ### After
 

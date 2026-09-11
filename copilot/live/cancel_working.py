@@ -46,10 +46,29 @@ precautionary size setting, which holds it in the GUI awaiting a manual transmit
 records an acceptance, the broker never receives the order, and no API call can see or
 cancel it. No code change on our side reaches that state.
 
-A clean result therefore still means **"everything this node knew about is cancelled"**,
-which is weaker than "nothing is working at the broker". Confirm the broker's own order
-list before treating a session as closed. Per ``OPERATIONS.md``, an order whose status
-cannot be confirmed is an alert, not a pass.
+The verdict is the broker's, asked twice
+----------------------------------------
+Until 2026-09-10 the verdict was this node's own event stream: an order found working and
+never acknowledged was FAIL, and nothing found was CLEAR. Both readings were wrong in
+practice. Measured that day, an adopted order is cancelled at the broker and **no
+acknowledgement arrives at all**, from the placing client id or a foreign one, so the sweep
+reported FAIL on an order that was gone; and a cache that never adopted an order reported
+CLEAR over one that was not. What worked by hand was asking again on a fresh connection.
+
+So the sweep now ends with a **census**: a new node, orders denied, whose startup
+reconciliation asks the broker for every open order on the account (``reqOpenOrders``
+across client ids), read and reported without touching anything. It is retried on a
+schedule, because the same measurement saw a cancel take about ten minutes to clear. Three
+verdicts, three exit codes:
+
+- ``BROKER CLEAR`` (0) - a census found nothing open on the swept instruments.
+- ``STILL WORKING`` (1) - the last census still found orders.
+- ``UNCONFIRMED`` (3) - no census could be read at all. Per ``OPERATIONS.md`` an order whose
+  status cannot be confirmed is an alert, not a pass, and this is that case.
+
+The precautionary-size caveat above survives: an order held in the TWS or Gateway GUI never
+reached the broker, so a census cannot see it either. The paper VM's Gateway is to bypass
+order precautions for API orders for that reason (``docs/DRAFT_PAPER_VM.md``).
 
 """
 
@@ -57,10 +76,17 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+from collections.abc import Awaitable
+from collections.abc import Callable
+from collections.abc import Sequence
+from dataclasses import dataclass
+from dataclasses import field
 from datetime import UTC
 from datetime import datetime
 from typing import Any
 
+from copilot.live.account import EXEC_CLIENT_VENUE
+from copilot.live.account import find_account
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
 from copilot.live.node import wait_for_settlement
@@ -70,6 +96,7 @@ from copilot.live.symbology import broker_instrument_id
 from copilot.live.symbology import registered_instruments
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.model import InstrumentId
+from nautilus_trader.model import Venue
 from nautilus_trader.trading import Strategy
 from nautilus_trader.trading import StrategyConfig
 
@@ -142,6 +169,176 @@ class CancelWorking(Strategy):
             for instrument, orders in self.before.items()
             if any(o not in acknowledged for o in orders)
         }
+
+
+BROKER_CLEAR = "BROKER CLEAR"
+STILL_WORKING = "STILL WORKING"
+UNCONFIRMED = "UNCONFIRMED"
+
+EXIT_CODES = {BROKER_CLEAR: 0, STILL_WORKING: 1, UNCONFIRMED: 3}
+
+CENSUS_WAITS_SECS = (0, 60, 180, 360)
+"""
+Seconds to wait before each census, so the last is about ten minutes after the sweep.
+
+Ten because that is what a cancel took to clear on 2026-09-10 (``PAPER_CAMPAIGN.md``,
+*The residue problem*). A clean sweep - the normal case - stops at the first census.
+
+"""
+
+CENSUS_READ_DEADLINE_SECS = 90
+"""
+How long one census node may take to connect, reconcile and start before it is unread.
+"""
+
+CENSUS_DATA_CLIENT_ID = 823
+CENSUS_EXEC_CLIENT_ID = 824
+
+
+class OpenOrderCensusConfig(CancelWorkingConfig):
+    """
+    Which instruments a census reports on; every other open order is counted too.
+    """
+
+
+class OpenOrderCensus(Strategy):
+    """
+    Reads what the broker reports open at startup, and places and cancels nothing.
+    """
+
+    def __init__(self, config: OpenOrderCensusConfig) -> None:
+        """
+        Start unread.
+        """
+        super().__init__(config)
+        self.result: CensusResult | None = None
+        self.started = False
+
+    def on_start(self) -> None:
+        """
+        Record the open orders reconciliation adopted, which is the broker's answer.
+        """
+        self.result = CensusResult.read(self.config.instrument_ids, self.cache)
+        self.started = True
+        if self.result is None:
+            self.log.error(
+                "Census unread: no account in the cache, so the execution client never "
+                "reconciled and an empty order list would mean nothing",
+            )
+        else:
+            self.log.info(f"Census of {self.result.account}: {self.result.open or 'nothing open'}")
+
+
+@dataclass(frozen=True)
+class CensusResult:
+    """
+    What one census found open, per swept instrument, and elsewhere on the account.
+    """
+
+    open: dict[str, list[str]]
+    elsewhere: list[str] = field(default_factory=list)
+    account: str = ""
+
+    @classmethod
+    def read(cls, instrument_ids: Sequence[Any], cache: Any) -> CensusResult | None:
+        """
+        Read the cache's open orders, or None when no account proves it reconciled.
+
+        **An empty cache is not an empty broker.** An execution client that never connected
+        - a read-only API setting blocks it, and its only symptom is a missing account -
+        leaves the cache empty too, and without this check the census would report that as
+        ``BROKER CLEAR``. The account is what reconciliation leaves behind.
+
+        """
+        found = find_account(cache, (Venue(EXEC_CLIENT_VENUE),))
+        if found is None:
+            return None
+        result = cls.of(instrument_ids, cache.orders_open())
+        return cls(open=result.open, elsewhere=result.elsewhere, account=found[1])
+
+    @classmethod
+    def of(cls, instrument_ids: Sequence[Any], orders: Any) -> CensusResult:
+        """
+        Sort open orders into the swept instruments and everything else.
+        """
+        swept = {str(i) for i in instrument_ids}
+        found: dict[str, list[str]] = {}
+        elsewhere: list[str] = []
+        for order in orders:
+            instrument = str(order.instrument_id)
+            if instrument in swept:
+                found.setdefault(instrument, []).append(str(order.client_order_id))
+            else:
+                elsewhere.append(f"{instrument} {order.client_order_id}")
+        return cls(open=found, elsewhere=elsewhere)
+
+
+@dataclass(frozen=True)
+class Confirmation:
+    """
+    The broker's verdict on a sweep, and every census it rests on.
+    """
+
+    verdict: str
+    censuses: tuple[CensusResult | None, ...]
+
+
+async def confirm(
+    take_census: Callable[[], Awaitable[CensusResult | None]],
+    *,
+    waits: Sequence[int] = CENSUS_WAITS_SECS,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+) -> Confirmation:
+    """
+    Ask the broker until the swept instruments are clear, or the schedule runs out.
+
+    ``BROKER CLEAR`` at the first census that finds nothing open. Otherwise the last census
+    decides: ``STILL WORKING`` if it read and found orders, ``UNCONFIRMED`` if it could not
+    read - an unread final census does not inherit an earlier reading, because the question
+    is what is working *now*.
+
+    """
+    censuses: list[CensusResult | None] = []
+    for wait in waits:
+        if wait:
+            await sleep(wait)
+        result = await take_census()
+        censuses.append(result)
+        if result is not None and not result.open:
+            return Confirmation(BROKER_CLEAR, tuple(censuses))
+    last = censuses[-1] if censuses else None
+    return Confirmation(STILL_WORKING if last is not None else UNCONFIRMED, tuple(censuses))
+
+
+async def census(
+    session: PaperSession,
+    *,
+    instrument_ids: tuple[Any, ...],
+    read_deadline_secs: int = CENSUS_READ_DEADLINE_SECS,
+) -> CensusResult | None:
+    """
+    Run one fresh node with orders denied until it has read the broker, and return that.
+    """
+    strategy = OpenOrderCensus(OpenOrderCensusConfig(instrument_ids=instrument_ids))
+    node, _risk_engine = build_paper_node(
+        session,
+        market_data_type=MarketDataType.DELAYED,
+        strategies=(strategy,),
+    )
+    handle = node.handle()
+    task = asyncio.create_task(node.run_async())
+    try:
+        await wait_for_settlement(
+            lambda: strategy.started,
+            deadline_secs=read_deadline_secs,
+        )
+    finally:
+        handle.stop()
+        try:
+            await asyncio.wait_for(task, timeout=60)
+        except (TimeoutError, asyncio.CancelledError) as e:
+            strategy.log.error(f"Census node did not stop cleanly: {e!r}")
+    return strategy.result
 
 
 async def sweep(
@@ -231,6 +428,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     instrument_ids = tuple(InstrumentId.from_str(s) for s in ids)
+    census_session = PaperSession(
+        account_id=args.account,
+        host=args.host,
+        port=args.port,
+        data_client_id=CENSUS_DATA_CLIENT_ID,
+        exec_client_id=CENSUS_EXEC_CLIENT_ID,
+        # A census reads; it must not be able to place or cancel anything.
+        orders_enabled=False,
+        instrument_ids=ids,
+    )
     session = PaperSession(
         account_id=args.account,
         host=args.host,
@@ -248,28 +455,60 @@ def main(argv: list[str] | None = None) -> int:
         sweep(session, instrument_ids=instrument_ids, settle_secs=args.settle_secs),
     )
 
-    outstanding = strategy.outstanding()
+    unacknowledged = strategy.outstanding()
     print()
     for instrument, orders in strategy.before.items():
-        state = "still working" if instrument in outstanding else "clear"
-        print(f"  {instrument:<20} before {len(orders):>2}  {state}")
-    print(f"\ncancelled:      {strategy.canceled or 'none'}")
-    print(f"still working:  {outstanding or 'none'}")
-    print(f"\nRESULT: {'CACHE CLEAR' if not outstanding else 'FAIL'}")
-    print(
-        "\nThis is not proof the broker has nothing working. An order held by a TWS "
-        "precautionary\nsize setting never reached the broker and is invisible to the API. "
-        "The reconciliation\nfix behind this sweep was confirmed against IB on 2026-09-03 "
-        "(strand_recovery), which\ndoes not change the first point. Check the broker's own "
-        "order list before calling a\nsession closed.",
+        acknowledged = len(orders) - len(unacknowledged.get(instrument, []))
+        print(f"  {instrument:<20} found {len(orders):>2}  acknowledged {acknowledged:>2}")
+    print(f"\ncancel acknowledgements: {strategy.canceled or 'none'}")
+    print(f"never acknowledged:      {unacknowledged or 'none'} (not a verdict; see the census)")
+
+    print("\nAsking the broker on a fresh connection, orders denied:")
+    confirmation = asyncio.run(
+        confirm(lambda: census(census_session, instrument_ids=instrument_ids)),
     )
-    return 0 if not outstanding else 1
+    return report(confirmation)
+
+
+def report(confirmation: Confirmation) -> int:
+    """
+    Print each census and the verdict, and return the verdict's exit code.
+    """
+    for number, result in enumerate(confirmation.censuses, start=1):
+        if result is None:
+            print(f"  census {number}: could not read the broker")
+            continue
+        print(f"  census {number}: {result.open or 'nothing open on the swept instruments'}")
+        if result.elsewhere:
+            print(f"             also open elsewhere on the account: {result.elsewhere}")
+    print(f"\nRESULT: {confirmation.verdict}")
+    if confirmation.verdict != BROKER_CLEAR:
+        print(
+            "An order whose status cannot be confirmed is an alert, not a pass "
+            "(playbook/OPERATIONS.md, At monitoring end).",
+        )
+    print(
+        "An order held untransmitted by a TWS or Gateway precautionary setting never "
+        "reached the\nbroker, so no census can see it.",
+    )
+    return EXIT_CODES[confirmation.verdict]
 
 
 __all__ = [
+    "BROKER_CLEAR",
+    "CENSUS_WAITS_SECS",
+    "STILL_WORKING",
+    "UNCONFIRMED",
     "CancelWorking",
     "CancelWorkingConfig",
+    "CensusResult",
+    "Confirmation",
+    "OpenOrderCensus",
+    "OpenOrderCensusConfig",
+    "census",
+    "confirm",
     "instruments_to_sweep",
+    "report",
     "sweep",
 ]
 

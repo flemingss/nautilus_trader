@@ -2,6 +2,35 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the sweep asks the broker
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 8).
+
+### Fixed
+
+- **The sweep's verdict was its own event stream, and wrong both ways.** An order found
+  working and never acknowledged was FAIL, and nothing found was CLEAR. Measured
+  2026-09-10: an adopted order is cancelled at the broker with no acknowledgement from any
+  client id, so a gone order read FAIL; and a cache that never adopted an order read CLEAR.
+  The sweep now ends with a **census** - a fresh node on its own client ids, orders denied,
+  reading what startup reconciliation reports open - retried at 0, 1, 4 and 10 minutes,
+  because a cancel took about ten minutes to clear that day. `BROKER CLEAR` exits 0,
+  `STILL WORKING` 1, and `UNCONFIRMED` 3 when no census could be read, which the playbook
+  treats as an alert. Acknowledgements are still printed, as detail rather than verdict.
+- **An empty cache is not an empty broker.** A census counts only if the account is in the
+  cache, because an execution client that never connected - a read-only API setting blocks
+  it silently - leaves the cache empty too, and would otherwise read as `BROKER CLEAR`.
+
+### Measured
+
+- Live against paper TWS, 2026-09-10 22:29 ET: nine instruments, nothing found, census 1
+  read the account and nothing open, `BROKER CLEAR`, peak resident memory 0.33 GiB.
+
+### Carried into the VM plan
+
+- The Gateway must **bypass order precautions for API orders**: an order held
+  untransmitted by a precautionary setting never reaches the broker, so no census sees it.
+
 ## 2026-09-10, the breaker across a restart
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 5, required by
