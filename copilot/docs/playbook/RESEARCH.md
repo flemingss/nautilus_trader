@@ -135,6 +135,24 @@ where that is economically meaningful.
 If a complicated strategy cannot beat its simpler nested version after costs at comparable
 risk, use the simpler one or reject both.
 
+**The randomised control is built, and for a timing premise it is the test that decides.**
+`copilot.validation.null_control` runs the premise's own machinery on entry dates drawn at
+random from the development window - same instrument, same number of entries, same holding rule,
+stop and sizing - and reports where the premise's mean sits in that distribution. Use it because
+attribution cannot credit timing: [ADR-0026](../decisions/0026-attribution-is-measured-per-trade.md)
+regresses each trade on the factor returns of its own window, so a long position in a broad ETF
+returns a market loading near one and alpha near zero however well its entries were chosen. On
+this universe - liquid US ETFs, long only - every premise is a timing premise, and the question
+the control answers is the one that matters: *did the sessions the rule chose earn more than
+sessions chosen by chance?*
+
+The threshold is declared once, in the module: a one-sided p at or below **0.10**, the
+complement of the 90% confidence every interval here uses. The control refuses fewer than a
+hundred replicates, and withholds its reading when more than one replicate in twenty scored
+nothing, for the reason ADR-0031 skips a singular resample. It is filed **beside** a verdict and
+never instead of one: a premise that beats chance on entry dates can still fail its net evidence
+interval.
+
 ## Honest execution
 
 The signal at the close of bar `t` cannot fill at that same close unless an order could
