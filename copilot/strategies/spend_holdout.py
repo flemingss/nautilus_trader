@@ -55,6 +55,7 @@ from copilot.paths import DEFAULT_CATALOG
 from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import Activation
 from copilot.strategies.activations import find_activation
+from copilot.validation.filed_trades import to_rows
 from copilot.validation.holdout import HOLDOUT_START
 from copilot.validation.holdout import CarvedHistory
 from copilot.validation.holdout import carve
@@ -298,6 +299,7 @@ def run(
         warmup_bars=activation.setup.warmup_bars,
         replay=replay,
         objective=objective,
+        cost_r=lambda trade: cost_model.cost_r(trade, activation.symbol),
         min_trades=settings.min_trades,
         fold_min_trades=settings.fold_min_trades,
         threshold=settings.minimum_effect,
@@ -386,17 +388,16 @@ def holdout_record(
             "cleared_threshold": result.cleared_threshold,
             "reason": fold.reason,
             "evidence": {
-                "effective_trades": str(result.evidence.effective_trades),
-                "concurrency": str(result.evidence.concurrency),
-                "block_trades": result.evidence.block_bars,
-                "replicates": result.evidence.replicates,
-                "confidence": str(result.evidence.confidence),
-                "lower_r": str(result.evidence.lower_r),
-                "upper_r": str(result.evidence.upper_r),
-                "standard_error_r": str(result.evidence.standard_error_r),
+                **result.evidence.as_record(),
                 "threshold_r": str(result.threshold),
                 "clears_threshold": result.evidence.clears(result.threshold),
             },
+            # A spend is single-use, so its trades are the one part of it that can never be
+            # regenerated. Filed so every later question about them reads this record.
+            "trade_rows": to_rows(
+                [fold],
+                cost_r=lambda trade: cost_model.cost_r(trade, activation.symbol),
+            ),
             "tearsheet": {
                 k: (str(v) if v is not None else None) for k, v in asdict(result.tearsheet).items()
             },

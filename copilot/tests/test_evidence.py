@@ -26,16 +26,25 @@ from decimal import Decimal
 import pytest
 
 from copilot.validation.evidence import DEFAULT_SEED
+from copilot.validation.evidence import IncoherentEvidenceError
 from copilot.validation.evidence import assess
 from copilot.validation.evidence import autocorrelation_time
 from copilot.validation.evidence import block_length
 from copilot.validation.evidence import concurrency
-from copilot.validation.evidence import r_multiples
+from copilot.validation.evidence import net_r
+from copilot.validation.evidence import require_describes
 from copilot.validation.types import ClosedTrade
 from copilot.validation.types import Direction
 
 
 BASE = datetime(2022, 1, 3, tzinfo=UTC)
+
+
+def free(trade: ClosedTrade) -> Decimal:
+    """
+    Charge nothing, so these tests measure the bootstrap and not a cost model.
+    """
+    return Decimal(0)
 
 
 def trade(index: int, r: float, *, hold_days: int = 1) -> ClosedTrade:
@@ -100,16 +109,16 @@ def test_clustered_returns_get_a_wider_interval_than_independent_ones() -> None:
     the dependence is the one that let a coin-flip result through.
 
     """
-    loose = assess(series(independent(120, sd=0.9)))
-    tight = assess(series(clustered(6, 20)))
+    loose = assess(series(independent(120, sd=0.9)), cost_r=free)
+    tight = assess(series(clustered(6, 20)), cost_r=free)
 
     assert tight.standard_error_r > loose.standard_error_r
     assert (tight.upper_r - tight.lower_r) > (loose.upper_r - loose.lower_r)
 
 
 def test_clustered_returns_are_worth_fewer_effective_trades() -> None:
-    loose = assess(series(independent(120, sd=0.9)))
-    tight = assess(series(clustered(6, 20)))
+    loose = assess(series(independent(120, sd=0.9)), cost_r=free)
+    tight = assess(series(clustered(6, 20)), cost_r=free)
 
     assert tight.effective_trades < loose.effective_trades / 2
     assert tight.trades == loose.trades, "the raw count is what hides the difference"
@@ -120,9 +129,9 @@ def test_a_thin_edge_over_many_trades_does_not_clear_zero() -> None:
     The AAPL case, in miniature: a positive mean the sample cannot support.
     """
     trades = series(independent(111, mean=0.035, sd=1.0))
-    result = assess(trades)
+    result = assess(trades, cost_r=free)
 
-    assert sum(r_multiples(trades)) > 0, "the point estimate is positive, as AAPL's was"
+    assert sum(net_r(trades, free)) > 0, "the point estimate is positive, as AAPL's was"
     assert result.clears(Decimal(0)) is False
     assert result.lower_r < 0 < result.upper_r
 
@@ -131,16 +140,76 @@ def test_a_strong_edge_clears_zero() -> None:
     """
     The check must be passable, or it is a refusal rather than a gate.
     """
-    result = assess(series(independent(200, mean=0.60, sd=1.0)))
+    result = assess(series(independent(200, mean=0.60, sd=1.0)), cost_r=free)
 
     assert result.clears(Decimal(0)) is True
     assert result.lower_r > 0
 
 
 def test_a_strong_edge_does_not_clear_a_bar_set_above_it() -> None:
-    result = assess(series(independent(200, mean=0.60, sd=1.0)))
+    result = assess(series(independent(200, mean=0.60, sd=1.0)), cost_r=free)
 
     assert result.clears(Decimal("2.0")) is False
+
+
+# ------------------------------------------------------------------ the net series
+
+
+def test_the_interval_is_drawn_from_the_net_series() -> None:
+    """
+    The defect the first version shipped: the score was net and the interval was gross.
+
+    The engine replays with no fees, so ``realized_pnl`` is gross and the cost model's
+    charge is subtracted afterwards. Bootstrapping ``realized_pnl / risk_amount`` put the
+    interval around a number the verdict never scored, higher by the cost. A flat charge
+    with the same seed draws the same blocks, so the whole interval has to move by exactly
+    that charge - and the version that ignored the cost moved it by nothing.
+
+    """
+    trades = series(independent(160, mean=0.16, sd=0.9))
+    charge = Decimal("0.1")
+
+    gross = assess(trades, cost_r=free)
+    net = assess(trades, cost_r=lambda _: charge)
+
+    tolerance = Decimal("0.000002")  # two six-place roundings of the same float
+    assert abs((gross.lower_r - net.lower_r) - charge) <= tolerance
+    assert abs((gross.upper_r - net.upper_r) - charge) <= tolerance
+    assert gross.clears(Decimal(0)) != net.clears(Decimal(0)), (
+        "a charge this size is what separates a pass from a straddle at target size"
+    )
+
+
+def test_the_series_mean_is_the_net_score_exactly() -> None:
+    trades = series([0.25, -0.5, 1.0, 0.125])
+
+    result = assess(trades, cost_r=lambda _: Decimal("0.03"))
+
+    assert result.mean_r == Decimal("0.188750")
+
+
+def test_an_interval_that_describes_its_score_is_returned_unchanged() -> None:
+    result = assess(series([0.25, -0.5, 1.0, 0.125]), cost_r=free)
+
+    assert require_describes(result, Decimal("0.21875")) is result
+
+
+def test_an_interval_from_a_differently_costed_series_is_refused() -> None:
+    """
+    A net objective beside a gross cost function produced a plausible interval, not an
+    error.
+    """
+    gross = assess(series([0.25, -0.5, 1.0, 0.125]), cost_r=free)
+
+    with pytest.raises(IncoherentEvidenceError, match="disagree about what a trade costs"):
+        require_describes(gross, Decimal("0.18875"))
+
+
+def test_the_record_names_its_series() -> None:
+    record = assess(series(independent(40)), cost_r=free).as_record()
+
+    assert record["series"] == "net R per trade, in signal order"
+    assert set(record) >= {"mean_r", "lower_r", "upper_r", "effective_trades", "trades"}
 
 
 # ------------------------------------------------------------------------ the inputs
@@ -198,14 +267,14 @@ def test_the_block_covers_the_overlap() -> None:
     assert block_length(120, Decimal("5.4"), independent(120)) >= 6
 
 
-def test_r_multiples_ignore_trades_that_risked_nothing() -> None:
+def test_the_series_ignores_trades_that_risked_nothing() -> None:
     """
     A zero risk amount would divide by zero, and it is not an observation either.
     """
     trades = series([0.5, 0.5])
     trades[0] = ClosedTrade(**{**vars(trades[0]), "risk_amount": Decimal(0)})
 
-    assert r_multiples(trades) == (0.5,)
+    assert net_r(trades, free) == (Decimal("0.5"),)
 
 
 # ------------------------------------------------------------------ reproducibility
@@ -217,7 +286,7 @@ def test_the_same_trades_give_the_same_interval() -> None:
     """
     trades = series(independent(120))
 
-    assert assess(trades) == assess(trades)
+    assert assess(trades, cost_r=free) == assess(trades, cost_r=free)
 
 
 def test_a_different_seed_gives_a_different_draw() -> None:
@@ -226,7 +295,7 @@ def test_a_different_seed_gives_a_different_draw() -> None:
     """
     trades = series(independent(120))
 
-    assert assess(trades, seed=DEFAULT_SEED + 1) != assess(trades)
+    assert assess(trades, seed=DEFAULT_SEED + 1, cost_r=free) != assess(trades, cost_r=free)
 
 
 # --------------------------------------------------------------------- degenerate input
@@ -237,7 +306,7 @@ def test_too_few_trades_report_no_interval_rather_than_a_narrow_one(count: int) 
     """
     A zero-width interval around one trade would read as certainty.
     """
-    result = assess(series([0.5] * count))
+    result = assess(series([0.5] * count), cost_r=free)
 
     assert result.replicates == 0
     assert result.clears(Decimal(0)) is False
@@ -247,7 +316,7 @@ def test_identical_trades_give_a_zero_width_interval() -> None:
     """
     Not a degenerate case to guard against: the sample really does say one thing.
     """
-    result = assess(series([0.5] * 50))
+    result = assess(series([0.5] * 50), cost_r=free)
 
     assert result.lower_r == result.upper_r == Decimal("0.5")
     assert result.clears(Decimal(0)) is True

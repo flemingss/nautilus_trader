@@ -293,6 +293,7 @@ def synthetic_verdict(trades_by_symbol: dict[str, int]):
     from copilot.calibration.cost_model import CostModel
     from copilot.strategies.activations import load_activations
     from copilot.strategies.pool import PooledVerdict
+    from copilot.validation.insample import CandidateResult
     from copilot.validation.insample import InSampleReport
     from copilot.validation.walkforward import FoldResult
     from copilot.validation.walkforward import FoldWindows
@@ -304,14 +305,26 @@ def synthetic_verdict(trades_by_symbol: dict[str, int]):
         for day in range(count)
     )
     windows = FoldWindows(index=0, train_start=0, train_end=10, purge_end=12, test_end=20)
+    # Selected, because a fold that selected nothing scores no trades: ``evaluate_fold``
+    # returns before replaying the test window. An earlier version of this fixture put
+    # trades in an unselected fold, which no run can produce.
+    chosen = CandidateResult(
+        parameters={},
+        coordinate={},
+        version="synthetic",
+        trades=len(scored),
+        score=Decimal("0.5"),
+        net=Decimal(0),
+        wins=len(scored),
+    )
     fold = FoldResult(
         index=0,
         windows=windows,
         train_from=BASE,
         test_from=BASE,
         test_to=BASE + timedelta(days=100),
-        in_sample=InSampleReport(candidates=(), selected=None, plateau_scores={}),
-        selected=None,
+        in_sample=InSampleReport(candidates=(chosen,), selected=chosen, plateau_scores={}),
+        selected=chosen,
         test_trades=len(scored),
         test_score=Decimal("0.5"),
         passed=True,
@@ -346,9 +359,10 @@ def test_the_record_builds_without_running_anything() -> None:
     assert record["trades"] == 10
     assert record["trades_by_symbol"] == {"AAPL.XNAS": 6, "SPY.ARCX": 4}
     assert record["folds"] == 1
-    assert record["folds_evaluated"] == 0, "nothing was selected, so nothing was evaluated"
-    assert record["symbols_per_fold"] == []
-    assert Decimal(record["mean_oos_net_r"]) == 0
+    assert record["folds_evaluated"] == 1
+    assert record["symbols_per_fold"] == [2]
+    assert len(record["trade_rows"]) == 10
+    assert Decimal(record["mean_oos_net_r"]) == Decimal("0.5"), "the mean of the fold scores"
     assert record["evidence"]["clears_zero"] is True
     assert "not spent" in record["holdout"]
 

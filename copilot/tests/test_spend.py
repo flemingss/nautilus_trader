@@ -25,6 +25,7 @@ from copilot.strategies.spend_holdout import ThinHoldoutError
 from copilot.strategies.spend_holdout import holdout_record
 from copilot.strategies.spend_holdout import is_spent
 from copilot.strategies.spend_holdout import refusal
+from copilot.validation.evidence import IncoherentEvidenceError
 from copilot.validation.holdout import HOLDOUT_START
 from copilot.validation.holdout import carve
 from copilot.validation.insample import ParameterGrid
@@ -231,6 +232,9 @@ class _CostModel:
     def as_record(self, symbol: str) -> dict[str, str]:
         return {"symbol": symbol, "percentile": self.percentile}
 
+    def cost_r(self, trade: ClosedTrade, symbol: str) -> Decimal:
+        return Decimal(0)
+
 
 def test_the_record_says_the_holdout_is_spent_and_leaves_the_decision_to_the_owner():
     result = spend_holdout(
@@ -262,6 +266,61 @@ def test_the_record_says_the_holdout_is_spent_and_leaves_the_decision_to_the_own
     assert record["windows"]["holdout_start"] == HOLDOUT_START.date().isoformat()
     # The audit carries every candidate, not only the winner.
     assert len(record["selection_audit"]["candidates"]) == 3
+    # A spend cannot be regenerated, so its trades are filed with it.
+    assert len(record["holdout"]["trade_rows"]) == 20
+    assert record["holdout"]["evidence"]["mean_r"] == record["holdout"]["net_expectancy_r"]
+
+
+# ---------------------------------------------------------------- the net series
+
+
+def _charged(result: BacktestRunResult) -> Decimal:
+    """
+    A net objective charging every trade a flat 0.1 R, as the cost model's does per
+    trade.
+    """
+    if not result.trades:
+        return Decimal(0)
+    total = sum((t.r_multiple - Decimal("0.1") for t in result.trades), Decimal(0))
+    return total / Decimal(len(result.trades))
+
+
+def test_a_net_objective_with_its_own_cost_draws_the_interval_from_the_net_series():
+    result = spend_holdout(
+        carved_history(100, 20),
+        GRID,
+        purge_bars=5,
+        warmup_bars=10,
+        replay=winning_replay,
+        objective=_charged,
+        cost_r=lambda _: Decimal("0.1"),
+        min_trades=1,
+    )
+
+    assert result.score == Decimal("0.4")
+    assert result.evidence.mean_r == Decimal("0.4")
+    assert result.evidence.upper_r == Decimal("0.4"), "identical trades, so the net value"
+
+
+def test_a_net_objective_without_its_cost_is_refused_rather_than_reported():
+    """
+    The shape of the defect that shipped: net score, gross interval, and no error.
+
+    Every trade wins 0.5 R gross and scores 0.4 R net. The version that bootstrapped the
+    gross series reported an interval at 0.5 around a score of 0.4, above the number it
+    was meant to bound.
+
+    """
+    with pytest.raises(IncoherentEvidenceError):
+        spend_holdout(
+            carved_history(100, 20),
+            GRID,
+            purge_bars=5,
+            warmup_bars=10,
+            replay=winning_replay,
+            objective=_charged,
+            min_trades=1,
+        )
 
 
 class TestThinHoldoutRefusal:
