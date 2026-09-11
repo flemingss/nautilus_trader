@@ -2,7 +2,8 @@
 Run one registered activation against the paper broker, on the catalog's own bars.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.run_activation aapl-gap-fade-long-next-close --account DUT067974
+    export COPILOT_PAPER_ACCOUNT=<paper account id>
+    python -m copilot.live.run_activation aapl-gap-fade-long-next-close
 
 The first thing in this repository that puts a **researched strategy** on a broker
 connection. Everything before it was plumbing exercised by purpose-built probes; this runs

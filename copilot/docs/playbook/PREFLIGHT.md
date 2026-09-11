@@ -97,11 +97,11 @@ Confirmed by a failed run on 2026-09-01, not from documentation.
   it. Read-only is the right setting while orders are disabled and the wrong one from the
   moment an account needs confirming.
 - **The account is not on the instrument's venue.** Instruments resolve on `SMART`; the
-  execution client registers its account under its own client name, giving `IB-DUT067974`.
+  execution client registers its account under its own client name, giving `IB-<account>`.
   A venue-keyed account lookup must search both or it reports a missing account that is in
   the cache.
-- **The paper login name and account id are the same string** on this account
-  (`DUT067974`). Settled by observation, not assumed - IB does not require them to match.
+- **The paper login name and account id are the same string** on this account. Settled by
+  observation, not assumed - IB does not require them to match.
 - **The paper account is `MARGIN` while the live account is cash.** Paper will accept a
   short sale and size against buying power; the live cash account will do neither. A paper
   pass is not evidence about the cash constraints.

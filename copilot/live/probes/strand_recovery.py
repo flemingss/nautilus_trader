@@ -2,7 +2,8 @@
 Confirm unknown-working-order recovery against the broker, by stranding one on purpose.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.probes.strand_recovery --account DUT067974 --reference-price 326
+    export COPILOT_PAPER_ACCOUNT=<paper account id>
+    python -m copilot.live.probes.strand_recovery --reference-price 326
 
 The engine fix this confirms landed 2026-09-01: reconciliation adopts an external order
 reported as ``SUBMITTED`` (`crates/execution/src/reconciliation/orders.rs`), and the

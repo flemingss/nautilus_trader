@@ -111,6 +111,8 @@ stage six.
 
 ## To settle at stand-up, not before
 
+Each is a row under *Waiting on the VM* in [`ROADMAP.md`](ROADMAP.md), where its answer is recorded.
+
 - **How records get back to the repository.** Session records, verdicts and comparisons are
   written into the working tree and committed. On an unattended host nobody commits them.
   Recommendation: a deploy key scoped to this repository, and a daily push of records to a

@@ -25,7 +25,7 @@ name; the exports are still the operator's to make.
 ```bash
 set -a; . trade-copilot/.env; set +a          # MARKETSTACK_API_KEY, DATABENTO_API_KEY
 export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"  # or every IB connect fails opaquely
-export COPILOT_PAPER_ACCOUNT=DUT067974          # or preflight refuses, clearly, at least
+export COPILOT_PAPER_ACCOUNT=<paper id>         # or preflight refuses, clearly, at least
 ```
 
 ## The clock is the hard part

@@ -5,7 +5,7 @@ One lookup. The preflight and the activation runner each searched the cache for 
 account in their own way, and the search has a trap that was found once and must not be
 found twice: the account does not live on the instrument's venue. Instruments resolve on
 ``SMART`` while the execution client registers the account under its own client name, so
-the id reads ``IB-DUT067974`` and a search of the instrument venues alone finds nothing -
+the id reads ``IB-<account>`` and a search of the instrument venues alone finds nothing -
 which is how the first preflight reported a missing account that was in the cache the
 whole time.
 

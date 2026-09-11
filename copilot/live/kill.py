@@ -1,7 +1,7 @@
 """
 The operator's kill switch: halt this host, cancel, and say how to recover.
 
-    python -m copilot.live.kill --reason "fills look wrong" --account DUT067974
+    python -m copilot.live.kill --reason "fills look wrong" --account "$COPILOT_PAPER_ACCOUNT"
     python -m copilot.live.kill --status
     python -m copilot.live.kill --release 3f9a1c2e
     python -m copilot.live.kill --check-acknowledgements

@@ -2,7 +2,8 @@
 Paper stage four: submit every planned order type and time in force, and cancel each.
 
     export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"
-    python -m copilot.live.probes.order_types --account DUT067974 --reference-price 271.86
+    export COPILOT_PAPER_ACCOUNT=<paper account id>
+    python -m copilot.live.probes.order_types --reference-price 271.86
 
 Stage three proved one order type works. This proves the ones the strategies will actually
 use are accepted by the broker in the shapes we intend to send them, before a session

@@ -386,7 +386,7 @@ def observe_environment(cache: object, session: PaperSession) -> list[Check]:
 
     # The account does not live on the instrument's venue. Instruments resolve on
     # `SMART`, while the execution client registers the account under its own client
-    # name, so the account id reads `IB-DUT067974`. Searching only the instrument venues
+    # name, so the account id reads `IB-<account>`. Searching only the instrument venues
     # finds nothing, which is how the first run reported a missing account that was
     # sitting in the cache the whole time.
     venues = tuple(sorted({i.id.venue for i in instruments} | {Venue(EXEC_CLIENT_VENUE)}, key=str))

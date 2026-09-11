@@ -243,7 +243,7 @@ def build_paper_node(
             InteractiveBrokersExecutionClientFactory(),
             execution_client_config(session, provider),
             # Orders route by the instrument's venue, and the execution client does not
-            # register under one - the account reads `IB-DUT067974` while instruments
+            # register under one - the account reads `IB-<account>` while instruments
             # resolve on `SMART`. Without this the engine finds no client for `SMART` and
             # denies every order with NO_EXECUTION_CLIENT.
             #

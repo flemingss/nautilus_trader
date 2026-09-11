@@ -1,0 +1,6 @@
+# The root .gitignore ignores every `env/` directory and every `*.sh` file, which silently kept
+# the paper VM's environment templates and its unit installer out of the repository from the
+# pull request that wrote them (audit, 2026-09-11, batch D). Re-included here; a test fails if
+# anything under copilot/ops/ is ignored again.
+!env/
+!install-units.sh
