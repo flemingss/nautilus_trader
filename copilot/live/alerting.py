@@ -209,6 +209,15 @@ class Delivery:
     How many identical alerts the flood guard collapsed into this one.
     """
 
+    @property
+    def outcome(self) -> str:
+        """
+        One line for a terminal: sent, or why not.
+        """
+        if self.delivered:
+            return "sent"
+        return f"NOT delivered ({self.detail or self.notifier})"
+
 
 @dataclass(frozen=True)
 class Acknowledgement:

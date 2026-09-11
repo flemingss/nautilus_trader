@@ -15,6 +15,7 @@ from types import SimpleNamespace
 
 import pytest
 
+from copilot.live.alerting import Severity
 from copilot.live.cancel_working import BROKER_CLEAR
 from copilot.live.cancel_working import CENSUS_WAITS_SECS
 from copilot.live.cancel_working import STILL_WORKING
@@ -28,6 +29,7 @@ from copilot.live.cancel_working import OpenOrderCensusConfig
 from copilot.live.cancel_working import confirm
 from copilot.live.cancel_working import instruments_to_sweep
 from copilot.live.cancel_working import report
+from copilot.live.cancel_working import sweep_alert
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import wait_for_settlement
 from copilot.live.symbology import registered_instruments
@@ -284,3 +286,32 @@ def test_a_census_with_an_account_reports_what_reconciliation_adopted() -> None:
     assert result is not None
     assert result.account == "IB-DUT067974"
     assert result.open == {"AAPL=STK.SMART": ["O-7"]}
+
+
+# ------------------------------------------------------------------------- who is told
+
+
+def test_a_clear_broker_raises_nothing() -> None:
+    assert sweep_alert(Confirmation(BROKER_CLEAR, (_census(),)), account="DU1") is None
+
+
+def test_an_order_still_working_wakes_the_operator_and_names_it() -> None:
+    confirmation = Confirmation(STILL_WORKING, (_census(SPY_STK_SMART=["O-9"]),))
+
+    alert = sweep_alert(confirmation, account="DU1")
+
+    assert alert is not None
+    assert alert.severity == Severity.CRITICAL
+    assert "O-9" in alert.body
+    assert alert.context["account"] == "DU1"
+
+
+def test_an_unreadable_broker_is_critical_too() -> None:
+    """
+    *Alert on any order whose status cannot be confirmed* - not only on ones seen working.
+    """
+    alert = sweep_alert(Confirmation(UNCONFIRMED, (None, None)), account="DU1")
+
+    assert alert is not None
+    assert alert.severity == Severity.CRITICAL
+    assert "No census could read the broker" in alert.body
