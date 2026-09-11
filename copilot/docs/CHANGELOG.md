@@ -19,7 +19,7 @@ Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
 ### Measured
 
-`strategies/out/attribution_20260911T012725Z.json`, over the twelve walk-forwards and the
+`strategies/out/attribution_20260911T013407Z.json`, over the twelve walk-forwards and the
 pool filed the same evening.
 
 - **No result has positive four-factor alpha under either treatment of the exit session.**

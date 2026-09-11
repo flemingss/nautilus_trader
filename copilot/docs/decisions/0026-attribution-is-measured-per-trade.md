@@ -72,7 +72,7 @@ the result.
 
 ## What it measured, 2026-09-10
 
-`strategies/out/attribution_20260911T012725Z.json`, over the twelve walk-forward verdicts and
+`strategies/out/attribution_20260911T013407Z.json`, over the twelve walk-forward verdicts and
 the pooled run filed the same evening. R per trade, net of costs.
 
 | Result                   | Net      | Four-factor alpha, exit included | Exit excluded           | Market beta       | Verdict             |

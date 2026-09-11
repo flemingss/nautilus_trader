@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "SCHX.ARCX",
-  "run_at": "2026-09-11T00:26:44.780359+00:00",
-  "runtime_seconds": 7.6,
+  "run_at": "2026-09-11T01:33:00.502238+00:00",
+  "runtime_seconds": 7.5,
   "bars": 1883,
   "bar_range": [
     "2017-01-03",
@@ -64,8 +64,8 @@
     "data": "ea230080374bdf98dab089734ffce6630ca880c296bbbfa92ae54ed1d839f9bf",
     "identity": "15f367ead352982d485417585f561c8ee126dc3346411239375bc7793543985c",
     "cost": "1f3323075cb44ec0a1080197758db84c82c23d7f77e67a74b0f5372c2d932d66",
-    "code": "540f8534749b13265a53845dba02c2d8e6e7fb5a34d7087beaf9bbe93fd6b70d",
-    "combined": "185a4dcefefc8c21b8216de624709ac71f47230a207faed0210950ed5188fcc2"
+    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
+    "combined": "61e947be9a82a79339f7b44970837841c098b0db5504b5c1d08df393c71c8414"
   },
   "holdout_spent": false,
   "folds": 12,

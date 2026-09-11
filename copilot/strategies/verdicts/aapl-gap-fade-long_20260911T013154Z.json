@@ -3,7 +3,7 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "AAPL.XNAS",
-  "run_at": "2026-09-11T00:25:38.804666+00:00",
+  "run_at": "2026-09-11T01:31:54.323804+00:00",
   "runtime_seconds": 17.8,
   "bars": 4280,
   "bar_range": [
@@ -63,8 +63,8 @@
     "data": "c8d523a6e536a70bd4d5c9a877e5cf07579cc81c192d33cfc4e1c90e741f5e7d",
     "identity": "d789cc9285b216e64fd53345f6b9739e1380d7e2900c2c57e8dd245911aa0f61",
     "cost": "e640b46bfbde1c2bc9c5a637a5ef6ce322b8625c3511149dff7cba9c3a961eac",
-    "code": "540f8534749b13265a53845dba02c2d8e6e7fb5a34d7087beaf9bbe93fd6b70d",
-    "combined": "3098360be23e0ce17787f3854ca69bddf4f6a94870ca54101ad1904b96dbf6e0"
+    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
+    "combined": "ab4b3c5c0a9b70f85755bed49b4e58ed2a3b1e3c3be5bd7e452bd91fac0122a4"
   },
   "holdout_spent": false,
   "folds": 31,
