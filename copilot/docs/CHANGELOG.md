@@ -2,6 +2,41 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, EODHD probed on the demo token
+
+### Added
+
+- **`python -m copilot.data.eodhd_probe`** asks another vendor's daily series the checks
+  Marketstack failed: coherent bars, real sessions, whole-cent closes and as-traded splits, plus
+  agreement with the official closing-auction print the Databento store holds. It files under
+  `data/out/`, a new directory kept whole. Without `EODHD_API_KEY` it uses EODHD's public demo
+  token and says so.
+- **AAPL's official closes, 2018-05 to 2026-09**, pulled into the store for USD 0.0040, so the
+  probe has an independent reference. The store had held TLT's alone on XNAS.
+
+### Measured
+
+Filed as `data/out/eodhd_probe_20260911T211118Z.json`. The demo token served AAPL and refused
+SPY with a 403.
+
+| Check             | AAPL on EODHD                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| Coherent bars     | Pass: 0 of 5,457 outside their own range; 5,036 to 5,106 distinct values per field    |
+| Real sessions     | Pass: none on closed days, none missing, 2005-01-03 to 2026-09-11                     |
+| Whole-cent closes | **Fail**: 2,026 closes from 2005 to 2014-06-06, an adjusted series multiplied back up |
+| As-traded splits  | Pass: a jump on each registered split, none elsewhere, vendor and registry agree      |
+| Official close    | Pass: 2,093 of 2,101 exact, none over 10 bps, worst 7.32 bps on 2020-07-09            |
+
+Against the Marketstack catalog the same closes agree to within 1.1 bps on all 5,455 shared
+sessions, which is evidence of a shared upstream rather than of accuracy.
+
+### Regrouped
+
+- **The EODHD row moves to *Waiting on spend*.** The probe is built and exercised; breadth needs
+  a paid key, about USD 30 for the one month the probe needs. Open work stays twenty-two items:
+  five ready to build, five waiting on the VM, two on the account, two on a decision, one charter
+  conflict, two on spend, five deferred.
+
 ## 2026-09-11, GLDM's holes are sessions without a closing auction
 
 ### Found

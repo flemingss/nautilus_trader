@@ -505,6 +505,7 @@ what the working tree should present as *the* record.
 | `live/out/`            | Everything                                                                      | Session records are the paper campaign's evidence and are never rewritten   |
 | `strategies/holdouts/` | Everything, `voided/` included                                                  | Single-use by construction; a void is a record of why it was not            |
 | `strategies/out/`      | The newest pooled run and attribution, plus any a test or document names        | Same rule as verdicts; added 2026-09-11 when two superseded runs were found |
+| `data/out/`            | Every vendor probe                                                              | An adoption decision cites the probe it rests on; added 2026-09-11          |
 
 Prune verdicts and calibration outputs when a filing supersedes them, in the same commit
 as the filing. A superseded file is not deleted history - it is one `git log` away - but

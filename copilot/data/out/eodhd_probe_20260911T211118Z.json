@@ -1,0 +1,71 @@
+{
+  "run_at": "2026-09-11T21:11:18.784290+00:00",
+  "token": "demo",
+  "from": "2005-01-01",
+  "refused": [
+    "SPY.ARCX"
+  ],
+  "results": [
+    {
+      "symbol": "AAPL",
+      "venue": "XNAS",
+      "ticker": "AAPL.US",
+      "token": "demo",
+      "rows": 5457,
+      "first": "2005-01-03",
+      "last": "2026-09-11",
+      "passed": false,
+      "failures": [
+        "whole-cent closes"
+      ],
+      "coherent_bars": {
+        "incoherent": [],
+        "distinct": {
+          "open": 5087,
+          "high": 5036,
+          "low": 5106,
+          "close": 5104
+        },
+        "repeated_fields": []
+      },
+      "real_sessions": {
+        "phantom": [],
+        "missing": []
+      },
+      "whole_cent_closes": {
+        "sub_penny": 2026,
+        "first": "2005-01-03",
+        "last": "2014-06-06"
+      },
+      "as_traded_splits": {
+        "moves": [
+          {
+            "day": "2005-02-28",
+            "ratio": "1.992"
+          },
+          {
+            "day": "2014-06-09",
+            "ratio": "6.964"
+          },
+          {
+            "day": "2020-08-31",
+            "ratio": "3.913"
+          }
+        ],
+        "unexplained": [],
+        "unseen": [],
+        "vendor_only": [],
+        "registry_only": []
+      },
+      "official_close": {
+        "compared": 2101,
+        "exact": 2093,
+        "material": [],
+        "worst": {
+          "day": "2020-07-09",
+          "bps": "7.32"
+        }
+      }
+    }
+  ]
+}
