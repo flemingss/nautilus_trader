@@ -39,3 +39,6 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0021](0021-an-unscorable-spend-still-consumes-the-holdout.md)  | An unscorable spend still consumes the holdout                       | Accepted   |
 | [0022](0022-the-always-on-host-is-a-dedicated-vm.md)            | The always-on host is a dedicated VM, not the production cluster     | Accepted   |
 | [0023](0023-a-critical-alert-demands-acknowledgement.md)        | A critical alert demands acknowledgement, and severity is a contract | Accepted   |
+| [0024](0024-a-holdout-pass-needs-an-interval.md)                | A holdout pass needs an interval                                     | Accepted   |
+| [0025](0025-commission-is-modelled-per-plan.md)                 | Commission is modelled per plan, and the plan is pinned              | Accepted   |
+| [0026](0026-attribution-is-measured-per-trade.md)               | Attribution is measured per trade, against pinned factor returns     | Accepted   |

@@ -252,6 +252,20 @@ static release binary in `~/.local/bin` serves when there is no sudo. On a 15 GB
 the Rust hooks have locked the machine up twice; `CARGO_BUILD_JOBS=4 make pre-commit`
 finished in under four minutes without incident (2026-09-09).
 
+**On a memory-limited box, run hooks on the files you changed, and skip test collection.**
+The `python-test-collection` hook runs `pytest --collect-only` over upstream's whole Python
+suite, importing the extension for every module, whenever `python/pyproject.toml`,
+`python/uv.lock`, `Makefile` or anything under `python/tests` or `python/nautilus_trader` is
+in scope - which `--all-files` always is. It OOM-killed the 15 GB WSL box twice on
+2026-09-10, once through `--all-files` and once through a `--files` list naming only
+`python/pyproject.toml`. For an overlay change:
+
+```bash
+SKIP=python-test-collection UV_PROJECT_ENVIRONMENT="$PWD/.venv" prek run --files <changed files>
+```
+
+Run it in the foreground, and never alongside pytest or a walk-forward.
+
 `make format` additionally needs `cargo +nightly fmt`:
 `rustup toolchain install nightly --profile minimal --component rustfmt`.
 

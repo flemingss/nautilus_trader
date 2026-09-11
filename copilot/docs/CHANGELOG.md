@@ -2,6 +2,52 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, attribution
+
+### Added
+
+- **`python -m copilot.strategies.attribute`** regresses every filed result's trades on the
+  market, size, value and momentum, from the record alone, in about three seconds.
+  [ADR-0026](decisions/0026-attribution-is-measured-per-trade.md) records the method: per
+  trade, in R, each factor scaled by the trade's notional per unit of risk; inference by
+  ADR-0024's block bootstrap refitting the regression, which a test pins to reproduce the
+  evidence interval exactly for a model with no factors.
+- **The Kenneth French daily factors, pinned.** The 202607 CRSP vintage is committed under
+  `validation/factors/` and refused on a digest mismatch; `python -m copilot.validation.factors
+  --fetch` downloads a new one without moving the pin. A `.gitignore` there re-includes the
+  zips the root file excludes.
+
+### Measured
+
+`strategies/out/attribution_20260911T013407Z.json`, over the twelve walk-forwards and the
+pool filed the same evening.
+
+- **No result has positive four-factor alpha under either treatment of the exit session.**
+  Five are negative under both (EEM, HYG, TLT, SCHX, and SPY signal-close); the largest net
+  point estimate anywhere is +0.001 R.
+- **The pool's gross +0.067 R per trade is cash +0.017, factor exposure +0.051, alpha
+  -0.001.** Costs of 0.037 take the residue below zero.
+- **AAPL next-close, the one walk-forward whose interval cleared zero, is beta:** +0.112 R of
+  factor exposure against -0.011 alpha, market loading 1.16.
+
+### Found while building it
+
+- **Exits are not at a close.** On SPY next-close 417 of 439 fill at a stop or target during
+  the session and 22 at the open, so the exit session is partly held. The method brackets it -
+  counted in full, which flatters alpha, and left out - and names a verdict only where the two
+  agree.
+- **A first draft converted bar stamps to Eastern and shifted every window a session early.**
+  The catalog stamps vendor bars at midnight UTC on the session date, which is the previous
+  evening in New York. It measured a long SPY position's beta at 0.46; on the UTC date, the
+  convention every other reader uses, 0.79 - still below one, which is the partly held exit
+  session's attenuation. A test pins both stamp conventions.
+- **The decisions index had stopped at 0023**, and the roadmap's *Ready to build* count said
+  15 over 19 rows; both had drifted across the day's earlier changes and are corrected.
+- **`python-test-collection` is what froze WSL.** Any `prek run --files` list including
+  `python/pyproject.toml` runs `pytest --collect-only` over upstream's whole suite, and it
+  OOM-killed the 15 GB box. Run hooks with `SKIP=python-test-collection` when a `python/`
+  path is included.
+
 ## 2026-09-10, the interval that was gross
 
 ### Fixed

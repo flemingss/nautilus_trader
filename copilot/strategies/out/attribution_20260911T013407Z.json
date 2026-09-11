@@ -1,0 +1,2378 @@
+{
+  "run_at": "2026-09-11T01:34:07.192037+00:00",
+  "factors": {
+    "directory": "factors",
+    "pinned": {
+      "F-F_Research_Data_Factors_daily_CSV.zip": "1916d331c2c51d2aee3d00215897d2b8e5995cb387f1f4569ba46bff5fb049a8",
+      "F-F_Momentum_Factor_daily_CSV.zip": "b039d986db27fc831bcf1f52ba2134916e96fbeba4762fefc942429b0a568a96"
+    }
+  },
+  "results": [
+    {
+      "record": "aapl-gap-fade-long-next-close_20260911T013136Z.json",
+      "label": "aapl-gap-fade-long-next-close (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 401,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.091341",
+          "risk_free_r": "0.005032",
+          "explained_r": "0.112194",
+          "alpha_r": "-0.025885",
+          "alpha_lower_r": "-0.089712",
+          "alpha_upper_r": "0.034037",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.161460",
+              "lower": "1.084643",
+              "upper": "1.253162"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.420908",
+              "lower": "-0.569207",
+              "upper": "-0.214290"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.475517",
+              "lower": "-0.637453",
+              "upper": "-0.312464"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.082587",
+              "lower": "-0.012939",
+              "upper": "0.201813"
+            }
+          ],
+          "r_squared": "0.472894"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 401,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.091341",
+          "risk_free_r": "0.003773",
+          "explained_r": "0.086413",
+          "alpha_r": "0.001155",
+          "alpha_lower_r": "-0.078892",
+          "alpha_upper_r": "0.076466",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.063363",
+              "lower": "0.891212",
+              "upper": "1.225147"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.351658",
+              "lower": "-0.589961",
+              "upper": "-0.055945"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.387641",
+              "lower": "-0.662062",
+              "upper": "-0.046895"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.035521",
+              "lower": "-0.154594",
+              "upper": "0.244017"
+            }
+          ],
+          "r_squared": "0.201098"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 401,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.091341",
+          "risk_free_r": "0.005032",
+          "explained_r": "0.092112",
+          "alpha_r": "-0.005803",
+          "alpha_lower_r": "-0.071603",
+          "alpha_upper_r": "0.053377",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.037137",
+              "lower": "0.955055",
+              "upper": "1.131311"
+            }
+          ],
+          "r_squared": "0.409153"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 401,
+          "block_trades": 7,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.106308",
+          "risk_free_r": "0.005032",
+          "explained_r": "0.112282",
+          "alpha_r": "-0.011007",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.162567",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.422190",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.476156",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.082454",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.473396"
+        }
+      }
+    },
+    {
+      "record": "aapl-gap-fade-long_20260911T013154Z.json",
+      "label": "aapl-gap-fade-long (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 469,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.047598",
+          "risk_free_r": "0.005015",
+          "explained_r": "0.096596",
+          "alpha_r": "-0.054013",
+          "alpha_lower_r": "-0.118723",
+          "alpha_upper_r": "0.011504",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.078780",
+              "lower": "0.986460",
+              "upper": "1.164919"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.270734",
+              "lower": "-0.434590",
+              "upper": "-0.096734"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.294250",
+              "lower": "-0.451643",
+              "upper": "-0.137594"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.142695",
+              "lower": "0.013916",
+              "upper": "0.269239"
+            }
+          ],
+          "r_squared": "0.402919"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 469,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.047598",
+          "risk_free_r": "0.003865",
+          "explained_r": "0.107775",
+          "alpha_r": "-0.064041",
+          "alpha_lower_r": "-0.138870",
+          "alpha_upper_r": "0.014838",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.225334",
+              "lower": "1.065043",
+              "upper": "1.385685"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.080118",
+              "lower": "-0.258136",
+              "upper": "0.182886"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.178043",
+              "lower": "-0.408612",
+              "upper": "0.076731"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.218539",
+              "lower": "0.061022",
+              "upper": "0.402822"
+            }
+          ],
+          "r_squared": "0.238577"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 469,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.047598",
+          "risk_free_r": "0.005015",
+          "explained_r": "0.095568",
+          "alpha_r": "-0.052984",
+          "alpha_lower_r": "-0.120175",
+          "alpha_upper_r": "0.017295",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.989679",
+              "lower": "0.906944",
+              "upper": "1.067921"
+            }
+          ],
+          "r_squared": "0.362854"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 469,
+          "block_trades": 8,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.062413",
+          "risk_free_r": "0.005015",
+          "explained_r": "0.096638",
+          "alpha_r": "-0.039241",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.079206",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.270741",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.294259",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.142905",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.402966"
+        }
+      }
+    },
+    {
+      "record": "eem-gap-fade-long-next-close_20260911T013202Z.json",
+      "label": "eem-gap-fade-long-next-close (walk-forward)",
+      "verdict": "negative_alpha",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 206,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.112753",
+          "risk_free_r": "0.016483",
+          "explained_r": "0.082350",
+          "alpha_r": "-0.211585",
+          "alpha_lower_r": "-0.300214",
+          "alpha_upper_r": "-0.122070",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.663706",
+              "lower": "0.568156",
+              "upper": "0.793213"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.197825",
+              "lower": "0.010353",
+              "upper": "0.384160"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.111005",
+              "lower": "-0.024232",
+              "upper": "0.236179"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.054900",
+              "lower": "-0.028723",
+              "upper": "0.151971"
+            }
+          ],
+          "r_squared": "0.423123"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 206,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.112753",
+          "risk_free_r": "0.012443",
+          "explained_r": "0.098047",
+          "alpha_r": "-0.223243",
+          "alpha_lower_r": "-0.332002",
+          "alpha_upper_r": "-0.121297",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.605982",
+              "lower": "0.426488",
+              "upper": "0.835678"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.349378",
+              "lower": "0.129512",
+              "upper": "0.580575"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.113901",
+              "lower": "-0.079989",
+              "upper": "0.300580"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.018983",
+              "lower": "-0.135326",
+              "upper": "0.174475"
+            }
+          ],
+          "r_squared": "0.165721"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 206,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.112753",
+          "risk_free_r": "0.016483",
+          "explained_r": "0.087566",
+          "alpha_r": "-0.216801",
+          "alpha_lower_r": "-0.309377",
+          "alpha_upper_r": "-0.127190",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.686789",
+              "lower": "0.612762",
+              "upper": "0.780407"
+            }
+          ],
+          "r_squared": "0.404695"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 206,
+          "block_trades": 6,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "-0.086472",
+          "risk_free_r": "0.016483",
+          "explained_r": "0.082301",
+          "alpha_r": "-0.185256",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.663526",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "0.197429",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "0.111354",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.054905",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.422976"
+        }
+      }
+    },
+    {
+      "record": "gldm-gap-fade-long-next-close_20260911T013209Z.json",
+      "label": "gldm-gap-fade-long-next-close (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 127,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.016398",
+          "risk_free_r": "0.026846",
+          "explained_r": "0.011727",
+          "alpha_r": "-0.022174",
+          "alpha_lower_r": "-0.159946",
+          "alpha_upper_r": "0.106534",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.154331",
+              "lower": "0.048869",
+              "upper": "0.251539"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.128205",
+              "lower": "-0.090646",
+              "upper": "0.298177"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.027840",
+              "lower": "-0.143232",
+              "upper": "0.078332"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.094567",
+              "lower": "-0.056666",
+              "upper": "0.193546"
+            }
+          ],
+          "r_squared": "0.076759"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 127,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.016398",
+          "risk_free_r": "0.021366",
+          "explained_r": "0.024781",
+          "alpha_r": "-0.029749",
+          "alpha_lower_r": "-0.172034",
+          "alpha_upper_r": "0.101261",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.155350",
+              "lower": "0.011809",
+              "upper": "0.284873"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.083958",
+              "lower": "-0.109733",
+              "upper": "0.285000"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.024568",
+              "lower": "-0.167425",
+              "upper": "0.113398"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.049225",
+              "lower": "-0.107779",
+              "upper": "0.154523"
+            }
+          ],
+          "r_squared": "0.044030"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 127,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.016398",
+          "risk_free_r": "0.026846",
+          "explained_r": "0.017475",
+          "alpha_r": "-0.027922",
+          "alpha_lower_r": "-0.162442",
+          "alpha_upper_r": "0.097699",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.153037",
+              "lower": "0.053640",
+              "upper": "0.247424"
+            }
+          ],
+          "r_squared": "0.045966"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 127,
+          "block_trades": 5,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.118779",
+          "risk_free_r": "0.026846",
+          "explained_r": "0.012027",
+          "alpha_r": "0.079907",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.155115",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "0.127385",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.026141",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.095519",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.077028"
+        }
+      }
+    },
+    {
+      "record": "hyg-gap-fade-long-next-close_20260911T013216Z.json",
+      "label": "hyg-gap-fade-long-next-close (walk-forward)",
+      "verdict": "negative_alpha",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 183,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.139994",
+          "risk_free_r": "0.044581",
+          "explained_r": "0.001828",
+          "alpha_r": "-0.186403",
+          "alpha_lower_r": "-0.280598",
+          "alpha_upper_r": "-0.108865",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.203142",
+              "lower": "0.182387",
+              "upper": "0.253146"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.011016",
+              "lower": "-0.047353",
+              "upper": "0.044491"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.014861",
+              "lower": "-0.041826",
+              "upper": "0.018038"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.056097",
+              "lower": "-0.084398",
+              "upper": "-0.023500"
+            }
+          ],
+          "r_squared": "0.443015"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 183,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.139994",
+          "risk_free_r": "0.032963",
+          "explained_r": "0.041803",
+          "alpha_r": "-0.214760",
+          "alpha_lower_r": "-0.326082",
+          "alpha_upper_r": "-0.105566",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.222478",
+              "lower": "0.177801",
+              "upper": "0.290783"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.014889",
+              "lower": "-0.083743",
+              "upper": "0.075447"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.017777",
+              "lower": "-0.068039",
+              "upper": "0.023275"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.051230",
+              "lower": "-0.111825",
+              "upper": "0.003025"
+            }
+          ],
+          "r_squared": "0.171498"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 183,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.139994",
+          "risk_free_r": "0.044581",
+          "explained_r": "0.020223",
+          "alpha_r": "-0.204798",
+          "alpha_lower_r": "-0.297521",
+          "alpha_upper_r": "-0.127607",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.204742",
+              "lower": "0.182610",
+              "upper": "0.253408"
+            }
+          ],
+          "r_squared": "0.415189"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 183,
+          "block_trades": 6,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "-0.078054",
+          "risk_free_r": "0.044581",
+          "explained_r": "0.002213",
+          "alpha_r": "-0.124848",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.203011",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "0.009643",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.014914",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.054971",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.443142"
+        }
+      }
+    },
+    {
+      "record": "msft-gap-fade-long-next-close_20260911T013234Z.json",
+      "label": "msft-gap-fade-long-next-close (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 375,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054579",
+          "risk_free_r": "0.008366",
+          "explained_r": "0.058108",
+          "alpha_r": "-0.011895",
+          "alpha_lower_r": "-0.067328",
+          "alpha_upper_r": "0.036399",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.978578",
+              "lower": "0.909615",
+              "upper": "1.045138"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.178307",
+              "lower": "-0.314044",
+              "upper": "-0.016929"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.395444",
+              "lower": "-0.556692",
+              "upper": "-0.270366"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.049700",
+              "lower": "-0.059845",
+              "upper": "0.140097"
+            }
+          ],
+          "r_squared": "0.484623"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 375,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054579",
+          "risk_free_r": "0.006734",
+          "explained_r": "0.059217",
+          "alpha_r": "-0.011373",
+          "alpha_lower_r": "-0.076586",
+          "alpha_upper_r": "0.054112",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.023619",
+              "lower": "0.861409",
+              "upper": "1.180208"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.194718",
+              "lower": "-0.367235",
+              "upper": "0.043353"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.337780",
+              "lower": "-0.534344",
+              "upper": "-0.173032"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.084987",
+              "lower": "-0.064984",
+              "upper": "0.195637"
+            }
+          ],
+          "r_squared": "0.225952"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 375,
+          "block_trades": 7,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054579",
+          "risk_free_r": "0.008366",
+          "explained_r": "0.064504",
+          "alpha_r": "-0.018292",
+          "alpha_lower_r": "-0.073403",
+          "alpha_upper_r": "0.035315",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.876967",
+              "lower": "0.796185",
+              "upper": "0.953542"
+            }
+          ],
+          "r_squared": "0.422432"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 375,
+          "block_trades": 7,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.079042",
+          "risk_free_r": "0.008366",
+          "explained_r": "0.058150",
+          "alpha_r": "0.012526",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.979304",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.178092",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.394923",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.050926",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.485259"
+        }
+      }
+    },
+    {
+      "record": "msft-gap-fade-long_20260911T013252Z.json",
+      "label": "msft-gap-fade-long (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 444,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.075694",
+          "risk_free_r": "0.007529",
+          "explained_r": "0.077867",
+          "alpha_r": "-0.009701",
+          "alpha_lower_r": "-0.068018",
+          "alpha_upper_r": "0.046296",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.950767",
+              "lower": "0.894205",
+              "upper": "1.005028"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.227841",
+              "lower": "-0.384103",
+              "upper": "-0.089033"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.343204",
+              "lower": "-0.492758",
+              "upper": "-0.229849"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.071325",
+              "lower": "-0.033594",
+              "upper": "0.149493"
+            }
+          ],
+          "r_squared": "0.448195"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 444,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.075694",
+          "risk_free_r": "0.005793",
+          "explained_r": "0.079278",
+          "alpha_r": "-0.009377",
+          "alpha_lower_r": "-0.071427",
+          "alpha_upper_r": "0.058897",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.006679",
+              "lower": "0.872221",
+              "upper": "1.134049"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.229430",
+              "lower": "-0.432941",
+              "upper": "-0.007254"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.228806",
+              "lower": "-0.367517",
+              "upper": "-0.059693"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.123046",
+              "lower": "0.019018",
+              "upper": "0.222764"
+            }
+          ],
+          "r_squared": "0.207868"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 444,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.075694",
+          "risk_free_r": "0.007529",
+          "explained_r": "0.068235",
+          "alpha_r": "-0.000069",
+          "alpha_lower_r": "-0.056487",
+          "alpha_upper_r": "0.057386",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.857347",
+              "lower": "0.782239",
+              "upper": "0.925671"
+            }
+          ],
+          "r_squared": "0.393863"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 444,
+          "block_trades": 8,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.101160",
+          "risk_free_r": "0.007529",
+          "explained_r": "0.077914",
+          "alpha_r": "0.015718",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.951295",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.228466",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.341719",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.072456",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.448547"
+        }
+      }
+    },
+    {
+      "record": "schx-gap-fade-long-next-close_20260911T013300Z.json",
+      "label": "schx-gap-fade-long-next-close (walk-forward)",
+      "verdict": "negative_alpha",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 175,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054642",
+          "risk_free_r": "0.019853",
+          "explained_r": "0.109661",
+          "alpha_r": "-0.074872",
+          "alpha_lower_r": "-0.113434",
+          "alpha_upper_r": "-0.023934",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.790793",
+              "lower": "0.737519",
+              "upper": "0.859493"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.036431",
+              "lower": "-0.118553",
+              "upper": "0.059398"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.026715",
+              "lower": "-0.016878",
+              "upper": "0.090582"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.028177",
+              "lower": "-0.079069",
+              "upper": "0.017295"
+            }
+          ],
+          "r_squared": "0.827876"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 175,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054642",
+          "risk_free_r": "0.014765",
+          "explained_r": "0.160261",
+          "alpha_r": "-0.120383",
+          "alpha_lower_r": "-0.197200",
+          "alpha_upper_r": "-0.037433",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.353292",
+              "lower": "1.292371",
+              "upper": "1.464636"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.052490",
+              "lower": "-0.182900",
+              "upper": "0.112000"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.004259",
+              "lower": "-0.075814",
+              "upper": "0.098267"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "0.005501",
+              "lower": "-0.054324",
+              "upper": "0.086435"
+            }
+          ],
+          "r_squared": "0.585085"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 175,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.054642",
+          "risk_free_r": "0.019853",
+          "explained_r": "0.107348",
+          "alpha_r": "-0.072558",
+          "alpha_lower_r": "-0.112361",
+          "alpha_upper_r": "-0.028956",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.777214",
+              "lower": "0.729756",
+              "upper": "0.835012"
+            }
+          ],
+          "r_squared": "0.824725"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 175,
+          "block_trades": 6,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.123286",
+          "risk_free_r": "0.019853",
+          "explained_r": "0.110445",
+          "alpha_r": "-0.007012",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.791199",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.043224",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "0.027602",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.025824",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.825497"
+        }
+      }
+    },
+    {
+      "record": "spy-gap-fade-long-next-close_20260911T013319Z.json",
+      "label": "spy-gap-fade-long-next-close (walk-forward)",
+      "verdict": "bracket_disagrees",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 439,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.041661",
+          "risk_free_r": "0.010967",
+          "explained_r": "0.064297",
+          "alpha_r": "-0.033603",
+          "alpha_lower_r": "-0.062437",
+          "alpha_upper_r": "-0.003868",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.786926",
+              "lower": "0.745724",
+              "upper": "0.825787"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.100932",
+              "lower": "-0.149206",
+              "upper": "-0.047203"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.021854",
+              "lower": "-0.092602",
+              "upper": "0.022061"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.033042",
+              "lower": "-0.085142",
+              "upper": "0.006425"
+            }
+          ],
+          "r_squared": "0.820233"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 439,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.041661",
+          "risk_free_r": "0.008116",
+          "explained_r": "0.091359",
+          "alpha_r": "-0.057813",
+          "alpha_lower_r": "-0.116488",
+          "alpha_upper_r": "0.001561",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.397356",
+              "lower": "1.327002",
+              "upper": "1.479487"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.202021",
+              "lower": "-0.273603",
+              "upper": "-0.112444"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.018314",
+              "lower": "-0.112567",
+              "upper": "0.091737"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.042036",
+              "lower": "-0.130629",
+              "upper": "0.026794"
+            }
+          ],
+          "r_squared": "0.440723"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 439,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.041661",
+          "risk_free_r": "0.010967",
+          "explained_r": "0.068577",
+          "alpha_r": "-0.037883",
+          "alpha_lower_r": "-0.067842",
+          "alpha_upper_r": "-0.007867",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.769622",
+              "lower": "0.729771",
+              "upper": "0.806254"
+            }
+          ],
+          "r_squared": "0.813706"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 439,
+          "block_trades": 8,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.053438",
+          "risk_free_r": "0.010967",
+          "explained_r": "0.064324",
+          "alpha_r": "-0.021853",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.787013",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.100976",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.021427",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.032617",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.820000"
+        }
+      }
+    },
+    {
+      "record": "spy-gap-fade-long_20260911T013339Z.json",
+      "label": "spy-gap-fade-long (walk-forward)",
+      "verdict": "negative_alpha",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 490,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.036342",
+          "risk_free_r": "0.008295",
+          "explained_r": "0.064637",
+          "alpha_r": "-0.036589",
+          "alpha_lower_r": "-0.062875",
+          "alpha_upper_r": "-0.005995",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.798988",
+              "lower": "0.761880",
+              "upper": "0.831109"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.074248",
+              "lower": "-0.121938",
+              "upper": "-0.026988"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.025909",
+              "lower": "-0.060783",
+              "upper": "0.011348"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.023896",
+              "lower": "-0.064502",
+              "upper": "0.002633"
+            }
+          ],
+          "r_squared": "0.820416"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 490,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.036342",
+          "risk_free_r": "0.006001",
+          "explained_r": "0.145175",
+          "alpha_r": "-0.114834",
+          "alpha_lower_r": "-0.166247",
+          "alpha_upper_r": "-0.056135",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.439623",
+              "lower": "1.374375",
+              "upper": "1.511551"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.197328",
+              "lower": "-0.265438",
+              "upper": "-0.129630"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.028903",
+              "lower": "-0.105301",
+              "upper": "0.060663"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.075985",
+              "lower": "-0.132683",
+              "upper": "-0.021149"
+            }
+          ],
+          "r_squared": "0.535706"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 490,
+          "block_trades": 8,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.036342",
+          "risk_free_r": "0.008295",
+          "explained_r": "0.065803",
+          "alpha_r": "-0.037756",
+          "alpha_lower_r": "-0.063813",
+          "alpha_upper_r": "-0.008178",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.782081",
+              "lower": "0.747705",
+              "upper": "0.811299"
+            }
+          ],
+          "r_squared": "0.817207"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 490,
+          "block_trades": 8,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.047926",
+          "risk_free_r": "0.008295",
+          "explained_r": "0.064658",
+          "alpha_r": "-0.025028",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.798972",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.074338",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.025775",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.023609",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.820478"
+        }
+      }
+    },
+    {
+      "record": "tlt-gap-fade-long-next-close_20260911T013347Z.json",
+      "label": "tlt-gap-fade-long-next-close (walk-forward)",
+      "verdict": "negative_alpha",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 170,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.145693",
+          "risk_free_r": "0.024005",
+          "explained_r": "-0.036623",
+          "alpha_r": "-0.133074",
+          "alpha_lower_r": "-0.283123",
+          "alpha_upper_r": "-0.000821",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "-0.134479",
+              "lower": "-0.247912",
+              "upper": "-0.026059"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.023940",
+              "lower": "-0.214561",
+              "upper": "0.124633"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.467038",
+              "lower": "-0.602720",
+              "upper": "-0.356337"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.088110",
+              "lower": "-0.212382",
+              "upper": "-0.015346"
+            }
+          ],
+          "r_squared": "0.165386"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 170,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.145693",
+          "risk_free_r": "0.018173",
+          "explained_r": "-0.011905",
+          "alpha_r": "-0.151961",
+          "alpha_lower_r": "-0.294592",
+          "alpha_upper_r": "-0.016866",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "-0.046161",
+              "lower": "-0.191648",
+              "upper": "0.069085"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.019357",
+              "lower": "-0.313887",
+              "upper": "0.113865"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.319277",
+              "lower": "-0.547070",
+              "upper": "-0.163563"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.160621",
+              "lower": "-0.311939",
+              "upper": "-0.024775"
+            }
+          ],
+          "r_squared": "0.054171"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 170,
+          "block_trades": 6,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.145693",
+          "risk_free_r": "0.024005",
+          "explained_r": "-0.004200",
+          "alpha_r": "-0.165497",
+          "alpha_lower_r": "-0.312254",
+          "alpha_upper_r": "-0.027191",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "-0.022792",
+              "lower": "-0.155356",
+              "upper": "0.093537"
+            }
+          ],
+          "r_squared": "0.000777"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 170,
+          "block_trades": 6,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "-0.124600",
+          "risk_free_r": "0.024005",
+          "explained_r": "-0.036664",
+          "alpha_r": "-0.111940",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "-0.134573",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "0.023313",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.468563",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.088230",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.166238"
+        }
+      }
+    },
+    {
+      "record": "xlf-gap-fade-long-next-close_20260911T013352Z.json",
+      "label": "xlf-gap-fade-long-next-close (walk-forward)",
+      "verdict": "no_alpha_detected",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 94,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.007851",
+          "risk_free_r": "0.026819",
+          "explained_r": "-0.018528",
+          "alpha_r": "-0.016142",
+          "alpha_lower_r": "-0.090466",
+          "alpha_upper_r": "0.058684",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.919980",
+              "lower": "0.815777",
+              "upper": "1.037135"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.195441",
+              "lower": "-0.362901",
+              "upper": "-0.061644"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.675294",
+              "lower": "0.561574",
+              "upper": "0.789168"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.246675",
+              "lower": "-0.397165",
+              "upper": "-0.114444"
+            }
+          ],
+          "r_squared": "0.766568"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 94,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.007851",
+          "risk_free_r": "0.020790",
+          "explained_r": "0.009041",
+          "alpha_r": "-0.037682",
+          "alpha_lower_r": "-0.174228",
+          "alpha_upper_r": "0.103476",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "1.171560",
+              "lower": "0.969229",
+              "upper": "1.392275"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.089814",
+              "lower": "-0.359973",
+              "upper": "0.203700"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.548720",
+              "lower": "0.302764",
+              "upper": "0.739280"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.325055",
+              "lower": "-0.610529",
+              "upper": "-0.075999"
+            }
+          ],
+          "r_squared": "0.398149"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 94,
+          "block_trades": 5,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "-0.007851",
+          "risk_free_r": "0.026819",
+          "explained_r": "0.025137",
+          "alpha_r": "-0.059807",
+          "alpha_lower_r": "-0.158593",
+          "alpha_upper_r": "0.049922",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.760588",
+              "lower": "0.679594",
+              "upper": "0.860860"
+            }
+          ],
+          "r_squared": "0.568192"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 94,
+          "block_trades": 5,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.028063",
+          "risk_free_r": "0.026819",
+          "explained_r": "-0.018652",
+          "alpha_r": "0.019895",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.918511",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.194704",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "0.675876",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.246566",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.766102"
+        }
+      }
+    },
+    {
+      "record": "pooled_next_close_20260911T002351Z.json",
+      "label": "pooled AAPL+EEM+GLDM+HYG+MSFT+SCHX+SPY+TLT+XLF",
+      "verdict": "bracket_disagrees",
+      "fits": {
+        "four_factor_net": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 2174,
+          "block_trades": 13,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.029871",
+          "risk_free_r": "0.017276",
+          "explained_r": "0.050552",
+          "alpha_r": "-0.037957",
+          "alpha_lower_r": "-0.072036",
+          "alpha_upper_r": "-0.002421",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.378149",
+              "lower": "0.338582",
+              "upper": "0.419764"
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.002985",
+              "lower": "-0.047019",
+              "upper": "0.039910"
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.009297",
+              "lower": "-0.044939",
+              "upper": "0.026415"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.012730",
+              "lower": "-0.043736",
+              "upper": "0.015150"
+            }
+          ],
+          "r_squared": "0.272471"
+        },
+        "four_factor_net_exit_excluded": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "net",
+          "exit_session": "excluded",
+          "trades": 2174,
+          "block_trades": 13,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.029871",
+          "risk_free_r": "0.013391",
+          "explained_r": "0.058779",
+          "alpha_r": "-0.042298",
+          "alpha_lower_r": "-0.083055",
+          "alpha_upper_r": "0.002032",
+          "verdict": "no_alpha_detected",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.391460",
+              "lower": "0.339539",
+              "upper": "0.447147"
+            },
+            {
+              "factor": "size",
+              "estimate": "0.023339",
+              "lower": "-0.031385",
+              "upper": "0.075618"
+            },
+            {
+              "factor": "value",
+              "estimate": "0.004487",
+              "lower": "-0.044286",
+              "upper": "0.052235"
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.011657",
+              "lower": "-0.053771",
+              "upper": "0.027232"
+            }
+          ],
+          "r_squared": "0.110928"
+        },
+        "market_net": {
+          "model": "market",
+          "factors": [
+            "market_excess"
+          ],
+          "series": "net",
+          "exit_session": "included",
+          "trades": 2174,
+          "block_trades": 13,
+          "replicates": 2000,
+          "confidence": "0.90",
+          "mean_r": "0.029871",
+          "risk_free_r": "0.017276",
+          "explained_r": "0.051171",
+          "alpha_r": "-0.038576",
+          "alpha_lower_r": "-0.073641",
+          "alpha_upper_r": "-0.003904",
+          "verdict": "negative_alpha",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.378382",
+              "lower": "0.340053",
+              "upper": "0.415786"
+            }
+          ],
+          "r_squared": "0.272140"
+        },
+        "four_factor_gross": {
+          "model": "four_factor",
+          "factors": [
+            "market_excess",
+            "size",
+            "value",
+            "momentum"
+          ],
+          "series": "gross",
+          "exit_session": "included",
+          "trades": 2174,
+          "block_trades": 13,
+          "replicates": 0,
+          "confidence": "0.90",
+          "mean_r": "0.067295",
+          "risk_free_r": "0.017276",
+          "explained_r": "0.050880",
+          "alpha_r": "-0.000862",
+          "alpha_lower_r": null,
+          "alpha_upper_r": null,
+          "verdict": "no_interval",
+          "loadings": [
+            {
+              "factor": "market_excess",
+              "estimate": "0.378526",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "size",
+              "estimate": "-0.006917",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "value",
+              "estimate": "-0.008363",
+              "lower": null,
+              "upper": null
+            },
+            {
+              "factor": "momentum",
+              "estimate": "-0.010735",
+              "lower": null,
+              "upper": null
+            }
+          ],
+          "r_squared": "0.272370"
+        }
+      }
+    }
+  ]
+}

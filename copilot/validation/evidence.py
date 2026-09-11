@@ -418,8 +418,8 @@ def assess(
 
     means.sort()
     tail = float((Decimal(1) - confidence) / 2)
-    lower = _percentile(means, tail)
-    upper = _percentile(means, 1 - tail)
+    lower = percentile(means, tail)
+    upper = percentile(means, 1 - tail)
 
     centre = sum(means) / replicates
     variance = sum((m - centre) ** 2 for m in means) / (replicates - 1)
@@ -438,7 +438,7 @@ def assess(
     )
 
 
-def _percentile(ordered: Sequence[float], fraction: float) -> float:
+def percentile(ordered: Sequence[float], fraction: float) -> float:
     """
     Linear-interpolated percentile of an already-sorted sequence.
     """
@@ -472,5 +472,6 @@ __all__ = [
     "block_length",
     "concurrency",
     "net_r",
+    "percentile",
     "require_describes",
 ]

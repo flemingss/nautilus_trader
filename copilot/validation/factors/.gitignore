@@ -1,0 +1,3 @@
+# The root .gitignore excludes *.zip. These are the pinned factor returns attribution
+# reads (copilot/validation/factors.py checks their digests), so they are tracked.
+!*.zip

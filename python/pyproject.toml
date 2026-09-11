@@ -421,6 +421,12 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/strategies/pool.py" = [
   "T201",
 ] # Operator CLI: the pooled verdict it prints is the product
+"copilot/strategies/attribute.py" = [
+  "T201",
+] # Operator CLI: the attribution table it prints is the product
+"copilot/validation/factors.py" = [
+  "T201",
+] # Operator CLI: reports pinned coverage and fetched digests
 "copilot/strategies/validate.py" = [
   "ANN401",
   "T201",

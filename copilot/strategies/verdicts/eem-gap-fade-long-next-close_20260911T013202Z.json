@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "EEM.ARCX",
-  "run_at": "2026-09-11T00:25:47.420564+00:00",
-  "runtime_seconds": 8.6,
+  "run_at": "2026-09-11T01:32:02.901481+00:00",
+  "runtime_seconds": 8.5,
   "bars": 1883,
   "bar_range": [
     "2017-01-03",
@@ -64,8 +64,8 @@
     "data": "024556e0acad4fdd6c2f13d619493d21ba3daf4b1243a06067d367c34df3201f",
     "identity": "4ef4e1fa96182c31671cce692f9aab705b78af5e3ba1e06403f04e4797640133",
     "cost": "470e79a8f7f4b8e012678951d8e36fdce6872c58ac9300953db61a7f3a5d9bcd",
-    "code": "540f8534749b13265a53845dba02c2d8e6e7fb5a34d7087beaf9bbe93fd6b70d",
-    "combined": "52098fa1d4bc90d038190203edc935924623b714dbb0796851f2617c365c0e3a"
+    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
+    "combined": "972900657d2191a840aa601823435564c2e5569a2cf672aaf4ae713b7f13fe76"
   },
   "holdout_spent": false,
   "folds": 12,
