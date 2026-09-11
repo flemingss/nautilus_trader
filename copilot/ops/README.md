@@ -29,9 +29,15 @@ of it and changes nothing.
 | 15:20   | `copilot-shakedown@close`        | Weekdays  |
 | 17:00   | `copilot-day@morning`            | Every day |
 
-Every service runs with `--scheduled`, so a holiday, an early close, a late timer or an
-engaged halt latch is *nothing to do* and exit 0, decided by the code rather than the calendar
-line. The morning runs on weekends too, so the heartbeat never goes quiet.
+Every service runs with `--scheduled`, so a holiday, an early close or a late timer is
+*nothing to do* and exit 0, decided by the code rather than the calendar line. An engaged halt
+latch skips only the shakedown phases that place orders; `day` prints the latch and runs its
+phase with every node built `HALTED`. The morning runs on weekends too, so the heartbeat never
+goes quiet.
+
+**Known before stand-up (2026-09-11 audit):** the sweep's cancel does not run, the
+acknowledgement check crashes a phase when Pushover is unreachable, and an undelivered CRITICAL
+is forgotten. Fix those rows before stage five; see `ROADMAP.md`.
 
 ## Stand-up
 
@@ -86,7 +92,8 @@ Set `COPILOT_HEARTBEAT_URL` in `copilot.env` to the watcher's push URL.
 ```bash
 docker pull ghcr.io/gnzsnz/ib-gateway:stable
 docker inspect --format '{{index .RepoDigests 0}}' ghcr.io/gnzsnz/ib-gateway:stable
-# put that digest in gateway/compose.yaml, commit it, then:
+# put that digest in gateway/compose.yaml; committing it retires
+# test_the_committed_compose_is_unpinned_until_stand_up in the same change. Then:
 docker compose -f copilot/ops/gateway/compose.yaml up -d
 ```
 
@@ -100,7 +107,9 @@ Confirm IB's current nightly reset time against `AUTO_RESTART_TIME`.
 ```
 
 **Passes when** preflight is 15 of 15 and the host check's only failures are the timers and
-linger, which stage six fixes. Measure here whether `IBAPI_TIMEZONE_ALIASES` is still needed.
+linger, which stage six fixes; Docker, the clock, the catalog path and `LD_LIBRARY_PATH` in
+`copilot.env` all have to be right by here. Measure here whether `IBAPI_TIMEZONE_ALIASES` is
+still needed.
 
 ### 5. One supervised day, by hand
 
@@ -131,9 +140,14 @@ reconnects and reconciles across the Gateway's first restart.
 
 ### 7. Unattended
 
-The playbook's gate: alerts and recovery drills passed, a kill drill on this host
-(`python -m copilot.live.kill --reason "drill" && python -m copilot.live.kill --release <id>`),
-and a week of stage six clean.
+The playbook's gate: alerts and recovery drills passed, a kill drill on this host, and a
+week of stage six clean. The drill is `python -m copilot.live.kill --reason "drill"`, then the
+recovery checklist it prints, then `python -m copilot.live.kill --release <id>` as a separate
+command: `kill` exits with the sweep's code, which is non-zero whenever the census is not
+clear, so chaining the release on it would leave the host latched.
+
+Stopping the `copilot-*` timers also stops the only consumer of the unacknowledged-CRITICAL
+trigger, until that check has a timer of its own (roadmap row).
 
 ## Day to day
 

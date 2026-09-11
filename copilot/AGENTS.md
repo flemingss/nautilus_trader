@@ -287,7 +287,8 @@ Before opening a PR, confirm all five:
    changed outside `copilot/` has a row in the register
 2. `git status --porcelain -uall | grep -c trade-copilot` prints `0`
 3. `ruff check` and `ruff format --check` pass **with `--config python/pyproject.toml`**
-4. `prek run --all-files` reports nothing on `copilot/` paths
+4. `SKIP=python-test-collection UV_PROJECT_ENVIRONMENT="$PWD/.venv" prek run --files <changed files>`
+   reports nothing (never `--all-files` on this box; see above)
 5. The full overlay test suite passes
 
 State any check that could not be run, and why. An unrunnable check is a limitation to

@@ -52,15 +52,15 @@ clock.
 
 ## Decided
 
-| Question           | Answer                                                                                                                                              |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| OS                 | Ubuntu 26.04, the release the source build was measured on                                                                                          |
-| Size               | 8 vCPU, 32 GB RAM, 150 GB disk. The build's `target/` is ~26 GB, and 15 GB of RAM locked WSL up four times on 2026-09-10                            |
-| Gateway            | IBC-based `ghcr.io/gnzsnz/ib-gateway:stable` in Docker, as ADR-0006 names                                                                           |
-| Secrets            | `~/.config/copilot/secrets.env`, mode 600, outside the tree: IB paper login, Marketstack, Databento, Pushover. Placed by the owner; never committed |
-| Pushover           | Shaken out on the VM with real credentials, not before                                                                                              |
-| The dev box's role | Research only once the VM streams. It stops running `day`, and reaches the broker through the VM's Gateway rather than a second login               |
-| Configuration      | By hand for now, from the runbook in `copilot/ops/`; converging on the cluster's standards later                                                    |
+| Question           | Answer                                                                                                                                       |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| OS                 | Ubuntu 26.04, the release the source build was measured on                                                                                   |
+| Size               | 8 vCPU, 32 GB RAM, 150 GB disk. The build's `target/` is ~26 GB, and 15 GB of RAM locked WSL up four times on 2026-09-10                     |
+| Gateway            | IBC-based `ghcr.io/gnzsnz/ib-gateway` in Docker, as ADR-0006 names, **pinned by digest at stand-up** (ADR-0007), never by tag                |
+| Secrets            | Four files under `~/.config/copilot/`, mode 600, outside the tree: `copilot.env`, `secrets.env`, `gateway.env`, `tws_password`. Owner-placed |
+| Pushover           | Shaken out on the VM with real credentials, not before                                                                                       |
+| The dev box's role | Research only once the VM streams. It stops running `day`, and reaches the broker through the VM's Gateway rather than a second login        |
+| Configuration      | By hand for now, from the runbook in `copilot/ops/`; converging on the cluster's standards later                                             |
 
 ## Before the 15th: prep, from the dev box
 
@@ -83,6 +83,13 @@ Items 1 to 7 are what the stand-up needs. Items 8 and 9 are what unattended runn
 can land in the VM's first week if time runs out. The next premise (a separate roadmap row)
 runs alongside all of it on the dev box.
 
+**Found by the 2026-09-11 audit, and needed before stage five below:** the sweep's cancel has
+not run since 2026-09-10 (the settlement poll stops the node before it starts), the
+acknowledgement check crashes every scheduled phase when Pushover is unreachable, and an
+undelivered CRITICAL is forgotten. The rows are in [`ROADMAP.md`](ROADMAP.md), first seven
+under *Ready to build*; the daily CRITICAL self-test and the 10:30/10:45 overlap sit with
+them.
+
 ## On the 15th and after: stand-up, in stages
 
 Each stage has a check that must pass before the next starts. Nothing is scheduled until
@@ -96,7 +103,7 @@ stage six.
 | 4     | Gateway container: paper, `READ_ONLY_API=no`, host port 4002 to the container's 4004                                                   | `preflight` passes 15 of 15 against Gateway; the host check is clean                                                  |
 | 5     | One supervised day by hand, the loop above in order                                                                                    | Every phase exits as designed; the sweep is clear against the broker; morning's comparison matches replay             |
 | 6     | Enable the timers; watch the first Gateway restart                                                                                     | The loop runs a second day untouched, and the node reconnects and reconciles across the restart                       |
-| 7     | Unattended                                                                                                                             | The playbook's gate: alerts and recovery drills passed, the kill command exists, a week of stage six clean            |
+| 7     | Unattended                                                                                                                             | The playbook's gate: alerts and recovery drills passed, a kill drill on this host, a week of stage six clean          |
 
 ## To settle at stand-up, not before
 
