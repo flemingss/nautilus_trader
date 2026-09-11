@@ -51,13 +51,22 @@ calendar, and it exists because the data vendor emits bars on days the market wa
 
 ### Modes are different products
 
-| Mode                    | Allowed now                | Rule                                                             |
-| ----------------------- | -------------------------- | ---------------------------------------------------------------- |
-| Research and backtest   | Yes                        | No broker connection, no orders                                  |
-| Paper, supervised       | After research gates       | You are present and can acknowledge alerts                       |
-| Paper, unattended       | After supervised stability | Safe mode, alerting, restart and reconciliation drills must pass |
-| Live, supervised canary | After all gates            | Tiny risk, no scaling during the evidence period                 |
-| Live, unattended        | No                         | Requires repeated failure drills and a written response policy   |
+| Mode                    | Allowed now                                              | Rule                                                             |
+| ----------------------- | -------------------------------------------------------- | ---------------------------------------------------------------- |
+| Research and backtest   | Yes                                                      | No broker connection, no orders                                  |
+| Paper, supervised       | After research gates, or integration testing before them | You are present and can acknowledge alerts                       |
+| Paper, unattended       | After supervised stability, integration testing included | Safe mode, alerting, restart and reconciliation drills must pass |
+| Live, supervised canary | After all gates                                          | Tiny risk, no scaling during the evidence period                 |
+| Live, unattended        | No                                                       | Requires repeated failure drills and a written response policy   |
+
+**The integration-testing carve-out, added 2026-09-11.** The two paper rows now say what the
+playbook always did: *broker-integration testing and strategy forward testing are different
+activities*, and controlled connectivity, read-only reconciliation and minimum-size
+order-lifecycle tests **may begin before a strategy passes the research gate**
+([`playbook/OPERATIONS.md`](playbook/OPERATIONS.md)). Forward testing may not. The distinction
+is what the paper VM runs on: the system clock, with orders denied and nothing frozen. The
+2026-09-11 audit found the table admitting neither, which made the VM plan read as a charter
+breach rather than as the carve-out it is.
 
 See [ADR-0006](decisions/0006-ops-progression.md) for the deployment progression that
 carries these, and [`playbook/OPERATIONS.md`](playbook/OPERATIONS.md) for the
