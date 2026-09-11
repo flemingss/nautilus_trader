@@ -110,6 +110,7 @@ missed ping. Optional; unset, nothing is pinged and the morning says so.
 
 MARKETSTACK_API_KEY_ENV = "MARKETSTACK_API_KEY"
 DATABENTO_API_KEY_ENV = "DATABENTO_API_KEY"
+EODHD_API_KEY_ENV = "EODHD_API_KEY"
 PUSHOVER_TOKEN_ENV = "PUSHOVER_TOKEN"  # noqa: S105 - the variable's name, never its value
 PUSHOVER_USER_KEY_ENV = "PUSHOVER_USER_KEY"
 """
@@ -154,6 +155,7 @@ __all__ = [
     "DEFAULT_CATALOG",
     "DEFAULT_OPERATOR_TZ",
     "DEFAULT_STORE",
+    "EODHD_API_KEY_ENV",
     "HALT_LATCH_PATH",
     "HEARTBEAT_URL_ENV",
     "MARKETSTACK_API_KEY_ENV",
