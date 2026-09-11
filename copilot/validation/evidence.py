@@ -34,6 +34,18 @@ trades independently destroys exactly the structure that makes the mean unreliab
 reports an interval far too narrow. So the resample draws **contiguous blocks**, which
 is the playbook's *dependence-aware resampling such as a block bootstrap*.
 
+Clustering the trade order cannot see
+-------------------------------------
+The autocorrelation time is measured in **trade order**, and a one-position premise's
+consecutive trades barely correlate, so on nine of twelve filed verdicts it read one and
+``effective_trades`` equalled the raw count - 439 of 439 for SPY - while the clustering the
+paragraph above describes is by **calendar year** (``docs/AUDIT_2026-09-11.md``, F17). So
+:func:`calendar_design_effect` measures that too: the one-way intraclass correlation of net R
+within calendar years of entry, and the design effect ``1 + (m - 1) rho`` it implies, the
+standard discount for a clustered sample. ``effective_trades`` divides by the largest of the
+three. The **interval** is unchanged: re-drawn with whole calendar years as blocks it moved no
+verdict (the audit's check), so the block length stays the data-derived moving block.
+
 What this deliberately is not
 -----------------------------
 **The series is net of costs.** The engine replays with no fees, so a trade's recorded
@@ -129,8 +141,8 @@ class Evidence:
 
     effective_trades: Decimal
     """
-    ``trades`` discounted by the larger of :attr:`concurrency` and the autocorrelation
-    time - the number of independent observations the sample is actually worth.
+    ``trades`` discounted by the largest of :attr:`concurrency`, the autocorrelation time and
+    :attr:`calendar_design_effect` - the independent observations the sample is worth.
 
     Reported because the playbook's evidence-sufficiency gate is written in terms of it,
     and because a reader who sees 111 trades and 24 effective ones has learned the thing
@@ -163,7 +175,13 @@ class Evidence:
 
     """
 
-    mean_r: Decimal
+    calendar_design_effect: Decimal = Decimal(1)
+    """
+    How much clustering within calendar years inflates the variance of the mean; one
+    when the years do not differ more than chance allows.
+    """
+
+    mean_r: Decimal = Decimal(0)
     """
     Exact mean of the net series the interval was drawn from.
 
@@ -178,10 +196,11 @@ class Evidence:
         Whether the whole interval sits above ``threshold``.
 
         This is the question the gate asks. A score above the bar with an interval
-        straddling it is not a result, it is a direction.
+        straddling it is not a result, it is a direction. With no interval drawn - fewer than
+        two trades - nothing clears anything.
 
         """
-        return self.lower_r > threshold
+        return self.replicates > 0 and self.lower_r > threshold
 
     def as_record(self) -> dict[str, object]:
         """
@@ -193,6 +212,7 @@ class Evidence:
             "mean_r": str(self.mean_r),
             "effective_trades": str(self.effective_trades),
             "concurrency": str(self.concurrency),
+            "calendar_design_effect": str(self.calendar_design_effect),
             "block_trades": self.block_bars,
             "replicates": self.replicates,
             "confidence": str(self.confidence),
@@ -313,6 +333,40 @@ def autocorrelation_time(values: Sequence[float]) -> Decimal:
     return max(Decimal(1), _decimal(1 + 2 * total))
 
 
+MIN_CALENDAR_CLUSTERS = 2
+
+
+def calendar_design_effect(values: Sequence[float], years: Sequence[int]) -> Decimal:
+    """
+    Return the variance inflation from returns clustering within calendar years.
+
+    One-way analysis of variance across the years of entry: the intraclass correlation
+    ``rho = (MSB - MSW) / (MSB + (n0 - 1) MSW)``, with ``n0`` the usual adjusted cluster size,
+    and the design effect ``1 + (m - 1) rho`` for mean cluster size ``m``. A negative ``rho`` is
+    sampling noise around no clustering and reads as one.
+
+    Returns one with fewer than two years, or fewer trades than years plus one, where the
+    within-year variance cannot be estimated.
+
+    """
+    n = len(values)
+    groups: dict[int, list[float]] = {}
+    for value, year in zip(values, years, strict=True):
+        groups.setdefault(year, []).append(value)
+    k = len(groups)
+    if k < MIN_CALENDAR_CLUSTERS or n <= k:
+        return Decimal(1)
+    grand = sum(values) / n
+    between = sum(len(g) * (sum(g) / len(g) - grand) ** 2 for g in groups.values()) / (k - 1)
+    within = sum(sum((v - sum(g) / len(g)) ** 2 for v in g) for g in groups.values()) / (n - k)
+    n0 = (n - sum(len(g) ** 2 for g in groups.values()) / n) / (k - 1)
+    denominator = between + (n0 - 1) * within
+    if denominator <= 0:
+        return Decimal(1)
+    rho = max(0.0, (between - within) / denominator)
+    return max(Decimal(1), _decimal(1 + (n / k - 1) * rho))
+
+
 def block_length(trades: int, overlap: Decimal, values: Sequence[float] = ()) -> int:
     """
     Blocks long enough to carry the dependence, chosen before the result is seen.
@@ -353,7 +407,18 @@ def net_r(
     are dropped: their R is undefined, not zero.
 
     """
-    return tuple(t.r_multiple - cost_r(t) for t in trades if t.risk_amount and t.risk_amount > 0)
+    return tuple(t.r_multiple - cost_r(t) for t in scoreable(trades))
+
+
+def scoreable(trades: Sequence[ClosedTrade]) -> tuple[ClosedTrade, ...]:
+    """
+    Return the trades with a recorded risk, the only ones an R can be computed for.
+
+    One filter for every quantity :func:`assess` reports, so the overlap, the clustering and
+    the mean are all measured on the same trades.
+
+    """
+    return tuple(t for t in trades if t.risk_amount and t.risk_amount > 0)
 
 
 def assess(
@@ -372,6 +437,7 @@ def assess(
     and repeat. The percentiles of those means are the interval.
 
     """
+    trades = scoreable(trades)
     overlap = concurrency(trades)
     exact = net_r(trades, cost_r)
     # Float, deliberately, and only for the resample: its output is a percentile estimate,
@@ -384,13 +450,15 @@ def assess(
     # The larger of the two reasons the count overstates the evidence, not their
     # product: they are two views of the same dependence, and multiplying them would
     # double-count a premise whose overlap is exactly why its returns cluster.
-    inflation = max(overlap, autocorrelation_time(values), Decimal(1))
+    clustering = calendar_design_effect(values, [t.opened_at.year for t in trades])
+    inflation = max(overlap, autocorrelation_time(values), clustering, Decimal(1))
     effective = (_decimal(n) / inflation).quantize(Decimal("0.1"))
 
     if n < MIN_TRADES_FOR_AN_INTERVAL:
-        # One trade has no spread to estimate, and reporting a zero-width interval
-        # around it would read as certainty rather than as no information.
-        point = _decimal(values[0]) if values else Decimal(0)
+        # One trade has no spread to estimate. The point is filed as both ends with no
+        # replicates, which :meth:`Evidence.clears` reads as no interval - until
+        # 2026-09-11 a single losing trade filed a lower bound above its upper one.
+        point = mean if n else Decimal(0)
         return Evidence(
             trades=n,
             concurrency=overlap,
@@ -398,9 +466,10 @@ def assess(
             block_bars=length,
             replicates=0,
             confidence=confidence,
-            lower_r=Decimal(0),
+            lower_r=point,
             upper_r=point,
             standard_error_r=Decimal(0),
+            calendar_design_effect=clustering,
             mean_r=mean,
         )
 
@@ -434,6 +503,7 @@ def assess(
         lower_r=_decimal(lower),
         upper_r=_decimal(upper),
         standard_error_r=_decimal(math.sqrt(variance)),
+        calendar_design_effect=clustering,
         mean_r=mean,
     )
 
@@ -470,8 +540,10 @@ __all__ = [
     "assess",
     "autocorrelation_time",
     "block_length",
+    "calendar_design_effect",
     "concurrency",
     "net_r",
     "percentile",
     "require_describes",
+    "scoreable",
 ]

@@ -10,6 +10,7 @@ whatever a real engine happens to produce.
 
 from __future__ import annotations
 
+import json
 import random
 from datetime import timedelta
 from decimal import Decimal
@@ -212,14 +213,60 @@ def test_an_activation_without_entry_timing_is_the_diagnostic_bound(tmp_path: Pa
     assert refusal(activation, tmp_path) is not None
 
 
+def _declared(effect: str = "0.05") -> Activation:
+    from copilot.strategies.activations import ValidationSettings
+
+    return Activation(
+        **{**an_activation().__dict__, "validation": ValidationSettings(minimum_effect_r=effect)},
+    )
+
+
+def _file_verdict(verdicts: Path, activation: Activation, effect: str, stamp: str) -> None:
+    verdicts.mkdir(exist_ok=True)
+    (verdicts / f"{activation.name}_{stamp}.json").write_text(
+        json.dumps({"validation": {"minimum_effect_r": effect}}),
+    )
+
+
 def test_a_spent_activation_may_not_spend_again(tmp_path: Path):
-    activation = an_activation()
-    assert refusal(activation, tmp_path) is None
+    activation = _declared()
+    verdicts = tmp_path / "verdicts"
+    _file_verdict(verdicts, activation, "0.05", "20260911T000000Z")
+    assert refusal(activation, tmp_path, verdicts) is None
     (tmp_path / f"{activation.name}.json").write_text("{}")
     assert is_spent(activation.name, tmp_path)
-    why = refusal(activation, tmp_path)
+    why = refusal(activation, tmp_path, verdicts)
     assert why is not None
     assert "already spent" in why
+
+
+def test_an_undeclared_effect_size_may_not_spend(tmp_path: Path):
+    """
+    Audit F16: ADR-0024's one knob had never been set, so its anti-tuning rule guarded nothing.
+    """
+    why = refusal(an_activation(), tmp_path, tmp_path / "verdicts")
+
+    assert why is not None
+    assert "declares no minimum_effect_r" in why
+
+
+def test_an_effect_size_changed_after_the_verdict_was_filed_may_not_spend(tmp_path: Path):
+    verdicts = tmp_path / "verdicts"
+    activation = _declared("0.05")
+    _file_verdict(verdicts, activation, "0.10", "20260910T000000Z")
+    _file_verdict(verdicts, activation, "", "20260911T000000Z")
+
+    why = refusal(activation, tmp_path, verdicts)
+
+    assert why is not None
+    assert "not predeclared" in why
+
+
+def test_an_effect_size_with_no_verdict_filed_under_it_may_not_spend(tmp_path: Path):
+    why = refusal(_declared(), tmp_path, tmp_path / "verdicts")
+
+    assert why is not None
+    assert "no walk-forward verdict" in why
 
 
 # ---------------------------------------------------------------------- record
@@ -381,11 +428,13 @@ class TestThinHoldoutRefusal:
 def test_a_voided_record_does_not_count_as_spent(tmp_path: Path):
     # ADR-0021: a spend on a series that did not exist moves to voided/ and refuses
     # nothing, so the holdout may be spent once more on the corrected series.
-    activation = an_activation()
+    activation = _declared()
+    verdicts = tmp_path / "verdicts"
+    _file_verdict(verdicts, activation, "0.05", "20260911T000000Z")
     (tmp_path / "voided").mkdir()
     (tmp_path / "voided" / f"{activation.name}.json").write_text("{}")
     assert not is_spent(activation.name, tmp_path)
-    assert refusal(activation, tmp_path) is None
+    assert refusal(activation, tmp_path, verdicts) is None
 
 
 # ------------------------------------------------------------------- the verdict

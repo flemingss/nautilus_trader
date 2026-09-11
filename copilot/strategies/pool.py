@@ -11,7 +11,10 @@ measured against nine instruments.
 
 It exists because of what [ADR-0024](../docs/decisions/0024-a-holdout-pass-needs-an-interval.md)
 found. AAPL's holdout returned +0.035 R over 111 trades with a 90% interval of
-[-0.126, +0.209] R - not a failure, and not enough evidence to be a pass. The remedy the
+[-0.140, +0.195] R on the net series - not a failure, and not enough evidence to be a pass.
+(The ADR and the first version of this docstring quoted [-0.126, +0.209], drawn from the gross
+series; [ADR-0031](../docs/decisions/0031-evidence-and-attribution-after-the-audit.md) carries
+the correction.) The remedy the
 playbook names for a sample that thin is to enlarge it, and pooling enlarges it sideways
 without touching a spent holdout.
 
@@ -26,6 +29,22 @@ window has been viewed, so for that symbol those bars are development data; a po
 containing them would not be out of sample, and the honest options - exclude the spent
 symbols, or accept a contaminated window and say so - are the owner's call. The refusal is
 the point: a tool that quietly picked one would have decided it by default.
+
+The same members from the first fold to the last
+------------------------------------------------
+The first filed pool was three symbols for 22 of its 38 folds, seven to nine in the middle,
+and four at the tail, because each member stops at its own holdout boundary - an average of
+several experiments reported as one, whose fold majority weighed a four-symbol fold like a
+nine-symbol one (``docs/AUDIT_2026-09-11.md``, F23). **Membership is now constant by default**:
+every member is clipped to the window all of them cover, from the latest first bar to the
+earliest last development bar. ``--shifting-membership`` reproduces the old shape, and the
+record says which it is.
+
+Two means, labelled
+-------------------
+``mean_of_fold_scores_r`` averages the folds' scores, weighting a three-trade fold like a
+thirty-trade one; ``mean_per_trade_net_r`` is the evidence interval's centre. They are
+different numbers, and the first record printed the first above the interval of the second.
 
 What a pooled pass would and would not mean
 -------------------------------------------
@@ -102,6 +121,7 @@ class PooledVerdict:
     seconds: float
     cost_model: CostModel
     from_year: int | None = None
+    membership: str = "constant"
 
     @property
     def trades(self) -> tuple[Any, ...]:
@@ -125,13 +145,15 @@ class PooledVerdict:
             "members": [a.name for a in self.members],
             "symbols": [a.symbol for a in self.members],
             "from_year": self.from_year,
+            "membership": self.membership,
             "spine_bars": self.spine_bars,
             "spine_range": [self.first_bar, self.last_bar],
             "folds": len(self.report.folds),
             "folds_evaluated": len(self.report.evaluated),
             "folds_passed": self.report.passed_count,
             "majority": self.report.majority_passed,
-            "mean_oos_net_r": str(self.report.mean_score.quantize(_SIX)),
+            "mean_of_fold_scores_r": str(self.report.mean_score.quantize(_SIX)),
+            "mean_per_trade_net_r": str(evidence.mean_r),
             "trades": len(self.trades),
             "trades_by_symbol": by_symbol,
             "symbols_per_fold": [
@@ -213,6 +235,8 @@ def run(
     catalog_path: str = DEFAULT_CATALOG,
     cost_model: CostModel | None = None,
     from_year: int | None = None,
+    *,
+    constant_membership: bool = True,
 ) -> PooledVerdict:
     """
     Build the pool, run one walk-forward over it, and score it net of costs.
@@ -225,6 +249,9 @@ def run(
     It is a window chosen from **data availability**, and choosing it from where the
     results improve would be the same mistake as picking a block length that flatters a
     series. The record carries the value so the choice is visible.
+
+    ``constant_membership`` goes further and is the default: every member is clipped to the
+    window all of them cover, so no fold is pooled over fewer members than another.
 
     """
     members_meta = coherent(activations)
@@ -254,6 +281,8 @@ def run(
             ),
         )
 
+    if constant_membership:
+        members = clip_to_common_window(members)
     axis = spine(members)
     reference = members_meta[0]
     settings = reference.validation
@@ -286,7 +315,29 @@ def run(
         seconds=time.time() - started,
         cost_model=cost_model,
         from_year=from_year,
+        membership="constant" if constant_membership else "shifting",
     )
+
+
+def clip_to_common_window(members: list[PooledMember]) -> list[PooledMember]:
+    """
+    Clip every member to the dates all of them have bars for, or refuse if none.
+    """
+    start = max(member.bars[0].closed_at for member in members)
+    end = min(member.bars[-1].closed_at for member in members)
+    if start > end:
+        raise IncoherentPoolError(
+            f"the members share no window: the latest first bar is {start.date()} and the "
+            f"earliest last development bar is {end.date()}",
+        )
+    return [
+        PooledMember(
+            symbol=member.symbol,
+            bars=tuple(b for b in member.bars if start <= b.closed_at <= end),
+            replay=member.replay,
+        )
+        for member in members
+    ]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -309,6 +360,12 @@ def main(argv: list[str] | None = None) -> int:
         help="Start the spine here, to hold the pool's composition constant. Pick it "
         "from when the members' histories begin, never from where the results improve",
     )
+    parser.add_argument(
+        "--shifting-membership",
+        action="store_true",
+        help="Let members enter and leave as their histories do, instead of clipping every "
+        "member to the window all of them cover",
+    )
     parser.add_argument("--write", action="store_true", help="File the verdict as JSON")
     add_catalog_argument(parser)
     args = parser.parse_args(argv)
@@ -320,7 +377,12 @@ def main(argv: list[str] | None = None) -> int:
         and (not args.only or a.symbol in {s.upper() for s in args.only})
     ]
     try:
-        verdict = run(chosen, args.catalog, from_year=args.from_year)
+        verdict = run(
+            chosen,
+            args.catalog,
+            from_year=args.from_year,
+            constant_membership=not args.shifting_membership,
+        )
     except IncoherentPoolError as e:
         print(f"refused: {e}")
         return 2
@@ -333,7 +395,8 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(
         f"{record['folds_passed']}/{record['folds_evaluated']} folds  "
-        f"mean OOS net {record['mean_oos_net_r']} R  "
+        f"mean of fold scores {record['mean_of_fold_scores_r']} R  "
+        f"per trade {record['mean_per_trade_net_r']} R  "
         f"{record['trades']} trades  majority={record['majority']}  "
         f"({record['runtime_seconds']}s)",
     )
@@ -354,6 +417,7 @@ def main(argv: list[str] | None = None) -> int:
         OUT_DIR.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         window = f"_from{args.from_year}" if args.from_year else ""
+        window += "_shifting" if args.shifting_membership else ""
         path = OUT_DIR / f"pooled_{args.timing}{window}_{stamp}.json"
         path.write_text(json.dumps(record, indent=2) + "\n")
         print(f"Wrote {path}")

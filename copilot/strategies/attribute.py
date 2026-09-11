@@ -20,6 +20,16 @@ For each result it reports four fits, and they answer different questions:
   four-factor alpha agree, the style tilts are not doing the work.
 - **Four-factor, gross, point estimate** - the decomposition. How the gross return splits
   into cash, factor exposure and residue, before costs take their share.
+- **Four-factor, net, exposure-weighted** - a sensitivity, not the verdict. Leverage spans two
+  orders of magnitude, so the unweighted fit is carried by the most levered trades; weighting
+  by ``1 / (L^2 h)`` asks the same question on the median trade's scale.
+
+**Read the results as one body of evidence.** The pool re-selects over the same symbols whose
+walk-forwards sit beside it, so the results are not independent tests, and nothing here adjusts
+for reading many of them at 90%. None is needed to reject a family; one is needed before any
+single result is called alpha (``docs/AUDIT_2026-09-11.md``, F24). A fit the method cannot make -
+a premise whose trades all exit the session after entry has no full session to regress - is
+filed as unattributable with its reason rather than stopping the run.
 
 Records without ``trade_rows`` predate 2026-09-10 and are refused by name rather than
 skipped, so a result cannot drop out of the table silently.
@@ -38,6 +48,8 @@ from typing import Any
 
 from copilot.validation.attribution import PRIMARY_MODEL
 from copilot.validation.attribution import Attribution
+from copilot.validation.attribution import DegenerateDesignError
+from copilot.validation.attribution import UncoveredTradeError
 from copilot.validation.attribution import attribute
 from copilot.validation.attribution import bracketed_verdict
 from copilot.validation.factors import FACTOR_DIR
@@ -49,6 +61,7 @@ from copilot.validation.filed_trades import from_rows
 STRATEGIES_DIR = Path(__file__).parent
 VERDICTS_DIR = STRATEGIES_DIR / "verdicts"
 OUT_DIR = STRATEGIES_DIR / "out"
+HOLDOUTS_DIR = STRATEGIES_DIR / "holdouts"
 
 
 class UnattributableRecordError(ValueError):
@@ -60,15 +73,27 @@ class UnattributableRecordError(ValueError):
 def newest_records(
     verdicts_dir: Path = VERDICTS_DIR,
     out_dir: Path = OUT_DIR,
+    holdouts_dir: Path = HOLDOUTS_DIR,
 ) -> tuple[Path, ...]:
     """
-    Return the newest verdict per activation and the newest pooled record.
+    Return the newest verdicts and pooled record, and every reassessed holdout.
     """
     newest: dict[str, Path] = {}
     for path in sorted(verdicts_dir.glob("*_*.json")):
         newest[path.stem.rsplit("_", 1)[0]] = path
-    pooled = sorted(out_dir.glob("pooled_*.json"))
-    return (*newest.values(), *pooled[-1:])
+    # The default pool is the constant-membership one (ADR-0031); a shifting-membership run is
+    # filed for comparison and attributed only when named.
+    pooled = [
+        path
+        for path in sorted(out_dir.glob("pooled_*.json"), key=lambda p: p.stem.rsplit("_", 1)[-1])
+        if json.loads(path.read_text()).get("membership") == "constant"
+    ]
+    reassessed = [
+        path
+        for path in sorted(holdouts_dir.glob("*.json"))
+        if "trade_rows" in json.loads(path.read_text()).get("reassessment", {})
+    ]
+    return (*newest.values(), *pooled[-1:], *reassessed)
 
 
 def label_and_rows(record: dict[str, Any], path: Path) -> tuple[str, list[dict[str, Any]]]:
@@ -76,10 +101,13 @@ def label_and_rows(record: dict[str, Any], path: Path) -> tuple[str, list[dict[s
     Name a record and return its filed trades, from whichever kind of record it is.
     """
     holdout = record.get("holdout")
+    reassessment = record.get("reassessment")
     if "trade_rows" in record:
         rows, kind = record["trade_rows"], "walk-forward"
     elif isinstance(holdout, dict) and "trade_rows" in holdout:
         rows, kind = holdout["trade_rows"], "holdout"
+    elif isinstance(reassessment, dict) and "trade_rows" in reassessment:
+        rows, kind = reassessment["trade_rows"], "holdout, reassessed"
     else:
         raise UnattributableRecordError(
             f"{path.name} files no trade_rows. It predates filed trades (2026-09-10); "
@@ -97,36 +125,47 @@ def attribute_record(path: Path, factors: dict) -> dict[str, Any]:
     record = json.loads(path.read_text())
     label, rows = label_and_rows(record, path)
     filed = from_rows(rows)
-    fits: dict[str, Attribution] = {
-        "four_factor_net": attribute(filed, factors, model=PRIMARY_MODEL, series="net"),
-        "four_factor_net_exit_excluded": attribute(
-            filed,
-            factors,
-            model=PRIMARY_MODEL,
-            series="net",
-            exit_session=False,
-        ),
-        "market_net": attribute(filed, factors, model="market", series="net"),
-        "four_factor_gross": attribute(
-            filed,
-            factors,
-            model=PRIMARY_MODEL,
-            series="gross",
-            replicates=0,
-        ),
+    specifications: dict[str, dict[str, Any]] = {
+        "four_factor_net": {"model": PRIMARY_MODEL, "series": "net"},
+        "four_factor_net_exit_excluded": {
+            "model": PRIMARY_MODEL,
+            "series": "net",
+            "exit_session": False,
+        },
+        "market_net": {"model": "market", "series": "net"},
+        "four_factor_gross": {"model": PRIMARY_MODEL, "series": "gross", "replicates": 0},
+        "four_factor_net_exposure_weighted": {
+            "model": PRIMARY_MODEL,
+            "series": "net",
+            "weighting": "exposure",
+        },
     }
+    fits: dict[str, Attribution] = {}
+    unattributable: dict[str, str] = {}
+    for name, specification in specifications.items():
+        try:
+            fits[name] = attribute(filed, factors, **specification)
+        except (DegenerateDesignError, UncoveredTradeError, ValueError) as e:
+            unattributable[name] = str(e)
+    bracketed = {"four_factor_net", "four_factor_net_exit_excluded"} <= set(fits)
     return {
         "record": path.name,
         "label": label,
         "verdict": bracketed_verdict(
             fits["four_factor_net"],
             fits["four_factor_net_exit_excluded"],
-        ),
+        )
+        if bracketed
+        else "unattributable",
         "fits": {name: fit.as_record() for name, fit in fits.items()},
+        "unattributable": unattributable,
     }
 
 
 def _line(result: dict[str, Any]) -> str:
+    if result["verdict"] == "unattributable":
+        reasons = "; ".join(f"{k}: {v}" for k, v in result["unattributable"].items())
+        return f"{result['label']:44s} unattributable ({reasons})"
     net = result["fits"]["four_factor_net"]
     excluded = result["fits"]["four_factor_net_exit_excluded"]
     market = result["fits"]["market_net"]
@@ -183,6 +222,21 @@ def main(argv: list[str] | None = None) -> int:
         filed = {
             "run_at": datetime.now(UTC).isoformat(),
             "factors": {"directory": FACTOR_DIR.name, "pinned": PINNED},
+            "reading": {
+                "verdict": (
+                    "four-factor net alpha, named only where the exit session included and "
+                    "excluded agree; an agreement test, neither side is a bound"
+                ),
+                "independence": (
+                    "the pool re-selects over the symbols whose walk-forwards are listed beside "
+                    "it; these are one body of evidence, not independent tests, and no "
+                    "multiplicity adjustment is applied"
+                ),
+                "sensitivity": (
+                    "four_factor_net_exposure_weighted weights each trade by 1/(L^2 h); it is "
+                    "reported, not the verdict"
+                ),
+            },
             "results": results,
         }
         path.write_text(json.dumps(filed, indent=2) + "\n")

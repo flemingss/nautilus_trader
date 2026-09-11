@@ -154,11 +154,14 @@ class Verdict:
             "folds_evaluated": len(evaluated),
             "folds_passed": self.report.passed_count,
             "majority_passed": self.report.majority_passed,
+            # The mean of the fold scores, weighting a three-trade fold like a thirty-trade one.
+            # The per-trade mean is the next key, and it is the evidence interval's centre.
             "mean_oos_net_expectancy_r": str(
                 (sum(scores, Decimal(0)) / len(scores)).quantize(Decimal("0.000001")),
             )
             if scores
             else None,
+            "mean_per_trade_net_r": str(evidence.mean_r),
             "total_test_trades": sum(f.test_trades for f in evaluated),
             "fold_detail": [
                 {

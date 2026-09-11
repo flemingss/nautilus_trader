@@ -134,6 +134,32 @@ def strategy_factory(parameters, *, instrument_id, bar_type, risk_registry):
     return strategy
 
 
+class _BuyAndHold(_FlipFlop):
+    """
+    Opens on the first bar and never closes, so the position is open when the window
+    ends.
+    """
+
+    def on_bar(self, bar) -> None:
+        instrument_id = self.config.instrument_id
+        if self._bars_seen == 0 and self.portfolio.is_net_flat(instrument_id):
+            instrument = self.cache.instrument(instrument_id)
+            self.submit_order(
+                self.order_factory.market(
+                    instrument_id,
+                    OrderSide.BUY,
+                    instrument.make_qty(self.config.trade_size),
+                ),
+            )
+        self._bars_seen += 1
+
+
+def hold_factory(parameters, *, instrument_id, bar_type, risk_registry):
+    strategy = _BuyAndHold(_FlipFlopConfig(instrument_id=instrument_id, bar_type=bar_type))
+    strategy.configure(risk_registry)
+    return strategy
+
+
 class TestBarConversion:
     def test_converts_and_orders_by_close_time(self):
         bars = make_bars(["0.7000", "0.7100", "0.6900"])
@@ -345,3 +371,65 @@ class TestGateOnNautilusReplay:
                 "0.0050",
                 "0.0060",
             }
+
+
+class TestWindowEnd:
+    """
+    Audit F27: a position still open when the window ended was scored by no fold.
+    """
+
+    def test_a_position_open_at_the_end_is_marked_to_the_last_close(self):
+        from copilot.validation.nautilus_replay import WINDOW_END
+
+        bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150"])
+
+        result = run_nautilus_replay(
+            bars,
+            {},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=hold_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+
+        assert len(result.trades) == 1
+        trade = result.trades[0]
+        assert trade.exit_reason == WINDOW_END
+        assert trade.exit_price == Decimal("0.71500")
+        assert trade.closed_at == bars[-1].closed_at
+        # The mark, less the entry's commission this venue charges - the same basis as a
+        # closed trade's realized P&L.
+        held = trade.quantity * (trade.exit_price - trade.entry_price)
+        assert held - Decimal(1) < trade.realized_pnl <= held
+        assert result.diagnostics["marked_at_window_end"] == 1
+
+    def test_a_position_opened_on_the_last_bar_has_no_outcome_and_is_counted(self):
+        bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150", "0.7100"])
+
+        result = run_nautilus_replay(
+            bars,
+            {},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+
+        assert len(result.trades) == 2, "the two round trips; the fifth bar's entry held nothing"
+        assert result.diagnostics["opened_on_final_bar"] == 1
+        assert result.diagnostics["marked_at_window_end"] == 0
+
+    def test_money_is_read_exactly(self):
+        bars = make_bars(["0.7000", "0.7100", "0.7050", "0.7150"])
+
+        result = run_nautilus_replay(
+            bars,
+            {},
+            instrument=INSTRUMENT,
+            bar_type=BAR_TYPE,
+            strategy_factory=strategy_factory,
+            venue=ReplayVenue(starting_balance="1_000_000"),
+        )
+
+        for trade in result.trades:
+            assert trade.realized_pnl.as_tuple().exponent >= -2, "cents, not a float's tail"

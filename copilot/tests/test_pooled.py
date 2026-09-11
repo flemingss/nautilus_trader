@@ -362,7 +362,8 @@ def test_the_record_builds_without_running_anything() -> None:
     assert record["folds_evaluated"] == 1
     assert record["symbols_per_fold"] == [2]
     assert len(record["trade_rows"]) == 10
-    assert Decimal(record["mean_oos_net_r"]) == Decimal("0.5"), "the mean of the fold scores"
+    assert Decimal(record["mean_of_fold_scores_r"]) == Decimal("0.5"), "the mean of the fold scores"
+    assert record["mean_per_trade_net_r"] == record["evidence"]["mean_r"], "the interval's centre"
     assert record["evidence"]["clears_zero"] is True
     assert "not spent" in record["holdout"]
 
@@ -379,3 +380,28 @@ def test_the_record_reports_which_symbols_actually_traded() -> None:
 
     assert record["trades_by_symbol"] == {"AAPL.XNAS": 30}
     assert "SPY.ARCX" not in record["trades_by_symbol"]
+
+
+def test_constant_membership_clips_every_member_to_the_window_all_of_them_cover() -> None:
+    """
+    Audit F23: the first pool was three symbols for 22 folds and nine for three.
+    """
+    from copilot.strategies.pool import clip_to_common_window
+
+    early = member("AAPL", range(100))
+    late = member("SCHX", range(40, 140))
+
+    clipped = clip_to_common_window([early, late])
+
+    assert {m.symbol: (m.bars[0].closed_at, m.bars[-1].closed_at) for m in clipped} == {
+        "AAPL": (bar("AAPL", 40).closed_at, bar("AAPL", 99).closed_at),
+        "SCHX": (bar("SCHX", 40).closed_at, bar("SCHX", 99).closed_at),
+    }
+
+
+def test_members_with_no_common_window_are_refused() -> None:
+    from copilot.strategies.pool import IncoherentPoolError
+    from copilot.strategies.pool import clip_to_common_window
+
+    with pytest.raises(IncoherentPoolError, match="share no window"):
+        clip_to_common_window([member("AAPL", range(10)), member("SCHX", range(20, 30))])

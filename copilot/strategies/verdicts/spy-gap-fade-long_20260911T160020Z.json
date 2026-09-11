@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "SPY.ARCX",
-  "run_at": "2026-09-11T01:33:39.837086+00:00",
-  "runtime_seconds": 20.2,
+  "run_at": "2026-09-11T16:00:20.687564+00:00",
+  "runtime_seconds": 20.1,
   "bars": 4280,
   "bar_range": [
     "2005-01-03",
@@ -63,16 +63,17 @@
     "data": "e34c0522b3c298a9ac58609336e99e40faa51c79374129b56aed832d0e3ec975",
     "identity": "f5ac91bc2066e5b0a99ae75dd194a3a123f2638728fcd891724d5047f54e85db",
     "cost": "0bd3ae2869fb1c94332ba731ecce3d7704e43d0f16586132c2b70206928cc3b1",
-    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
-    "combined": "701c60fd594e6b91e9c7be04d84b61c72567c765b20e078688c76d7289925f3e"
+    "code": "f73ab16b116edd39b01e2a6683823f8c313e410f4d37f1f78811485e73cc28e5",
+    "combined": "a511f5567e1928d9b3b683a9ba15d9eff952f349b79fccd2b77f7f07439c123f"
   },
   "holdout_spent": false,
   "folds": 31,
   "folds_evaluated": 30,
   "folds_passed": 17,
   "majority_passed": true,
-  "mean_oos_net_expectancy_r": "0.048213",
-  "total_test_trades": 490,
+  "mean_oos_net_expectancy_r": "0.048416",
+  "mean_per_trade_net_r": "0.036650",
+  "total_test_trades": 501,
   "fold_detail": [
     {
       "index": 0,
@@ -88,10 +89,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "-0.245048",
+      "trades": 14,
+      "net_score_r": "-0.217321",
       "passed": false,
-      "reason": "score -0.2450481391348044417594105992 not above 0"
+      "reason": "score -0.2173213994145376052386100716 not above 0"
     },
     {
       "index": 1,
@@ -269,10 +270,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 15,
-      "net_score_r": "-0.256920",
+      "trades": 16,
+      "net_score_r": "-0.255258",
       "passed": false,
-      "reason": "score -0.2569200542477175820241333133 not above 0"
+      "reason": "score -0.2552583533663587018849525159 not above 0"
     },
     {
       "index": 11,
@@ -288,10 +289,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 18,
-      "net_score_r": "-0.212320",
+      "trades": 19,
+      "net_score_r": "-0.179238",
       "passed": false,
-      "reason": "score -0.2123198918716472447650458681 not above 0"
+      "reason": "score -0.1792383866053542516872844569 not above 0"
     },
     {
       "index": 12,
@@ -307,10 +308,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 18,
-      "net_score_r": "-0.088253",
+      "trades": 19,
+      "net_score_r": "-0.108754",
       "passed": false,
-      "reason": "score -0.08825272230207686124166967422 not above 0"
+      "reason": "score -0.1087536446734156768097064873 not above 0"
     },
     {
       "index": 13,
@@ -326,10 +327,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 17,
-      "net_score_r": "0.157572",
+      "trades": 18,
+      "net_score_r": "0.171299",
       "passed": true,
-      "reason": "score 0.1575720844947266878067051307 above 0"
+      "reason": "score 0.1712985602100064236707334131 above 0"
     },
     {
       "index": 14,
@@ -364,10 +365,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "0.183776",
+      "trades": 14,
+      "net_score_r": "0.124425",
       "passed": true,
-      "reason": "score 0.1837757887709285665114080327 above 0"
+      "reason": "score 0.1244250816687172109712273812 above 0"
     },
     {
       "index": 16,
@@ -383,10 +384,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 18,
-      "net_score_r": "0.078591",
+      "trades": 19,
+      "net_score_r": "0.098675",
       "passed": true,
-      "reason": "score 0.07859083007841257908374014656 above 0"
+      "reason": "score 0.09867546511204454145837444747 above 0"
     },
     {
       "index": 17,
@@ -535,10 +536,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "-0.087485",
+      "trades": 14,
+      "net_score_r": "-0.039380",
       "passed": false,
-      "reason": "score -0.08748463983562663316407993269 not above 0"
+      "reason": "score -0.03937955488781280766393449049 not above 0"
     },
     {
       "index": 25,
@@ -554,10 +555,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 18,
-      "net_score_r": "-0.124117",
+      "trades": 19,
+      "net_score_r": "-0.109610",
       "passed": false,
-      "reason": "score -0.1241172727056687719522499852 not above 0"
+      "reason": "score -0.1096102843975183760374932949 not above 0"
     },
     {
       "index": 26,
@@ -573,10 +574,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "0.414141",
+      "trades": 15,
+      "net_score_r": "0.372242",
       "passed": true,
-      "reason": "score 0.4141408698506355838898286969 above 0"
+      "reason": "score 0.3722420156051009864664273898 above 0"
     },
     {
       "index": 27,
@@ -630,10 +631,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 15,
-      "net_score_r": "0.458333",
+      "trades": 16,
+      "net_score_r": "0.427291",
       "passed": true,
-      "reason": "score 0.4583327108679153153626934565 above 0"
+      "reason": "score 0.427290768831234168785007016 above 0"
     },
     {
       "index": 30,
@@ -657,16 +658,17 @@
   ],
   "evidence": {
     "series": "net R per trade, in signal order",
-    "trades": 490,
-    "mean_r": "0.036342",
-    "effective_trades": "490.0",
+    "trades": 501,
+    "mean_r": "0.036650",
+    "effective_trades": "492.0",
     "concurrency": "1.000000",
+    "calendar_design_effect": "1.018385",
     "block_trades": 8,
     "replicates": 2000,
     "confidence": "0.90",
-    "lower_r": "-0.030733",
-    "upper_r": "0.106277",
-    "standard_error_r": "0.041655"
+    "lower_r": "-0.031589",
+    "upper_r": "0.109042",
+    "standard_error_r": "0.042969"
   },
   "trade_rows": [
     {
@@ -760,7 +762,7 @@
       "signal_created_at": "2006-04-13T00:00:00+00:00",
       "opened_at": "2006-04-13T00:00:00+00:00",
       "closed_at": "2006-04-18T00:00:00+00:00",
-      "realized_pnl": "998.9",
+      "realized_pnl": "998.90",
       "risk_amount": "998.92607142857067225",
       "cost_r": "0.014633276832",
       "net_r": "0.985341"
@@ -876,6 +878,22 @@
       "risk_amount": "999.88500000000088995",
       "cost_r": "0.009212051658",
       "net_r": "0.990783"
+    },
+    {
+      "fold": 0,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 456,
+      "entry_price": "127.07",
+      "exit_price": "127.4100",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2006-07-05T00:00:00+00:00",
+      "opened_at": "2006-07-05T00:00:00+00:00",
+      "closed_at": "2006-07-11T00:00:00+00:00",
+      "realized_pnl": "155.0400",
+      "risk_amount": "998.15142857142885480",
+      "cost_r": "0.012200916352",
+      "net_r": "0.143126"
     },
     {
       "fold": 2,
@@ -1176,7 +1194,7 @@
       "signal_created_at": "2007-06-19T00:00:00+00:00",
       "opened_at": "2007-06-19T00:00:00+00:00",
       "closed_at": "2007-06-20T00:00:00+00:00",
-      "realized_pnl": "-999.0",
+      "realized_pnl": "-999.00",
       "risk_amount": "998.99999999999581500",
       "cost_r": "0.013563440721",
       "net_r": "-1.013563"
@@ -1224,7 +1242,7 @@
       "signal_created_at": "2007-07-18T00:00:00+00:00",
       "opened_at": "2007-07-18T00:00:00+00:00",
       "closed_at": "2007-07-24T00:00:00+00:00",
-      "realized_pnl": "-998.5",
+      "realized_pnl": "-998.50",
       "risk_amount": "998.51785714285614000",
       "cost_r": "0.013640250880",
       "net_r": "-1.013622"
@@ -1288,7 +1306,7 @@
       "signal_created_at": "2007-08-09T00:00:00+00:00",
       "opened_at": "2007-08-09T00:00:00+00:00",
       "closed_at": "2007-08-16T00:00:00+00:00",
-      "realized_pnl": "-1058.4",
+      "realized_pnl": "-1058.40",
       "risk_amount": "995.89500000000077760",
       "cost_r": "0.005630569491",
       "net_r": "-1.068393"
@@ -1608,7 +1626,7 @@
       "signal_created_at": "2008-03-04T00:00:00+00:00",
       "opened_at": "2008-03-04T00:00:00+00:00",
       "closed_at": "2008-03-07T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.7011642857108580",
       "cost_r": "0.007090942713",
       "net_r": "-1.007090"
@@ -1832,7 +1850,7 @@
       "signal_created_at": "2008-09-15T00:00:00+00:00",
       "opened_at": "2008-09-15T00:00:00+00:00",
       "closed_at": "2008-09-18T00:00:00+00:00",
-      "realized_pnl": "-999.8",
+      "realized_pnl": "-999.80",
       "risk_amount": "999.80785714285863930",
       "cost_r": "0.005831941539",
       "net_r": "-1.005824"
@@ -2728,7 +2746,7 @@
       "signal_created_at": "2010-05-19T00:00:00+00:00",
       "opened_at": "2010-05-19T00:00:00+00:00",
       "closed_at": "2010-05-21T00:00:00+00:00",
-      "realized_pnl": "-1123.2",
+      "realized_pnl": "-1123.20",
       "risk_amount": "999.9257142857143680",
       "cost_r": "0.004826187483",
       "net_r": "-1.128110"
@@ -3160,7 +3178,7 @@
       "signal_created_at": "2011-04-12T00:00:00+00:00",
       "opened_at": "2011-04-12T00:00:00+00:00",
       "closed_at": "2011-04-18T00:00:00+00:00",
-      "realized_pnl": "-1000.0",
+      "realized_pnl": "-1000.00",
       "risk_amount": "999.9863357142871980",
       "cost_r": "0.015739957120",
       "net_r": "-1.015754"
@@ -3256,7 +3274,7 @@
       "signal_created_at": "2011-06-10T00:00:00+00:00",
       "opened_at": "2011-06-10T00:00:00+00:00",
       "closed_at": "2011-06-29T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.6045535714280250",
       "cost_r": "0.011384213447",
       "net_r": "0.988611"
@@ -3276,6 +3294,22 @@
       "risk_amount": "999.08999999999895960",
       "cost_r": "0.011295251863",
       "net_r": "-1.011275"
+    },
+    {
+      "fold": 10,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 385,
+      "entry_price": "131.97",
+      "exit_price": "131.4000",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2011-07-11T00:00:00+00:00",
+      "opened_at": "2011-07-11T00:00:00+00:00",
+      "closed_at": "2011-07-12T00:00:00+00:00",
+      "realized_pnl": "-219.4500",
+      "risk_amount": "998.45624999999934825",
+      "cost_r": "0.010543540415",
+      "net_r": "-0.230333"
     },
     {
       "fold": 11,
@@ -3352,7 +3386,7 @@
       "signal_created_at": "2011-08-08T00:00:00+00:00",
       "opened_at": "2011-08-08T00:00:00+00:00",
       "closed_at": "2011-08-09T00:00:00+00:00",
-      "realized_pnl": "665.9",
+      "realized_pnl": "665.90",
       "risk_amount": "998.84164285714459200",
       "cost_r": "0.005458543166",
       "net_r": "0.661214"
@@ -3416,7 +3450,7 @@
       "signal_created_at": "2011-09-19T00:00:00+00:00",
       "opened_at": "2011-09-19T00:00:00+00:00",
       "closed_at": "2011-09-22T00:00:00+00:00",
-      "realized_pnl": "-1659.1",
+      "realized_pnl": "-1659.10",
       "risk_amount": "996.5175000000007050",
       "cost_r": "0.006090950407",
       "net_r": "-1.670989"
@@ -3448,7 +3482,7 @@
       "signal_created_at": "2011-09-30T00:00:00+00:00",
       "opened_at": "2011-09-30T00:00:00+00:00",
       "closed_at": "2011-10-04T00:00:00+00:00",
-      "realized_pnl": "-1036.8",
+      "realized_pnl": "-1036.80",
       "risk_amount": "998.40599999999974080",
       "cost_r": "0.005386651090",
       "net_r": "-1.043842"
@@ -3564,6 +3598,22 @@
       "risk_amount": "999.7038321428569635",
       "cost_r": "0.007349743090",
       "net_r": "-1.007356"
+    },
+    {
+      "fold": 11,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 391,
+      "entry_price": "128.04",
+      "exit_price": "129.1300",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2012-01-05T00:00:00+00:00",
+      "opened_at": "2012-01-05T00:00:00+00:00",
+      "closed_at": "2012-01-10T00:00:00+00:00",
+      "realized_pnl": "426.1900",
+      "risk_amount": "998.72571428571390030",
+      "cost_r": "0.010505072573",
+      "net_r": "0.416229"
     },
     {
       "fold": 12,
@@ -3854,6 +3904,22 @@
       "net_r": "0.657203"
     },
     {
+      "fold": 12,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 351,
+      "entry_price": "135.49",
+      "exit_price": "134.1600",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2012-07-06T00:00:00+00:00",
+      "opened_at": "2012-07-06T00:00:00+00:00",
+      "closed_at": "2012-07-11T00:00:00+00:00",
+      "realized_pnl": "-466.8300",
+      "risk_amount": "997.52570357142863160",
+      "cost_r": "0.009782306467",
+      "net_r": "-0.477770"
+    },
+    {
       "fold": 13,
       "symbol": "SPY.ARCX",
       "direction": "LONG",
@@ -3880,7 +3946,7 @@
       "signal_created_at": "2012-07-18T00:00:00+00:00",
       "opened_at": "2012-07-18T00:00:00+00:00",
       "closed_at": "2012-07-23T00:00:00+00:00",
-      "realized_pnl": "-1104.9",
+      "realized_pnl": "-1104.90",
       "risk_amount": "998.89627499999868555",
       "cost_r": "0.010696993602",
       "net_r": "-1.116818"
@@ -3912,7 +3978,7 @@
       "signal_created_at": "2012-08-02T00:00:00+00:00",
       "opened_at": "2012-08-02T00:00:00+00:00",
       "closed_at": "2012-08-03T00:00:00+00:00",
-      "realized_pnl": "997.4",
+      "realized_pnl": "997.40",
       "risk_amount": "997.40982857142424320",
       "cost_r": "0.010760775472",
       "net_r": "0.989229"
@@ -3976,7 +4042,7 @@
       "signal_created_at": "2012-10-08T00:00:00+00:00",
       "opened_at": "2012-10-08T00:00:00+00:00",
       "closed_at": "2012-10-10T00:00:00+00:00",
-      "realized_pnl": "-999.4",
+      "realized_pnl": "-999.40",
       "risk_amount": "999.3969642857147340",
       "cost_r": "0.015238849489",
       "net_r": "-1.015242"
@@ -4040,7 +4106,7 @@
       "signal_created_at": "2012-11-07T00:00:00+00:00",
       "opened_at": "2012-11-07T00:00:00+00:00",
       "closed_at": "2012-11-14T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.6057642857122410",
       "cost_r": "0.010408708505",
       "net_r": "-1.010403"
@@ -4124,6 +4190,22 @@
       "risk_amount": "997.90039285714500210",
       "cost_r": "0.011561637591",
       "net_r": "0.988418"
+    },
+    {
+      "fold": 13,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 377,
+      "entry_price": "145.9695",
+      "exit_price": "147.0700",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2013-01-07T00:00:00+00:00",
+      "opened_at": "2013-01-07T00:00:00+00:00",
+      "closed_at": "2013-01-11T00:00:00+00:00",
+      "realized_pnl": "414.8885",
+      "risk_amount": "998.13577500000237510",
+      "cost_r": "0.011014742714",
+      "net_r": "0.404649"
     },
     {
       "fold": 14,
@@ -4392,7 +4474,7 @@
       "signal_created_at": "2013-05-29T00:00:00+00:00",
       "opened_at": "2013-05-29T00:00:00+00:00",
       "closed_at": "2013-06-03T00:00:00+00:00",
-      "realized_pnl": "-998.0",
+      "realized_pnl": "-998.00",
       "risk_amount": "998.02170000000189120",
       "cost_r": "0.012500101617",
       "net_r": "-1.012478"
@@ -4686,6 +4768,22 @@
       "net_r": "0.985626"
     },
     {
+      "fold": 15,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 509,
+      "entry_price": "182.92",
+      "exit_price": "181.6850",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2014-01-02T00:00:00+00:00",
+      "opened_at": "2014-01-02T00:00:00+00:00",
+      "closed_at": "2014-01-13T00:00:00+00:00",
+      "realized_pnl": "-628.6150",
+      "risk_amount": "998.09628214285613940",
+      "cost_r": "0.017320122524",
+      "net_r": "-0.647134"
+    },
+    {
       "fold": 16,
       "symbol": "SPY.ARCX",
       "direction": "LONG",
@@ -4712,7 +4810,7 @@
       "signal_created_at": "2014-01-23T00:00:00+00:00",
       "opened_at": "2014-01-23T00:00:00+00:00",
       "closed_at": "2014-01-24T00:00:00+00:00",
-      "realized_pnl": "-998.0",
+      "realized_pnl": "-998.00",
       "risk_amount": "997.9802785714298445",
       "cost_r": "0.015544753169",
       "net_r": "-1.015565"
@@ -4792,7 +4890,7 @@
       "signal_created_at": "2014-03-10T00:00:00+00:00",
       "opened_at": "2014-03-10T00:00:00+00:00",
       "closed_at": "2014-03-13T00:00:00+00:00",
-      "realized_pnl": "-999.0",
+      "realized_pnl": "-999.00",
       "risk_amount": "998.9999999999988000",
       "cost_r": "0.013871370250",
       "net_r": "-1.013871"
@@ -4824,7 +4922,7 @@
       "signal_created_at": "2014-03-20T00:00:00+00:00",
       "opened_at": "2014-03-20T00:00:00+00:00",
       "closed_at": "2014-03-24T00:00:00+00:00",
-      "realized_pnl": "-999.4",
+      "realized_pnl": "-999.40",
       "risk_amount": "999.38571428571417000",
       "cost_r": "0.012460086540",
       "net_r": "-1.012474"
@@ -4974,6 +5072,22 @@
       "net_r": "-1.324386"
     },
     {
+      "fold": 16,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 538,
+      "entry_price": "196.34",
+      "exit_price": "197.2300",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2014-07-10T00:00:00+00:00",
+      "opened_at": "2014-07-10T00:00:00+00:00",
+      "closed_at": "2014-07-15T00:00:00+00:00",
+      "realized_pnl": "478.8200",
+      "risk_amount": "998.7201428571407820",
+      "cost_r": "0.019234710808",
+      "net_r": "0.460199"
+    },
+    {
       "fold": 17,
       "symbol": "SPY.ARCX",
       "direction": "LONG",
@@ -5032,7 +5146,7 @@
       "signal_created_at": "2014-08-28T00:00:00+00:00",
       "opened_at": "2014-08-28T00:00:00+00:00",
       "closed_at": "2014-09-23T00:00:00+00:00",
-      "realized_pnl": "-999.3",
+      "realized_pnl": "-999.30",
       "risk_amount": "999.29284285713923520",
       "cost_r": "0.020141548212",
       "net_r": "-1.020149"
@@ -5064,7 +5178,7 @@
       "signal_created_at": "2014-10-01T00:00:00+00:00",
       "opened_at": "2014-10-01T00:00:00+00:00",
       "closed_at": "2014-10-06T00:00:00+00:00",
-      "realized_pnl": "998.8",
+      "realized_pnl": "998.80",
       "risk_amount": "998.79171428571385080",
       "cost_r": "0.012208847264",
       "net_r": "0.987799"
@@ -5400,7 +5514,7 @@
       "signal_created_at": "2015-03-18T00:00:00+00:00",
       "opened_at": "2015-03-18T00:00:00+00:00",
       "closed_at": "2015-03-25T00:00:00+00:00",
-      "realized_pnl": "-998.1",
+      "realized_pnl": "-998.10",
       "risk_amount": "998.09640000000156240",
       "cost_r": "0.011058093367",
       "net_r": "-1.011062"
@@ -5624,7 +5738,7 @@
       "signal_created_at": "2015-07-30T00:00:00+00:00",
       "opened_at": "2015-07-30T00:00:00+00:00",
       "closed_at": "2015-08-06T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.58392857143372695",
       "cost_r": "0.015154162177",
       "net_r": "-1.015170"
@@ -5816,7 +5930,7 @@
       "signal_created_at": "2015-10-27T00:00:00+00:00",
       "opened_at": "2015-10-27T00:00:00+00:00",
       "closed_at": "2015-11-02T00:00:00+00:00",
-      "realized_pnl": "999.0",
+      "realized_pnl": "999.00",
       "risk_amount": "998.99241428571437520",
       "cost_r": "0.012902736869",
       "net_r": "0.987105"
@@ -5880,7 +5994,7 @@
       "signal_created_at": "2015-12-08T00:00:00+00:00",
       "opened_at": "2015-12-08T00:00:00+00:00",
       "closed_at": "2015-12-11T00:00:00+00:00",
-      "realized_pnl": "-1065.3",
+      "realized_pnl": "-1065.30",
       "risk_amount": "998.63211428571469800",
       "cost_r": "0.010992140960",
       "net_r": "-1.077751"
@@ -6008,7 +6122,7 @@
       "signal_created_at": "2016-02-01T00:00:00+00:00",
       "opened_at": "2016-02-01T00:00:00+00:00",
       "closed_at": "2016-02-08T00:00:00+00:00",
-      "realized_pnl": "-1182.0",
+      "realized_pnl": "-1182.00",
       "risk_amount": "999.6428571428583000",
       "cost_r": "0.005805624637",
       "net_r": "-1.188228"
@@ -6104,7 +6218,7 @@
       "signal_created_at": "2016-04-29T00:00:00+00:00",
       "opened_at": "2016-04-29T00:00:00+00:00",
       "closed_at": "2016-05-18T00:00:00+00:00",
-      "realized_pnl": "-997.5",
+      "realized_pnl": "-997.50",
       "risk_amount": "997.51774285714127730",
       "cost_r": "0.014319280184",
       "net_r": "-1.014301"
@@ -6136,7 +6250,7 @@
       "signal_created_at": "2016-06-01T00:00:00+00:00",
       "opened_at": "2016-06-01T00:00:00+00:00",
       "closed_at": "2016-06-14T00:00:00+00:00",
-      "realized_pnl": "-997.5",
+      "realized_pnl": "-997.50",
       "risk_amount": "997.51082142857403825",
       "cost_r": "0.012975414171",
       "net_r": "-1.012965"
@@ -6328,7 +6442,7 @@
       "signal_created_at": "2016-11-09T00:00:00+00:00",
       "opened_at": "2016-11-09T00:00:00+00:00",
       "closed_at": "2016-11-21T00:00:00+00:00",
-      "realized_pnl": "999.1",
+      "realized_pnl": "999.10",
       "risk_amount": "999.08571428571364800",
       "cost_r": "0.011886963637",
       "net_r": "0.988127"
@@ -6360,7 +6474,7 @@
       "signal_created_at": "2017-01-30T00:00:00+00:00",
       "opened_at": "2017-01-30T00:00:00+00:00",
       "closed_at": "2017-02-09T00:00:00+00:00",
-      "realized_pnl": "999.1",
+      "realized_pnl": "999.10",
       "risk_amount": "999.08142857142974340",
       "cost_r": "0.017988629633",
       "net_r": "0.982030"
@@ -6472,7 +6586,7 @@
       "signal_created_at": "2017-04-13T00:00:00+00:00",
       "opened_at": "2017-04-13T00:00:00+00:00",
       "closed_at": "2017-04-20T00:00:00+00:00",
-      "realized_pnl": "999.1",
+      "realized_pnl": "999.10",
       "risk_amount": "999.09642857142836250",
       "cost_r": "0.015772474245",
       "net_r": "0.984231"
@@ -6888,7 +7002,7 @@
       "signal_created_at": "2018-04-04T00:00:00+00:00",
       "opened_at": "2018-04-04T00:00:00+00:00",
       "closed_at": "2018-05-10T00:00:00+00:00",
-      "realized_pnl": "992.8",
+      "realized_pnl": "992.80",
       "risk_amount": "992.7994499999998380",
       "cost_r": "0.006385382380",
       "net_r": "0.993615"
@@ -6956,6 +7070,22 @@
       "risk_amount": "998.49375000000205875",
       "cost_r": "0.013869819015",
       "net_r": "0.986146"
+    },
+    {
+      "fold": 24,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 240,
+      "entry_price": "276.86",
+      "exit_price": "279.3400",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2018-07-11T00:00:00+00:00",
+      "opened_at": "2018-07-11T00:00:00+00:00",
+      "closed_at": "2018-07-16T00:00:00+00:00",
+      "realized_pnl": "595.2000",
+      "risk_amount": "996.81428571428682000",
+      "cost_r": "0.011115647565",
+      "net_r": "0.585987"
     },
     {
       "fold": 25,
@@ -7080,7 +7210,7 @@
       "signal_created_at": "2018-10-04T00:00:00+00:00",
       "opened_at": "2018-10-04T00:00:00+00:00",
       "closed_at": "2018-10-05T00:00:00+00:00",
-      "realized_pnl": "-997.7",
+      "realized_pnl": "-997.70",
       "risk_amount": "997.70298214285667625",
       "cost_r": "0.016050553416",
       "net_r": "-1.016048"
@@ -7112,7 +7242,7 @@
       "signal_created_at": "2018-10-11T00:00:00+00:00",
       "opened_at": "2018-10-11T00:00:00+00:00",
       "closed_at": "2018-10-12T00:00:00+00:00",
-      "realized_pnl": "999.2",
+      "realized_pnl": "999.20",
       "risk_amount": "999.21109285714176240",
       "cost_r": "0.009392424990",
       "net_r": "0.990596"
@@ -7246,6 +7376,22 @@
       "net_r": "0.995002"
     },
     {
+      "fold": 25,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 106,
+      "entry_price": "258.88",
+      "exit_price": "260.3500",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-01-10T00:00:00+00:00",
+      "opened_at": "2019-01-10T00:00:00+00:00",
+      "closed_at": "2019-01-15T00:00:00+00:00",
+      "realized_pnl": "155.8200",
+      "risk_amount": "991.5410357142870090",
+      "cost_r": "0.005633815340",
+      "net_r": "0.151516"
+    },
+    {
       "fold": 26,
       "symbol": "SPY.ARCX",
       "direction": "LONG",
@@ -7256,7 +7402,7 @@
       "signal_created_at": "2019-01-28T00:00:00+00:00",
       "opened_at": "2019-01-28T00:00:00+00:00",
       "closed_at": "2019-01-31T00:00:00+00:00",
-      "realized_pnl": "998.9",
+      "realized_pnl": "998.90",
       "risk_amount": "998.8992000000012615",
       "cost_r": "0.009036484300",
       "net_r": "0.990964"
@@ -7288,7 +7434,7 @@
       "signal_created_at": "2019-02-14T00:00:00+00:00",
       "opened_at": "2019-02-14T00:00:00+00:00",
       "closed_at": "2019-02-19T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.5999999999953590",
       "cost_r": "0.010915583238",
       "net_r": "0.989084"
@@ -7304,7 +7450,7 @@
       "signal_created_at": "2019-03-08T00:00:00+00:00",
       "opened_at": "2019-03-08T00:00:00+00:00",
       "closed_at": "2019-03-11T00:00:00+00:00",
-      "realized_pnl": "997.2",
+      "realized_pnl": "997.20",
       "risk_amount": "997.1963357142840540",
       "cost_r": "0.013703461178",
       "net_r": "0.986300"
@@ -7432,7 +7578,7 @@
       "signal_created_at": "2019-05-17T00:00:00+00:00",
       "opened_at": "2019-05-17T00:00:00+00:00",
       "closed_at": "2019-05-29T00:00:00+00:00",
-      "realized_pnl": "-1039.5",
+      "realized_pnl": "-1039.50",
       "risk_amount": "995.29232142856893750",
       "cost_r": "0.007636098216",
       "net_r": "-1.052053"
@@ -7470,6 +7616,22 @@
       "net_r": "0.988574"
     },
     {
+      "fold": 26,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 278,
+      "entry_price": "298.46",
+      "exit_price": "297.7400",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-07-05T00:00:00+00:00",
+      "opened_at": "2019-07-05T00:00:00+00:00",
+      "closed_at": "2019-07-17T00:00:00+00:00",
+      "realized_pnl": "-200.1600",
+      "risk_amount": "997.35379285714173720",
+      "cost_r": "0.013650873689",
+      "net_r": "-0.214342"
+    },
+    {
       "fold": 27,
       "symbol": "SPY.ARCX",
       "direction": "LONG",
@@ -7496,7 +7658,7 @@
       "signal_created_at": "2019-08-05T00:00:00+00:00",
       "opened_at": "2019-08-05T00:00:00+00:00",
       "closed_at": "2019-08-06T00:00:00+00:00",
-      "realized_pnl": "664.6",
+      "realized_pnl": "664.60",
       "risk_amount": "996.9074999999993115",
       "cost_r": "0.009034527317",
       "net_r": "0.657627"
@@ -7688,7 +7850,7 @@
       "signal_created_at": "2020-01-30T00:00:00+00:00",
       "opened_at": "2020-01-30T00:00:00+00:00",
       "closed_at": "2020-01-31T00:00:00+00:00",
-      "realized_pnl": "-995.7",
+      "realized_pnl": "-995.70",
       "risk_amount": "995.6999249999985645",
       "cost_r": "0.012242556786",
       "net_r": "-1.012243"
@@ -7960,7 +8122,7 @@
       "signal_created_at": "2020-09-08T00:00:00+00:00",
       "opened_at": "2020-09-08T00:00:00+00:00",
       "closed_at": "2020-09-09T00:00:00+00:00",
-      "realized_pnl": "993.6",
+      "realized_pnl": "993.60",
       "risk_amount": "993.59460000000014850",
       "cost_r": "0.007527787533",
       "net_r": "0.992478"
@@ -8024,7 +8186,7 @@
       "signal_created_at": "2020-10-15T00:00:00+00:00",
       "opened_at": "2020-10-15T00:00:00+00:00",
       "closed_at": "2020-10-26T00:00:00+00:00",
-      "realized_pnl": "-994.2",
+      "realized_pnl": "-994.20",
       "risk_amount": "994.206171428572800",
       "cost_r": "0.007849665215",
       "net_r": "-1.007843"
@@ -8056,7 +8218,7 @@
       "signal_created_at": "2020-10-28T00:00:00+00:00",
       "opened_at": "2020-10-28T00:00:00+00:00",
       "closed_at": "2020-11-03T00:00:00+00:00",
-      "realized_pnl": "995.6",
+      "realized_pnl": "995.60",
       "risk_amount": "995.6009785714287990",
       "cost_r": "0.007062311991",
       "net_r": "0.992937"
@@ -8088,7 +8250,7 @@
       "signal_created_at": "2020-12-10T00:00:00+00:00",
       "opened_at": "2020-12-10T00:00:00+00:00",
       "closed_at": "2020-12-17T00:00:00+00:00",
-      "realized_pnl": "996.1",
+      "realized_pnl": "996.10",
       "risk_amount": "996.0991071428573475",
       "cost_r": "0.011181739032",
       "net_r": "0.988819"
@@ -8136,10 +8298,26 @@
       "signal_created_at": "2021-01-05T00:00:00+00:00",
       "opened_at": "2021-01-05T00:00:00+00:00",
       "closed_at": "2021-01-07T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.7993392857148450",
       "cost_r": "0.009025784192",
       "net_r": "0.990975"
+    },
+    {
+      "fold": 29,
+      "symbol": "SPY.ARCX",
+      "direction": "LONG",
+      "quantity": 130,
+      "entry_price": "378.69",
+      "exit_price": "378.4600",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2021-01-11T00:00:00+00:00",
+      "opened_at": "2021-01-11T00:00:00+00:00",
+      "closed_at": "2021-01-14T00:00:00+00:00",
+      "realized_pnl": "-29.9000",
+      "risk_amount": "999.5644285714284600",
+      "cost_r": "0.008425332458",
+      "net_r": "-0.038338"
     },
     {
       "fold": 30,
@@ -8392,7 +8570,7 @@
       "signal_created_at": "2021-05-17T00:00:00+00:00",
       "opened_at": "2021-05-17T00:00:00+00:00",
       "closed_at": "2021-05-19T00:00:00+00:00",
-      "realized_pnl": "-1118.0",
+      "realized_pnl": "-1118.00",
       "risk_amount": "996.4499999999996100",
       "cost_r": "0.009075926130",
       "net_r": "-1.131059"

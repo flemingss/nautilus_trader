@@ -21,12 +21,15 @@ No daily method can place that part, so both answers are computed:
 - **Exit session included** counts the whole session's factor return against a trade that
   saw only some of it. A stop fills on the day the market falls, so the regressor carries
   the full fall and the trade a part of it: the loading shrinks toward zero, less of the
-  return is explained, and alpha is **flattered**.
+  return is explained, and alpha tends to be flattered.
 - **Exit session excluded** counts only full sessions, and the partial move - largest
   exactly when the stop is hit - lands in the residue instead.
 
-:func:`bracketed_verdict` names a result only when both agree. A conclusion that holds under
-both constructions is one the approximation cannot have produced.
+**Neither side is a bound.** The expected direction does not always hold: AAPL next-close,
+filed 2026-09-11, read -0.026 R included and +0.001 R excluded, the opposite way round
+(``docs/AUDIT_2026-09-11.md``, F19). :func:`bracketed_verdict` is therefore an **agreement
+test**: it names a result only when both constructions agree, and a conclusion that holds
+under both is one the approximation cannot have produced.
 
 The unit problem is the one that needs care. A trade's return is in **R** - P&L per unit of
 risk - while factor returns are fractions of capital. The bridge is the trade's own leverage
@@ -44,6 +47,31 @@ returns; over a few days it is small, and it is reported rather than assumed awa
 Factor returns over a window are **summed**, not compounded. The difference is second order
 in daily returns and below a basis point over the holding periods measured here, and the sum
 keeps the model linear in the factors.
+
+Two ways the linear fit favours alpha, both left in on purpose
+--------------------------------------------------------------
+**R is a bracketed payoff.** A stop caps the loss near one R and a target caps the gain, so
+the trade's return is a truncated function of the move while the regressor is the whole
+move. Truncation attenuates the loading, less is explained, and the intercept keeps the
+difference: the construction is generous to alpha, which makes *no alpha found* a stronger
+statement than it looks and *alpha found* a weaker one (F18).
+
+**Leverage spans two orders of magnitude.** ``L`` ran from 5 to 380 in the pooled record, so
+in an unweighted fit the most levered trades - the tightest stops - carry the loadings. If a
+trade's residual scales with its exposure, ``Var(e_i) ~ L_i^2 h_i`` for ``h_i`` sessions held,
+and the efficient fit weights each trade by ``1 / (L_i^2 h_i)``. ``weighting="exposure"``
+fits that, and ``copilot.strategies.attribute`` files it beside the unweighted fit as a
+sensitivity. The unweighted fit stays the verdict: it is ADR-0026's decision, and the
+weighted one answers a different question - alpha per trade on the median trade's scale.
+
+The floor
+---------
+``MIN_TRADES_FOR_ATTRIBUTION`` is thirty: six observations per coefficient of the
+five-coefficient model, before any dependence discount. It is a floor below which the fit is
+refused, not a sufficiency claim - the interval, not the count, says what a result is worth.
+Near it a block resample can repeat so few distinct trades that the design is singular; such
+a draw is skipped and counted, and when more than one draw in twenty is skipped no interval
+is reported (F25).
 
 Inference
 ---------
@@ -68,9 +96,11 @@ import math
 import random
 from bisect import bisect_right
 from dataclasses import dataclass
+from datetime import timedelta
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
+from copilot.data.calendar import trading_days
 from copilot.validation.evidence import DEFAULT_CONFIDENCE
 from copilot.validation.evidence import DEFAULT_REPLICATES
 from copilot.validation.evidence import DEFAULT_SEED
@@ -106,7 +136,22 @@ PRIMARY_MODEL = "four_factor"
 
 MIN_TRADES_FOR_ATTRIBUTION = 30
 """
-Below this a five-coefficient regression is fitting noise, and resamples go singular.
+Six observations per coefficient of the five-coefficient model; a refusal floor, not a
+sufficiency claim.
+
+See *The floor* above.
+
+"""
+
+WEIGHTINGS = ("none", "exposure")
+"""
+``none`` is the verdict's ordinary least squares; ``exposure`` weights each trade by ``1
+/ (L^2 h)``, the sensitivity described above.
+"""
+
+MAX_SKIPPED_FRACTION = 0.05
+"""
+Most resamples that may be skipped as singular before the interval is withheld.
 """
 
 _SIX = Decimal("0.000001")
@@ -138,6 +183,10 @@ class Exposure:
     risk_free_sum: float
     net_r: float
     gross_r: float
+    sessions: int = 0
+    """
+    Full sessions in the window the factor sums cover.
+    """
 
 
 @dataclass(frozen=True)
@@ -191,6 +240,11 @@ class Attribution:
     alpha_upper_r: Decimal | None
     loadings: tuple[Loading, ...]
     r_squared: Decimal
+    weighting: str = "none"
+    skipped_replicates: int = 0
+    """
+    Resamples whose design was singular and were not refitted.
+    """
 
     @property
     def verdict(self) -> str:
@@ -218,6 +272,7 @@ class Attribution:
             "factors": list(MODELS[self.model]),
             "series": self.series,
             "exit_session": "included" if self.exit_session else "excluded",
+            "weighting": self.weighting,
             "trades": self.trades,
             "block_trades": self.block_trades,
             "replicates": self.replicates,
@@ -239,6 +294,7 @@ class Attribution:
                 for loading in self.loadings
             ],
             "r_squared": str(self.r_squared),
+            "skipped_replicates": self.skipped_replicates,
         }
 
 
@@ -247,6 +303,7 @@ def exposures(
     factors: Mapping[date, FactorReturns],
     *,
     exit_session: bool,
+    model: str = PRIMARY_MODEL,
 ) -> tuple[Exposure, ...]:
     """
     Return each trade's leverage, its summed factor returns while open, and its R.
@@ -264,23 +321,21 @@ def exposures(
     entry and dropping the day of exit - which halved the measured market beta of a long
     SPY position. A trade whose exit
     falls past the last pinned session is refused rather than attributed over the part
-    that is covered, which would understate its exposure.
+    that is covered, which would understate its exposure; so is one with a session inside
+    its window that the factor files do not carry, and one that opened and closed on the
+    same session, which has no close-to-close exposure for this method to measure.
 
     """
     days = sorted(factors)
+    known = set(days)
     last = days[-1]
     out: list[Exposure] = []
     for entry in filed:
         trade = entry.trade
         opened = trade.opened_at.date()
         closed = trade.closed_at.date()
+        _require_covered(trade.symbol, opened, closed, known, last)
         start, stop = bisect_right(days, opened), bisect_right(days, closed)
-        if closed > last or start == stop:
-            raise UncoveredTradeError(
-                f"{trade.symbol} held {opened} to {closed}, and the pinned factor returns "
-                f"end {last} with {stop - start} sessions in that window. Fetch a newer "
-                "vintage (python -m copilot.validation.factors --fetch) and move the pin.",
-            )
         if not exit_session:
             stop -= 1
         held = [factors[day] for day in days[start:stop]]
@@ -291,14 +346,39 @@ def exposures(
                 leverage=sign * float(notional / trade.risk_amount),
                 factor_sums={
                     name: float(sum((getattr(f, name) for f in held), Decimal(0)))
-                    for name in MODELS[PRIMARY_MODEL]
+                    for name in MODELS[model]
                 },
                 risk_free_sum=float(sum((f.risk_free for f in held), Decimal(0))),
                 net_r=float(entry.net_r),
                 gross_r=float(trade.r_multiple),
+                sessions=len(held),
             ),
         )
     return tuple(out)
+
+
+def _require_covered(symbol: str, opened: date, closed: date, known: set[date], last: date) -> None:
+    """
+    Refuse a trade the pinned factor returns cannot attribute, saying which way.
+    """
+    if closed == opened:
+        raise UncoveredTradeError(
+            f"{symbol} opened and closed on {opened}, so it held no close-to-close session; "
+            "every entry this method attributes fills at a close.",
+        )
+    if closed > last:
+        raise UncoveredTradeError(
+            f"{symbol} held {opened} to {closed}, past the pinned factor returns' last session "
+            f"{last}. Fetch a newer vintage (python -m copilot.validation.factors --fetch) and "
+            "move the pin.",
+        )
+    missing = [day for day in trading_days(opened + timedelta(days=1), closed) if day not in known]
+    if missing:
+        raise UncoveredTradeError(
+            f"{symbol} held {opened} to {closed}, and the pinned factor files carry no return "
+            f"for {', '.join(d.isoformat() for d in missing)}. Attributing over the rest would "
+            "understate its exposure; the vintages disagree on a session.",
+        )
 
 
 def _solve(matrix: list[list[float]], vector: list[float]) -> list[float]:
@@ -370,18 +450,20 @@ def _bootstrap(
     width: int,
     replicates: int,
     seed: int,
-) -> list[list[float]]:
+) -> tuple[list[list[float]], int]:
     """
-    Refit on block resamples and return each coefficient's draws, sorted.
+    Refit on block resamples; return each coefficient's sorted draws, and the skips.
 
     The draws are :func:`~copilot.validation.evidence.assess`'s: ``ceil(n / length)`` block
     starts from the same seeded generator, the concatenation truncated to ``n``. Only how a
-    block is summed differs - one subtraction of prefix sums rather than row by row.
+    block is summed differs - one subtraction of prefix sums rather than row by row. A resample
+    whose design is singular is skipped and counted rather than aborting the whole fit.
 
     """
     draws: list[list[float]] = [[] for _ in range(width)]
+    skipped = 0
     if not replicates:
-        return draws
+        return draws, skipped
     n = len(prefix) - 1
     rng = random.Random(seed)  # noqa: S311 - fixed for reproducibility, not secrecy
     starts = n - length + 1
@@ -396,11 +478,16 @@ def _bootstrap(
             for index in range(len(summed)):
                 summed[index] += high[index] - low[index]
             remaining -= take
-        for index, value in enumerate(_fit(summed, width)):
+        try:
+            solution = _fit(summed, width)
+        except DegenerateDesignError:
+            skipped += 1
+            continue
+        for index, value in enumerate(solution):
             draws[index].append(value)
     for column in draws:
         column.sort()
-    return draws
+    return draws, skipped
 
 
 def attribute(
@@ -410,6 +497,7 @@ def attribute(
     model: str = PRIMARY_MODEL,
     series: str = "net",
     exit_session: bool = True,
+    weighting: str = "none",
     replicates: int = DEFAULT_REPLICATES,
     confidence: Decimal = DEFAULT_CONFIDENCE,
     seed: int = DEFAULT_SEED,
@@ -418,11 +506,15 @@ def attribute(
     Fit ``model`` to the trades' excess R and bootstrap the coefficients.
 
     ``filed`` must be in signal order, as records file it. ``replicates=0`` fits the point
-    estimates only, for a decomposition that needs no interval.
+    estimates only, for a decomposition that needs no interval. ``weighting`` is ``none`` or
+    ``exposure``; with weights the decomposition's means are the weighted means, so the
+    intercept is still ``mean - cash - explained``.
 
     """
     if series not in {"net", "gross"}:
         raise ValueError(f"series is 'net' or 'gross', not {series!r}")
+    if weighting not in WEIGHTINGS:
+        raise ValueError(f"weighting is one of {WEIGHTINGS}, not {weighting!r}")
     names = MODELS[model]
     n = len(filed)
     if n < MIN_TRADES_FOR_ATTRIBUTION:
@@ -431,39 +523,60 @@ def attribute(
             f"{MIN_TRADES_FOR_ATTRIBUTION}",
         )
 
-    exposed = exposures(filed, factors, exit_session=exit_session)
+    exposed = exposures(filed, factors, exit_session=exit_session, model=model)
     observed = [e.net_r if series == "net" else e.gross_r for e in exposed]
     cash = [e.leverage * e.risk_free_sum for e in exposed]
     response = [r - c for r, c in zip(observed, cash, strict=True)]
     design = [[1.0, *(e.leverage * e.factor_sums[name] for name in names)] for e in exposed]
     width = len(design[0])
+    weights = [
+        1.0 / (e.leverage**2 * max(e.sessions, 1)) if weighting == "exposure" else 1.0
+        for e in exposed
+    ]
+    # Weighted least squares as ordinary least squares on rows scaled by the root weight, so
+    # the prefix sums and the block draws are unchanged.
+    roots = [math.sqrt(w) for w in weights]
+    scaled_design = [[root * x for x in row] for root, row in zip(roots, design, strict=True)]
+    scaled_response = [root * y for root, y in zip(roots, response, strict=True)]
 
-    prefix = _moments(design, response)
+    prefix = _moments(scaled_design, scaled_response)
     point = _fit(prefix[n], width)
 
     # The block is the evidence interval's, drawn from the same series the same way, so the
     # two intervals differ only by what the regression removes.
     net_series = [e.net_r for e in exposed]
     length = block_length(n, concurrency([f.trade for f in filed]), net_series)
-    draws = _bootstrap(prefix, length=length, width=width, replicates=replicates, seed=seed)
+    draws, skipped = _bootstrap(
+        prefix,
+        length=length,
+        width=width,
+        replicates=replicates,
+        seed=seed,
+    )
+    withheld = replicates and skipped > MAX_SKIPPED_FRACTION * replicates
 
     tail = float((Decimal(1) - confidence) / 2)
 
     def bounds(index: int) -> tuple[Decimal | None, Decimal | None]:
-        if not replicates:
+        if not replicates or withheld:
             return None, None
         return _decimal(percentile(draws[index], tail)), _decimal(
             percentile(draws[index], 1 - tail),
         )
 
-    means = [sum(column[i] for column in design) / n for i in range(width)]
+    total_weight = sum(weights)
+
+    def weighted_mean(values: Sequence[float]) -> float:
+        return sum(w * v for w, v in zip(weights, values, strict=True)) / total_weight
+
+    means = [weighted_mean([row[i] for row in design]) for i in range(width)]
     explained = sum(point[i] * means[i] for i in range(1, width))
     fitted_error = sum(
-        (y - sum(b * x for b, x in zip(point, row, strict=True))) ** 2
-        for row, y in zip(design, response, strict=True)
+        w * (y - sum(b * x for b, x in zip(point, row, strict=True))) ** 2
+        for w, row, y in zip(weights, design, response, strict=True)
     )
-    centre = sum(response) / n
-    spread = sum((y - centre) ** 2 for y in response)
+    centre = weighted_mean(response)
+    spread = sum(w * (y - centre) ** 2 for w, y in zip(weights, response, strict=True))
     alpha_lower, alpha_upper = bounds(0)
 
     return Attribution(
@@ -474,8 +587,8 @@ def attribute(
         block_trades=length,
         replicates=replicates,
         confidence=confidence,
-        mean_r=_decimal(sum(observed) / n),
-        risk_free_r=_decimal(sum(cash) / n),
+        mean_r=_decimal(weighted_mean(observed)),
+        risk_free_r=_decimal(weighted_mean(cash)),
         explained_r=_decimal(explained),
         alpha_r=_decimal(point[0]),
         alpha_lower_r=alpha_lower,
@@ -484,6 +597,8 @@ def attribute(
             Loading(name, _decimal(point[i + 1]), *bounds(i + 1)) for i, name in enumerate(names)
         ),
         r_squared=_decimal(1 - fitted_error / spread) if spread else Decimal(0),
+        weighting=weighting,
+        skipped_replicates=skipped,
     )
 
 
@@ -491,8 +606,9 @@ def bracketed_verdict(included: Attribution, excluded: Attribution) -> str:
     """
     Name the alpha only where both treatments of the exit session agree.
 
-    ``bracket_disagrees`` is its own answer rather than a fallback to one side: it says the
-    result turns on an approximation this data cannot resolve, which is worth knowing and
+    An agreement test, not a bound: neither treatment is guaranteed to sit on one side of the
+    truth. ``bracket_disagrees`` is its own answer rather than a fallback to one side: it says
+    the result turns on an approximation this data cannot resolve, which is worth knowing and
     is not the same as finding nothing.
 
     """
@@ -510,9 +626,11 @@ def _decimal(value: float) -> Decimal:
 
 
 __all__ = [
+    "MAX_SKIPPED_FRACTION",
     "MIN_TRADES_FOR_ATTRIBUTION",
     "MODELS",
     "PRIMARY_MODEL",
+    "WEIGHTINGS",
     "Attribution",
     "DegenerateDesignError",
     "Exposure",

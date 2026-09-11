@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "AAPL.XNAS",
-  "run_at": "2026-09-11T01:31:54.323804+00:00",
-  "runtime_seconds": 17.8,
+  "run_at": "2026-09-11T15:58:36.451885+00:00",
+  "runtime_seconds": 17.7,
   "bars": 4280,
   "bar_range": [
     "2005-01-03",
@@ -63,16 +63,17 @@
     "data": "c8d523a6e536a70bd4d5c9a877e5cf07579cc81c192d33cfc4e1c90e741f5e7d",
     "identity": "d789cc9285b216e64fd53345f6b9739e1380d7e2900c2c57e8dd245911aa0f61",
     "cost": "e640b46bfbde1c2bc9c5a637a5ef6ce322b8625c3511149dff7cba9c3a961eac",
-    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
-    "combined": "ab4b3c5c0a9b70f85755bed49b4e58ed2a3b1e3c3be5bd7e452bd91fac0122a4"
+    "code": "f73ab16b116edd39b01e2a6683823f8c313e410f4d37f1f78811485e73cc28e5",
+    "combined": "ccb7da815561de096d6ba440b5371d39fd87e23c17c91d725da511ba249eeba5"
   },
   "holdout_spent": false,
   "folds": 31,
   "folds_evaluated": 31,
   "folds_passed": 16,
   "majority_passed": true,
-  "mean_oos_net_expectancy_r": "0.046696",
-  "total_test_trades": 469,
+  "mean_oos_net_expectancy_r": "0.045194",
+  "mean_per_trade_net_r": "0.050478",
+  "total_test_trades": 488,
   "fold_detail": [
     {
       "index": 0,
@@ -88,10 +89,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 9,
-      "net_score_r": "-0.343729",
+      "trades": 10,
+      "net_score_r": "-0.368013",
       "passed": false,
-      "reason": "score -0.3437291254445807323813682364 not above 0"
+      "reason": "score -0.3680126478107090829070886765 not above 0"
     },
     {
       "index": 1,
@@ -126,10 +127,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "0.267822",
+      "trades": 15,
+      "net_score_r": "0.269064",
       "passed": true,
-      "reason": "score 0.2678218579919654626854014929 above 0"
+      "reason": "score 0.2690635636094842167909377155 above 0"
     },
     {
       "index": 3,
@@ -183,10 +184,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "-0.303770",
+      "trades": 15,
+      "net_score_r": "-0.272752",
       "passed": false,
-      "reason": "score -0.3037698635967403167903911494 not above 0"
+      "reason": "score -0.2727523790050770708747221247 not above 0"
     },
     {
       "index": 6,
@@ -278,10 +279,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 18,
-      "net_score_r": "-0.018178",
+      "trades": 19,
+      "net_score_r": "-0.045477",
       "passed": false,
-      "reason": "score -0.01817809362914143290661054407 not above 0"
+      "reason": "score -0.04547734452760209928587364799 not above 0"
     },
     {
       "index": 11,
@@ -313,13 +314,13 @@
         "stop_atr": "1.5",
         "entry_buffer_atr": "0.25",
         "risk_budget": "1000",
-        "min_gap_atr": "0.40",
+        "min_gap_atr": "0.15",
         "target_1_atr": "1.0"
       },
-      "trades": 9,
-      "net_score_r": "0.281555",
+      "trades": 20,
+      "net_score_r": "0.234599",
       "passed": true,
-      "reason": "score 0.281555495921576483295400376 above 0"
+      "reason": "score 0.2345989928784817088490526363 above 0"
     },
     {
       "index": 13,
@@ -335,10 +336,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "-0.507456",
+      "trades": 15,
+      "net_score_r": "-0.495543",
       "passed": false,
-      "reason": "score -0.5074558314557802008502238974 not above 0"
+      "reason": "score -0.4955434662423670724408710395 not above 0"
     },
     {
       "index": 14,
@@ -354,10 +355,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "-0.176643",
+      "trades": 14,
+      "net_score_r": "-0.134541",
       "passed": false,
-      "reason": "score -0.1766425257440169148377474074 not above 0"
+      "reason": "score -0.1345408043450828402912808379 not above 0"
     },
     {
       "index": 15,
@@ -373,10 +374,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.0"
       },
-      "trades": 10,
-      "net_score_r": "0.139517",
+      "trades": 11,
+      "net_score_r": "0.073236",
       "passed": true,
-      "reason": "score 0.1395174956497366874973054928 above 0"
+      "reason": "score 0.07323564872844103441388674038 above 0"
     },
     {
       "index": 16,
@@ -392,10 +393,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 11,
-      "net_score_r": "-0.139202",
+      "trades": 12,
+      "net_score_r": "-0.118847",
       "passed": false,
-      "reason": "score -0.1392015728943024013046821877 not above 0"
+      "reason": "score -0.1188471657283819510820054023 not above 0"
     },
     {
       "index": 17,
@@ -487,10 +488,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.0"
       },
-      "trades": 17,
-      "net_score_r": "-0.053885",
+      "trades": 18,
+      "net_score_r": "-0.067362",
       "passed": false,
-      "reason": "score -0.05388508128978902386842061416 not above 0"
+      "reason": "score -0.06736213015927089331628319928 not above 0"
     },
     {
       "index": 22,
@@ -525,10 +526,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 15,
-      "net_score_r": "0.291370",
+      "trades": 16,
+      "net_score_r": "0.322774",
       "passed": true,
-      "reason": "score 0.2913703316845275158088642429 above 0"
+      "reason": "score 0.322773506354521732487568090 above 0"
     },
     {
       "index": 24,
@@ -561,12 +562,12 @@
         "entry_buffer_atr": "0.25",
         "risk_budget": "1000",
         "min_gap_atr": "0.15",
-        "target_1_atr": "1.0"
+        "target_1_atr": "1.5"
       },
-      "trades": 21,
-      "net_score_r": "-0.183609",
+      "trades": 17,
+      "net_score_r": "-0.166852",
       "passed": false,
-      "reason": "score -0.1836091662480417910151438293 not above 0"
+      "reason": "score -0.1668519935268461326984009063 not above 0"
     },
     {
       "index": 26,
@@ -582,10 +583,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.0"
       },
-      "trades": 18,
-      "net_score_r": "-0.024010",
+      "trades": 19,
+      "net_score_r": "-0.036778",
       "passed": false,
-      "reason": "score -0.02401010943243428363139190932 not above 0"
+      "reason": "score -0.03677813280773872090495296053 not above 0"
     },
     {
       "index": 27,
@@ -639,10 +640,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "0.132324",
+      "trades": 15,
+      "net_score_r": "0.122022",
       "passed": true,
-      "reason": "score 0.1323237447384957365219766989 above 0"
+      "reason": "score 0.1220216873842723165199987303 above 0"
     },
     {
       "index": 30,
@@ -666,16 +667,17 @@
   ],
   "evidence": {
     "series": "net R per trade, in signal order",
-    "trades": 469,
-    "mean_r": "0.047598",
-    "effective_trades": "414.8",
+    "trades": 488,
+    "mean_r": "0.050478",
+    "effective_trades": "337.5",
     "concurrency": "1.000000",
+    "calendar_design_effect": "1.218994",
     "block_trades": 8,
     "replicates": 2000,
     "confidence": "0.90",
-    "lower_r": "-0.036581",
-    "upper_r": "0.127930",
-    "standard_error_r": "0.048666"
+    "lower_r": "-0.030016",
+    "upper_r": "0.130098",
+    "standard_error_r": "0.049209"
   },
   "trade_rows": [
     {
@@ -823,6 +825,22 @@
       "net_r": "-1.010310"
     },
     {
+      "fold": 0,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 9926,
+      "entry_price": "2.0454",
+      "exit_price": "1.9875",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2006-06-30T00:00:00+00:00",
+      "opened_at": "2006-06-30T00:00:00+00:00",
+      "closed_at": "2006-07-11T00:00:00+00:00",
+      "realized_pnl": "-574.7154",
+      "risk_amount": "999.902699999999595870",
+      "cost_r": "0.011793023856",
+      "net_r": "-0.586564"
+    },
+    {
       "fold": 1,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -833,7 +851,7 @@
       "signal_created_at": "2006-07-13T00:00:00+00:00",
       "opened_at": "2006-07-13T00:00:00+00:00",
       "closed_at": "2006-07-20T00:00:00+00:00",
-      "realized_pnl": "999.5",
+      "realized_pnl": "999.50",
       "risk_amount": "999.922242857143026120",
       "cost_r": "0.010998974508",
       "net_r": "0.988579"
@@ -881,7 +899,7 @@
       "signal_created_at": "2006-08-11T00:00:00+00:00",
       "opened_at": "2006-08-11T00:00:00+00:00",
       "closed_at": "2006-08-16T00:00:00+00:00",
-      "realized_pnl": "1000.1",
+      "realized_pnl": "1000.10",
       "risk_amount": "999.935121428570900640",
       "cost_r": "0.009853225514",
       "net_r": "0.990312"
@@ -1057,7 +1075,7 @@
       "signal_created_at": "2006-12-27T00:00:00+00:00",
       "opened_at": "2006-12-27T00:00:00+00:00",
       "closed_at": "2007-01-03T00:00:00+00:00",
-      "realized_pnl": "1000.1",
+      "realized_pnl": "1000.10",
       "risk_amount": "999.977678571427426500",
       "cost_r": "0.010526982901",
       "net_r": "0.989595"
@@ -1105,7 +1123,7 @@
       "signal_created_at": "2007-02-08T00:00:00+00:00",
       "opened_at": "2007-02-08T00:00:00+00:00",
       "closed_at": "2007-02-09T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.918385714284740550",
       "cost_r": "0.016196572347",
       "net_r": "-1.015978"
@@ -1153,7 +1171,7 @@
       "signal_created_at": "2007-02-27T00:00:00+00:00",
       "opened_at": "2007-02-27T00:00:00+00:00",
       "closed_at": "2007-03-01T00:00:00+00:00",
-      "realized_pnl": "999.7",
+      "realized_pnl": "999.70",
       "risk_amount": "999.98839285714323900",
       "cost_r": "0.014001580971",
       "net_r": "0.985710"
@@ -1217,7 +1235,7 @@
       "signal_created_at": "2007-03-28T00:00:00+00:00",
       "opened_at": "2007-03-28T00:00:00+00:00",
       "closed_at": "2007-04-13T00:00:00+00:00",
-      "realized_pnl": "-999.8",
+      "realized_pnl": "-999.80",
       "risk_amount": "999.920228571428784960",
       "cost_r": "0.018883014039",
       "net_r": "-1.018763"
@@ -1287,6 +1305,22 @@
       "net_r": "0.988725"
     },
     {
+      "fold": 2,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 4848,
+      "entry_price": "4.7268",
+      "exit_price": "4.7882",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2007-07-10T00:00:00+00:00",
+      "opened_at": "2007-07-10T00:00:00+00:00",
+      "closed_at": "2007-07-12T00:00:00+00:00",
+      "realized_pnl": "297.6672",
+      "risk_amount": "999.848057142858503760",
+      "cost_r": "0.011264993023",
+      "net_r": "0.286447"
+    },
+    {
       "fold": 3,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -1313,7 +1347,7 @@
       "signal_created_at": "2007-07-24T00:00:00+00:00",
       "opened_at": "2007-07-24T00:00:00+00:00",
       "closed_at": "2007-07-26T00:00:00+00:00",
-      "realized_pnl": "1000.0",
+      "realized_pnl": "1000.00",
       "risk_amount": "999.895928571428530200",
       "cost_r": "0.011367558369",
       "net_r": "0.988737"
@@ -1441,7 +1475,7 @@
       "signal_created_at": "2007-10-25T00:00:00+00:00",
       "opened_at": "2007-10-25T00:00:00+00:00",
       "closed_at": "2007-11-07T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.702000000000440640",
       "cost_r": "0.009531593065",
       "net_r": "0.990366"
@@ -1457,7 +1491,7 @@
       "signal_created_at": "2007-11-07T00:00:00+00:00",
       "opened_at": "2007-11-07T00:00:00+00:00",
       "closed_at": "2007-11-08T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.753685714285349400",
       "cost_r": "0.010320696273",
       "net_r": "-1.010267"
@@ -1553,7 +1587,7 @@
       "signal_created_at": "2008-01-16T00:00:00+00:00",
       "opened_at": "2008-01-16T00:00:00+00:00",
       "closed_at": "2008-01-22T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.599592857142713280",
       "cost_r": "0.006834962117",
       "net_r": "-1.006935"
@@ -1969,10 +2003,26 @@
       "signal_created_at": "2008-12-09T00:00:00+00:00",
       "opened_at": "2008-12-09T00:00:00+00:00",
       "closed_at": "2008-12-17T00:00:00+00:00",
-      "realized_pnl": "-999.9",
+      "realized_pnl": "-999.90",
       "risk_amount": "999.803571428571030000",
       "cost_r": "0.006340154665",
       "net_r": "-1.006437"
+    },
+    {
+      "fold": 5,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 3308,
+      "entry_price": "3.1843",
+      "exit_price": "3.2350",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2008-12-17T00:00:00+00:00",
+      "opened_at": "2008-12-17T00:00:00+00:00",
+      "closed_at": "2009-01-09T00:00:00+00:00",
+      "realized_pnl": "167.7156",
+      "risk_amount": "999.73667142857029440",
+      "cost_r": "0.006267370664",
+      "net_r": "0.161492"
     },
     {
       "fold": 6,
@@ -1985,7 +2035,7 @@
       "signal_created_at": "2009-01-14T00:00:00+00:00",
       "opened_at": "2009-01-14T00:00:00+00:00",
       "closed_at": "2009-01-15T00:00:00+00:00",
-      "realized_pnl": "-999.9",
+      "realized_pnl": "-999.90",
       "risk_amount": "999.900000000000577500",
       "cost_r": "0.008790197702",
       "net_r": "-1.008790"
@@ -2033,7 +2083,7 @@
       "signal_created_at": "2009-01-29T00:00:00+00:00",
       "opened_at": "2009-01-29T00:00:00+00:00",
       "closed_at": "2009-02-05T00:00:00+00:00",
-      "realized_pnl": "666.5",
+      "realized_pnl": "666.50",
       "risk_amount": "999.857142857142450000",
       "cost_r": "0.008724906738",
       "net_r": "0.657870"
@@ -2577,7 +2627,7 @@
       "signal_created_at": "2010-01-22T00:00:00+00:00",
       "opened_at": "2010-01-22T00:00:00+00:00",
       "closed_at": "2010-01-26T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.985949999999669790",
       "cost_r": "0.012462044899",
       "net_r": "0.987352"
@@ -2609,7 +2659,7 @@
       "signal_created_at": "2010-03-09T00:00:00+00:00",
       "opened_at": "2010-03-09T00:00:00+00:00",
       "closed_at": "2010-03-24T00:00:00+00:00",
-      "realized_pnl": "1000.2",
+      "realized_pnl": "1000.20",
       "risk_amount": "999.989892857143498380",
       "cost_r": "0.016576503868",
       "net_r": "0.983634"
@@ -2721,7 +2771,7 @@
       "signal_created_at": "2010-05-11T00:00:00+00:00",
       "opened_at": "2010-05-11T00:00:00+00:00",
       "closed_at": "2010-05-21T00:00:00+00:00",
-      "realized_pnl": "-1163.8",
+      "realized_pnl": "-1163.80",
       "risk_amount": "999.428571428570559375",
       "cost_r": "0.007087058537",
       "net_r": "-1.171552"
@@ -2993,7 +3043,7 @@
       "signal_created_at": "2010-11-23T00:00:00+00:00",
       "opened_at": "2010-11-23T00:00:00+00:00",
       "closed_at": "2010-12-02T00:00:00+00:00",
-      "realized_pnl": "999.9",
+      "realized_pnl": "999.90",
       "risk_amount": "999.854999999998584750",
       "cost_r": "0.015234184711",
       "net_r": "0.984811"
@@ -3105,7 +3155,7 @@
       "signal_created_at": "2011-02-22T00:00:00+00:00",
       "opened_at": "2011-02-22T00:00:00+00:00",
       "closed_at": "2011-02-25T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.94794642856991010",
       "cost_r": "0.017711306909",
       "net_r": "0.982141"
@@ -3333,6 +3383,22 @@
       "risk_amount": "999.953871428571926100",
       "cost_r": "0.013661747354",
       "net_r": "0.986224"
+    },
+    {
+      "fold": 10,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2452,
+      "entry_price": "12.8468",
+      "exit_price": "12.6339",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2011-07-08T00:00:00+00:00",
+      "opened_at": "2011-07-08T00:00:00+00:00",
+      "closed_at": "2011-07-12T00:00:00+00:00",
+      "realized_pnl": "-522.0308",
+      "risk_amount": "999.75921428571402300",
+      "cost_r": "0.014707332867",
+      "net_r": "-0.536864"
     },
     {
       "fold": 11,
@@ -3690,6 +3756,22 @@
       "fold": 12,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
+      "quantity": 3672,
+      "entry_price": "14.9932",
+      "exit_price": "15.1747",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-01-13T00:00:00+00:00",
+      "opened_at": "2012-01-13T00:00:00+00:00",
+      "closed_at": "2012-01-17T00:00:00+00:00",
+      "realized_pnl": "666.47",
+      "risk_amount": "999.85937142857182200",
+      "cost_r": "0.024202232754",
+      "net_r": "0.642362"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
       "quantity": 3370,
       "entry_price": "15.0146",
       "exit_price": "15.2124",
@@ -3701,6 +3783,54 @@
       "risk_amount": "999.770678571429336900",
       "cost_r": "0.022407291800",
       "net_r": "0.644336"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2418,
+      "entry_price": "16.1789",
+      "exit_price": "16.4545",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-01-30T00:00:00+00:00",
+      "opened_at": "2012-01-30T00:00:00+00:00",
+      "closed_at": "2012-02-06T00:00:00+00:00",
+      "realized_pnl": "666.40",
+      "risk_amount": "999.627107142857044410",
+      "cost_r": "0.017779150902",
+      "net_r": "0.648869"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2374,
+      "entry_price": "16.5704",
+      "exit_price": "16.8512",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-02-06T00:00:00+00:00",
+      "opened_at": "2012-02-06T00:00:00+00:00",
+      "closed_at": "2012-02-08T00:00:00+00:00",
+      "realized_pnl": "666.62",
+      "risk_amount": "999.903364285713634560",
+      "cost_r": "0.017861551950",
+      "net_r": "0.648823"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2054,
+      "entry_price": "17.6221",
+      "exit_price": "17.9465",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-02-10T00:00:00+00:00",
+      "opened_at": "2012-02-10T00:00:00+00:00",
+      "closed_at": "2012-02-13T00:00:00+00:00",
+      "realized_pnl": "666.32",
+      "risk_amount": "999.52041428571270120",
+      "cost_r": "0.016599979661",
+      "net_r": "0.650040"
     },
     {
       "fold": 12,
@@ -3722,6 +3852,22 @@
       "fold": 12,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
+      "quantity": 1742,
+      "entry_price": "18.3229",
+      "exit_price": "18.7055",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-02-22T00:00:00+00:00",
+      "opened_at": "2012-02-22T00:00:00+00:00",
+      "closed_at": "2012-02-27T00:00:00+00:00",
+      "realized_pnl": "666.49",
+      "risk_amount": "999.715135714285236480",
+      "cost_r": "0.014871408149",
+      "net_r": "0.651809"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
       "quantity": 1486,
       "entry_price": "18.9379",
       "exit_price": "19.3865",
@@ -3733,6 +3879,38 @@
       "risk_amount": "999.99308571428676510",
       "cost_r": "0.013344396481",
       "net_r": "0.653280"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1320,
+      "entry_price": "21.5179",
+      "exit_price": "22.0228",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-03-21T00:00:00+00:00",
+      "opened_at": "2012-03-21T00:00:00+00:00",
+      "closed_at": "2012-03-28T00:00:00+00:00",
+      "realized_pnl": "666.47",
+      "risk_amount": "999.64542857142862800",
+      "cost_r": "0.013453381611",
+      "net_r": "0.653253"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1434,
+      "entry_price": "21.7807",
+      "exit_price": "22.2454",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-03-29T00:00:00+00:00",
+      "opened_at": "2012-03-29T00:00:00+00:00",
+      "closed_at": "2012-04-03T00:00:00+00:00",
+      "realized_pnl": "666.38",
+      "risk_amount": "999.53897142857102910",
+      "cost_r": "0.014595858912",
+      "net_r": "0.652092"
     },
     {
       "fold": 12,
@@ -3802,33 +3980,97 @@
       "fold": 12,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
-      "quantity": 1172,
-      "entry_price": "20.0354",
-      "exit_price": "20.604",
+      "quantity": 828,
+      "entry_price": "20.8564",
+      "exit_price": "19.6493",
       "exit_reason": "CLOSED",
-      "signal_created_at": "2012-06-01T00:00:00+00:00",
-      "opened_at": "2012-06-01T00:00:00+00:00",
-      "closed_at": "2012-06-07T00:00:00+00:00",
-      "realized_pnl": "666.4",
-      "risk_amount": "999.64902857142746640",
-      "cost_r": "0.011469247892",
-      "net_r": "0.655165"
+      "signal_created_at": "2012-04-30T00:00:00+00:00",
+      "opened_at": "2012-04-30T00:00:00+00:00",
+      "closed_at": "2012-05-16T00:00:00+00:00",
+      "realized_pnl": "-999.48",
+      "risk_amount": "999.50837142857135760",
+      "cost_r": "0.008965219713",
+      "net_r": "-1.008937"
     },
     {
       "fold": 12,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
-      "quantity": 1883,
-      "entry_price": "20.3846",
-      "exit_price": "20.7386",
+      "quantity": 1225,
+      "entry_price": "20.6846",
+      "exit_price": "19.8687",
       "exit_reason": "CLOSED",
-      "signal_created_at": "2012-06-25T00:00:00+00:00",
-      "opened_at": "2012-06-25T00:00:00+00:00",
+      "signal_created_at": "2012-05-30T00:00:00+00:00",
+      "opened_at": "2012-05-30T00:00:00+00:00",
+      "closed_at": "2012-06-04T00:00:00+00:00",
+      "realized_pnl": "-999.48",
+      "risk_amount": "999.42937499999897625",
+      "cost_r": "0.012220517693",
+      "net_r": "-1.012271"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1142,
+      "entry_price": "20.1011",
+      "exit_price": "20.6844",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-06-05T00:00:00+00:00",
+      "opened_at": "2012-06-05T00:00:00+00:00",
+      "closed_at": "2012-06-08T00:00:00+00:00",
+      "realized_pnl": "666.13",
+      "risk_amount": "999.24184285714229430",
+      "cost_r": "0.011261694135",
+      "net_r": "0.655374"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1613,
+      "entry_price": "20.9207",
+      "exit_price": "20.301",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-06-18T00:00:00+00:00",
+      "opened_at": "2012-06-18T00:00:00+00:00",
+      "closed_at": "2012-06-26T00:00:00+00:00",
+      "realized_pnl": "-999.58",
+      "risk_amount": "999.63370714285555290",
+      "cost_r": "0.015607620358",
+      "net_r": "-1.015554"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2006,
+      "entry_price": "20.3232",
+      "exit_price": "20.6554",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-06-28T00:00:00+00:00",
+      "opened_at": "2012-06-28T00:00:00+00:00",
       "closed_at": "2012-06-29T00:00:00+00:00",
-      "realized_pnl": "666.58",
-      "risk_amount": "999.85282499999931405",
-      "cost_r": "0.017474740778",
-      "net_r": "0.649203"
+      "realized_pnl": "666.39",
+      "risk_amount": "999.54681428571372690",
+      "cost_r": "0.018441583677",
+      "net_r": "0.648251"
+    },
+    {
+      "fold": 12,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1885,
+      "entry_price": "21.6386",
+      "exit_price": "21.9922",
+      "exit_reason": "CLOSED",
+      "signal_created_at": "2012-07-06T00:00:00+00:00",
+      "opened_at": "2012-07-06T00:00:00+00:00",
+      "closed_at": "2012-07-10T00:00:00+00:00",
+      "realized_pnl": "666.54",
+      "risk_amount": "999.783803571428280600",
+      "cost_r": "0.018444582901",
+      "net_r": "0.648240"
     },
     {
       "fold": 13,
@@ -3857,7 +4099,7 @@
       "signal_created_at": "2012-07-25T00:00:00+00:00",
       "opened_at": "2012-07-25T00:00:00+00:00",
       "closed_at": "2012-07-30T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.660021428572115130",
       "cost_r": "0.015198986244",
       "net_r": "0.984741"
@@ -3873,7 +4115,7 @@
       "signal_created_at": "2012-08-02T00:00:00+00:00",
       "opened_at": "2012-08-02T00:00:00+00:00",
       "closed_at": "2012-08-13T00:00:00+00:00",
-      "realized_pnl": "999.9",
+      "realized_pnl": "999.90",
       "risk_amount": "999.89639999999956260",
       "cost_r": "0.014757961757",
       "net_r": "0.985246"
@@ -3921,7 +4163,7 @@
       "signal_created_at": "2012-09-24T00:00:00+00:00",
       "opened_at": "2012-09-24T00:00:00+00:00",
       "closed_at": "2012-09-25T00:00:00+00:00",
-      "realized_pnl": "-1000.0",
+      "realized_pnl": "-1000.00",
       "risk_amount": "999.99160714285580520",
       "cost_r": "0.019241514652",
       "net_r": "-1.019250"
@@ -3953,7 +4195,7 @@
       "signal_created_at": "2012-10-08T00:00:00+00:00",
       "opened_at": "2012-10-08T00:00:00+00:00",
       "closed_at": "2012-10-19T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.570857142856050000",
       "cost_r": "0.014499510068",
       "net_r": "-1.014529"
@@ -4055,6 +4297,22 @@
       "net_r": "0.990214"
     },
     {
+      "fold": 13,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1323,
+      "entry_price": "18.8214",
+      "exit_price": "18.5821",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2013-01-04T00:00:00+00:00",
+      "opened_at": "2013-01-04T00:00:00+00:00",
+      "closed_at": "2013-01-11T00:00:00+00:00",
+      "realized_pnl": "-316.5939",
+      "risk_amount": "999.57847500000110565",
+      "cost_r": "0.012042944734",
+      "net_r": "-0.328770"
+    },
+    {
       "fold": 14,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -4113,7 +4371,7 @@
       "signal_created_at": "2013-03-27T00:00:00+00:00",
       "opened_at": "2013-03-27T00:00:00+00:00",
       "closed_at": "2013-04-01T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.731035714285775550",
       "cost_r": "0.014411155859",
       "net_r": "-1.014380"
@@ -4263,6 +4521,22 @@
       "net_r": "0.986754"
     },
     {
+      "fold": 14,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1776,
+      "entry_price": "15.0261",
+      "exit_price": "15.2657",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2013-07-10T00:00:00+00:00",
+      "opened_at": "2013-07-10T00:00:00+00:00",
+      "closed_at": "2013-07-15T00:00:00+00:00",
+      "realized_pnl": "425.5296",
+      "risk_amount": "999.97045714285763760",
+      "cost_r": "0.012760597891",
+      "net_r": "0.412782"
+    },
+    {
       "fold": 15,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -4289,7 +4563,7 @@
       "signal_created_at": "2013-08-09T00:00:00+00:00",
       "opened_at": "2013-08-09T00:00:00+00:00",
       "closed_at": "2013-08-12T00:00:00+00:00",
-      "realized_pnl": "666.5",
+      "realized_pnl": "666.50",
       "risk_amount": "999.74999999999967750",
       "cost_r": "0.016072979103",
       "net_r": "0.650594"
@@ -4423,6 +4697,22 @@
       "net_r": "-1.018873"
     },
     {
+      "fold": 15,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1953,
+      "entry_price": "19.4261",
+      "exit_price": "19.1332",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2014-01-06T00:00:00+00:00",
+      "opened_at": "2014-01-06T00:00:00+00:00",
+      "closed_at": "2014-01-13T00:00:00+00:00",
+      "realized_pnl": "-572.0337",
+      "risk_amount": "999.566325000000213435",
+      "cost_r": "0.017300936138",
+      "net_r": "-0.589583"
+    },
+    {
       "fold": 16,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -4513,7 +4803,7 @@
       "signal_created_at": "2014-04-07T00:00:00+00:00",
       "opened_at": "2014-04-07T00:00:00+00:00",
       "closed_at": "2014-04-15T00:00:00+00:00",
-      "realized_pnl": "-1000.1",
+      "realized_pnl": "-1000.10",
       "risk_amount": "999.985049999999252280",
       "cost_r": "0.023207936463",
       "net_r": "-1.023323"
@@ -4599,6 +4889,22 @@
       "net_r": "0.984652"
     },
     {
+      "fold": 16,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1814,
+      "entry_price": "23.76",
+      "exit_price": "23.8300",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2014-07-10T00:00:00+00:00",
+      "opened_at": "2014-07-10T00:00:00+00:00",
+      "closed_at": "2014-07-15T00:00:00+00:00",
+      "realized_pnl": "126.9800",
+      "risk_amount": "999.481607142855506370",
+      "cost_r": "0.021994546569",
+      "net_r": "0.105051"
+    },
+    {
       "fold": 17,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -4625,7 +4931,7 @@
       "signal_created_at": "2014-08-22T00:00:00+00:00",
       "opened_at": "2014-08-22T00:00:00+00:00",
       "closed_at": "2014-09-02T00:00:00+00:00",
-      "realized_pnl": "999.7",
+      "realized_pnl": "999.70",
       "risk_amount": "999.62035714285827750",
       "cost_r": "0.027016671782",
       "net_r": "0.973063"
@@ -4737,7 +5043,7 @@
       "signal_created_at": "2014-11-12T00:00:00+00:00",
       "opened_at": "2014-11-12T00:00:00+00:00",
       "closed_at": "2014-11-13T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.69910714285554600",
       "cost_r": "0.028472529118",
       "net_r": "0.971428"
@@ -5089,7 +5395,7 @@
       "signal_created_at": "2015-08-11T00:00:00+00:00",
       "opened_at": "2015-08-11T00:00:00+00:00",
       "closed_at": "2015-08-17T00:00:00+00:00",
-      "realized_pnl": "666.6",
+      "realized_pnl": "666.60",
       "risk_amount": "999.89999999999960400",
       "cost_r": "0.012300321804",
       "net_r": "0.654366"
@@ -5233,7 +5539,7 @@
       "signal_created_at": "2015-11-13T00:00:00+00:00",
       "opened_at": "2015-11-13T00:00:00+00:00",
       "closed_at": "2015-11-17T00:00:00+00:00",
-      "realized_pnl": "666.4",
+      "realized_pnl": "666.40",
       "risk_amount": "999.60749999999920350",
       "cost_r": "0.014725580770",
       "net_r": "0.651936"
@@ -5361,7 +5667,7 @@
       "signal_created_at": "2016-01-07T00:00:00+00:00",
       "opened_at": "2016-01-07T00:00:00+00:00",
       "closed_at": "2016-01-08T00:00:00+00:00",
-      "realized_pnl": "666.1",
+      "realized_pnl": "666.10",
       "risk_amount": "999.14464285714199400",
       "cost_r": "0.013007328256",
       "net_r": "0.653663"
@@ -5409,7 +5715,7 @@
       "signal_created_at": "2016-02-01T00:00:00+00:00",
       "opened_at": "2016-02-01T00:00:00+00:00",
       "closed_at": "2016-03-01T00:00:00+00:00",
-      "realized_pnl": "666.1",
+      "realized_pnl": "666.10",
       "risk_amount": "999.16473214285707900",
       "cost_r": "0.009277872649",
       "net_r": "0.657379"
@@ -5521,7 +5827,7 @@
       "signal_created_at": "2016-04-26T00:00:00+00:00",
       "opened_at": "2016-04-26T00:00:00+00:00",
       "closed_at": "2016-04-27T00:00:00+00:00",
-      "realized_pnl": "-2939.2",
+      "realized_pnl": "-2939.20",
       "risk_amount": "999.42857142857097600",
       "cost_r": "0.018393329962",
       "net_r": "-2.959274"
@@ -5617,7 +5923,7 @@
       "signal_created_at": "2016-06-16T00:00:00+00:00",
       "opened_at": "2016-06-16T00:00:00+00:00",
       "closed_at": "2016-06-20T00:00:00+00:00",
-      "realized_pnl": "-999.5",
+      "realized_pnl": "-999.50",
       "risk_amount": "999.55446428571557490",
       "cost_r": "0.020124735454",
       "net_r": "-1.020070"
@@ -5927,6 +6233,22 @@
       "net_r": "0.643305"
     },
     {
+      "fold": 21,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 2123,
+      "entry_price": "29.9375",
+      "exit_price": "29.8125",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2017-01-11T00:00:00+00:00",
+      "opened_at": "2017-01-11T00:00:00+00:00",
+      "closed_at": "2017-01-12T00:00:00+00:00",
+      "realized_pnl": "-265.3750",
+      "risk_amount": "999.70553571428562330",
+      "cost_r": "0.031018794463",
+      "net_r": "-0.296472"
+    },
+    {
       "fold": 22,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -6065,7 +6387,7 @@
       "signal_created_at": "2017-04-18T00:00:00+00:00",
       "opened_at": "2017-04-18T00:00:00+00:00",
       "closed_at": "2017-04-24T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.642857142856890000",
       "cost_r": "0.033544424151",
       "net_r": "0.966413"
@@ -6097,7 +6419,7 @@
       "signal_created_at": "2017-05-10T00:00:00+00:00",
       "opened_at": "2017-05-10T00:00:00+00:00",
       "closed_at": "2017-05-12T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.599999999996817600",
       "cost_r": "0.024463242313",
       "net_r": "0.975537"
@@ -6225,7 +6547,7 @@
       "signal_created_at": "2017-08-23T00:00:00+00:00",
       "opened_at": "2017-08-23T00:00:00+00:00",
       "closed_at": "2017-08-31T00:00:00+00:00",
-      "realized_pnl": "999.4",
+      "realized_pnl": "999.40",
       "risk_amount": "999.42187499999916570",
       "cost_r": "0.017305123525",
       "net_r": "0.982673"
@@ -6321,7 +6643,7 @@
       "signal_created_at": "2017-11-09T00:00:00+00:00",
       "opened_at": "2017-11-09T00:00:00+00:00",
       "closed_at": "2017-11-15T00:00:00+00:00",
-      "realized_pnl": "-1227.8",
+      "realized_pnl": "-1227.80",
       "risk_amount": "999.64848214285712505",
       "cost_r": "0.016840299218",
       "net_r": "-1.245072"
@@ -6389,6 +6711,22 @@
       "risk_amount": "999.72321428571108000",
       "cost_r": "0.021701681210",
       "net_r": "0.978255"
+    },
+    {
+      "fold": 23,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 1193,
+      "entry_price": "43.5875",
+      "exit_price": "44.2725",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2018-01-08T00:00:00+00:00",
+      "opened_at": "2018-01-08T00:00:00+00:00",
+      "closed_at": "2018-01-12T00:00:00+00:00",
+      "realized_pnl": "817.2050",
+      "risk_amount": "999.24401785714224360",
+      "cost_r": "0.024002133376",
+      "net_r": "0.793821"
     },
     {
       "fold": 24,
@@ -6465,7 +6803,7 @@
       "signal_created_at": "2018-02-14T00:00:00+00:00",
       "opened_at": "2018-02-14T00:00:00+00:00",
       "closed_at": "2018-02-23T00:00:00+00:00",
-      "realized_pnl": "999.7",
+      "realized_pnl": "999.70",
       "risk_amount": "999.6774107142858255",
       "cost_r": "0.010775172001",
       "net_r": "0.989247"
@@ -6609,7 +6947,7 @@
       "signal_created_at": "2018-06-18T00:00:00+00:00",
       "opened_at": "2018-06-18T00:00:00+00:00",
       "closed_at": "2018-06-19T00:00:00+00:00",
-      "realized_pnl": "-1073.7",
+      "realized_pnl": "-1073.70",
       "risk_amount": "999.24401785714224360",
       "cost_r": "0.025731927650",
       "net_r": "-1.100244"
@@ -6668,15 +7006,15 @@
       "direction": "LONG",
       "quantity": 936,
       "entry_price": "47.8625",
-      "exit_price": "48.5745",
+      "exit_price": "48.9304",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-07-17T00:00:00+00:00",
       "opened_at": "2018-07-17T00:00:00+00:00",
-      "closed_at": "2018-07-25T00:00:00+00:00",
-      "realized_pnl": "666.43",
+      "closed_at": "2018-07-26T00:00:00+00:00",
+      "realized_pnl": "999.55",
       "risk_amount": "999.59785714285866720",
       "cost_r": "0.020437020684",
-      "net_r": "0.646261"
+      "net_r": "0.979515"
     },
     {
       "fold": 25,
@@ -6684,15 +7022,15 @@
       "direction": "LONG",
       "quantity": 723,
       "entry_price": "51.8475",
-      "exit_price": "52.7695",
+      "exit_price": "53.2304",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-08-02T00:00:00+00:00",
       "opened_at": "2018-08-02T00:00:00+00:00",
       "closed_at": "2018-08-16T00:00:00+00:00",
-      "realized_pnl": "666.61",
+      "realized_pnl": "999.84",
       "risk_amount": "999.87026785714327545",
       "cost_r": "0.017135019397",
-      "net_r": "0.649561"
+      "net_r": "0.982835"
     },
     {
       "fold": 25,
@@ -6700,15 +7038,15 @@
       "direction": "LONG",
       "quantity": 873,
       "entry_price": "53.7625",
-      "exit_price": "54.5254",
+      "exit_price": "54.9068",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-08-22T00:00:00+00:00",
       "opened_at": "2018-08-22T00:00:00+00:00",
-      "closed_at": "2018-08-27T00:00:00+00:00",
-      "realized_pnl": "666.01",
+      "closed_at": "2018-08-28T00:00:00+00:00",
+      "realized_pnl": "998.97",
       "risk_amount": "998.96142857142915135",
       "cost_r": "0.021150145412",
-      "net_r": "0.645552"
+      "net_r": "0.978858"
     },
     {
       "fold": 25,
@@ -6732,31 +7070,15 @@
       "direction": "LONG",
       "quantity": 528,
       "entry_price": "54.47",
-      "exit_price": "55.7318",
+      "exit_price": "56.3627",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-09-17T00:00:00+00:00",
       "opened_at": "2018-09-17T00:00:00+00:00",
-      "closed_at": "2018-09-26T00:00:00+00:00",
-      "realized_pnl": "666.23",
+      "closed_at": "2018-09-27T00:00:00+00:00",
+      "realized_pnl": "999.35",
       "risk_amount": "999.33428571428517120",
       "cost_r": "0.013618068581",
-      "net_r": "0.653056"
-    },
-    {
-      "fold": 25,
-      "symbol": "AAPL.XNAS",
-      "direction": "LONG",
-      "quantity": 534,
-      "entry_price": "55.105",
-      "exit_price": "56.3529",
-      "exit_reason": "CLOSED",
-      "signal_created_at": "2018-09-26T00:00:00+00:00",
-      "opened_at": "2018-09-26T00:00:00+00:00",
-      "closed_at": "2018-09-27T00:00:00+00:00",
-      "realized_pnl": "666.38",
-      "risk_amount": "999.53357142857138280",
-      "cost_r": "0.013883964309",
-      "net_r": "0.652807"
+      "net_r": "0.986398"
     },
     {
       "fold": 25,
@@ -6796,63 +7118,15 @@
       "direction": "LONG",
       "quantity": 542,
       "entry_price": "54.09",
-      "exit_price": "55.3182",
+      "exit_price": "55.9323",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-10-10T00:00:00+00:00",
       "opened_at": "2018-10-10T00:00:00+00:00",
-      "closed_at": "2018-10-12T00:00:00+00:00",
-      "realized_pnl": "665.68",
+      "closed_at": "2018-10-24T00:00:00+00:00",
+      "realized_pnl": "998.53",
       "risk_amount": "998.53821428571459930",
       "cost_r": "0.013854120733",
-      "net_r": "0.652800"
-    },
-    {
-      "fold": 25,
-      "symbol": "AAPL.XNAS",
-      "direction": "LONG",
-      "quantity": 482,
-      "entry_price": "54.34",
-      "exit_price": "55.7223",
-      "exit_reason": "CLOSED",
-      "signal_created_at": "2018-10-15T00:00:00+00:00",
-      "opened_at": "2018-10-15T00:00:00+00:00",
-      "closed_at": "2018-10-16T00:00:00+00:00",
-      "realized_pnl": "666.27",
-      "risk_amount": "999.4183928571431670",
-      "cost_r": "0.012579693191",
-      "net_r": "0.654078"
-    },
-    {
-      "fold": 25,
-      "symbol": "AAPL.XNAS",
-      "direction": "LONG",
-      "quantity": 448,
-      "entry_price": "54.005",
-      "exit_price": "55.4925",
-      "exit_reason": "CLOSED",
-      "signal_created_at": "2018-10-18T00:00:00+00:00",
-      "opened_at": "2018-10-18T00:00:00+00:00",
-      "closed_at": "2018-10-22T00:00:00+00:00",
-      "realized_pnl": "666.4",
-      "risk_amount": "999.60000000000020160",
-      "cost_r": "0.011770872567",
-      "net_r": "0.654896"
-    },
-    {
-      "fold": 25,
-      "symbol": "AAPL.XNAS",
-      "direction": "LONG",
-      "quantity": 413,
-      "entry_price": "55.6825",
-      "exit_price": "53.2646",
-      "exit_reason": "CLOSED",
-      "signal_created_at": "2018-10-23T00:00:00+00:00",
-      "opened_at": "2018-10-23T00:00:00+00:00",
-      "closed_at": "2018-10-26T00:00:00+00:00",
-      "realized_pnl": "-998.59",
-      "risk_amount": "998.61187500000042480",
-      "cost_r": "0.011297886810",
-      "net_r": "-1.011276"
+      "net_r": "0.986138"
     },
     {
       "fold": 25,
@@ -6897,7 +7171,7 @@
       "signal_created_at": "2018-11-12T00:00:00+00:00",
       "opened_at": "2018-11-12T00:00:00+00:00",
       "closed_at": "2018-11-20T00:00:00+00:00",
-      "realized_pnl": "-1319.3",
+      "realized_pnl": "-1319.30",
       "risk_amount": "997.7057142857140710",
       "cost_r": "0.008565887748",
       "net_r": "-1.330900"
@@ -6908,31 +7182,15 @@
       "direction": "LONG",
       "quantity": 354,
       "entry_price": "44.245",
-      "exit_price": "46.1238",
+      "exit_price": "41.25",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-11-20T00:00:00+00:00",
       "opened_at": "2018-11-20T00:00:00+00:00",
-      "closed_at": "2018-12-03T00:00:00+00:00",
-      "realized_pnl": "665.1",
+      "closed_at": "2018-12-10T00:00:00+00:00",
+      "realized_pnl": "-1060.23",
       "risk_amount": "997.61625000000005310",
       "cost_r": "0.008345424285",
-      "net_r": "0.658344"
-    },
-    {
-      "fold": 25,
-      "symbol": "AAPL.XNAS",
-      "direction": "LONG",
-      "quantity": 436,
-      "entry_price": "44.1725",
-      "exit_price": "41.25",
-      "exit_reason": "CLOSED",
-      "signal_created_at": "2018-12-04T00:00:00+00:00",
-      "opened_at": "2018-12-04T00:00:00+00:00",
-      "closed_at": "2018-12-10T00:00:00+00:00",
-      "realized_pnl": "-1274.21",
-      "risk_amount": "998.05071428571410820",
-      "cost_r": "0.009797133648",
-      "net_r": "-1.286496"
+      "net_r": "-1.071109"
     },
     {
       "fold": 25,
@@ -6956,15 +7214,15 @@
       "direction": "LONG",
       "quantity": 449,
       "entry_price": "36.7075",
-      "exit_price": "38.1912",
+      "exit_price": "38.9331",
       "exit_reason": "CLOSED",
       "signal_created_at": "2018-12-24T00:00:00+00:00",
       "opened_at": "2018-12-24T00:00:00+00:00",
       "closed_at": "2018-12-26T00:00:00+00:00",
-      "realized_pnl": "666.18",
+      "realized_pnl": "999.29",
       "risk_amount": "999.3056249999993265",
       "cost_r": "0.008666069771",
-      "net_r": "0.657977"
+      "net_r": "0.991318"
     },
     {
       "fold": 25,
@@ -6988,15 +7246,31 @@
       "direction": "LONG",
       "quantity": 404,
       "entry_price": "35.5475",
-      "exit_price": "37.195",
+      "exit_price": "38.0188",
       "exit_reason": "CLOSED",
       "signal_created_at": "2019-01-03T00:00:00+00:00",
       "opened_at": "2019-01-03T00:00:00+00:00",
-      "closed_at": "2019-01-07T00:00:00+00:00",
-      "realized_pnl": "665.59",
+      "closed_at": "2019-01-09T00:00:00+00:00",
+      "realized_pnl": "998.41",
       "risk_amount": "998.38499999999981820",
       "cost_r": "0.007816447223",
-      "net_r": "0.658850"
+      "net_r": "0.992209"
+    },
+    {
+      "fold": 25,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 454,
+      "entry_price": "38.0725",
+      "exit_price": "38.2675",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-01-11T00:00:00+00:00",
+      "opened_at": "2019-01-11T00:00:00+00:00",
+      "closed_at": "2019-01-15T00:00:00+00:00",
+      "realized_pnl": "88.5300",
+      "risk_amount": "999.85392857142883410",
+      "cost_r": "0.008985112135",
+      "net_r": "0.079558"
     },
     {
       "fold": 26,
@@ -7137,7 +7411,7 @@
       "signal_created_at": "2019-05-02T00:00:00+00:00",
       "opened_at": "2019-05-02T00:00:00+00:00",
       "closed_at": "2019-05-07T00:00:00+00:00",
-      "realized_pnl": "-999.2",
+      "realized_pnl": "-999.20",
       "risk_amount": "999.22473214285575840",
       "cost_r": "0.016218101068",
       "net_r": "-1.016193"
@@ -7185,7 +7459,7 @@
       "signal_created_at": "2019-05-13T00:00:00+00:00",
       "opened_at": "2019-05-13T00:00:00+00:00",
       "closed_at": "2019-05-16T00:00:00+00:00",
-      "realized_pnl": "665.5",
+      "realized_pnl": "665.50",
       "risk_amount": "998.24999999999953800",
       "cost_r": "0.010267403965",
       "net_r": "0.656399"
@@ -7287,6 +7561,22 @@
       "net_r": "0.649134"
     },
     {
+      "fold": 26,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 858,
+      "entry_price": "51.125",
+      "exit_price": "50.8375",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-07-16T00:00:00+00:00",
+      "opened_at": "2019-07-16T00:00:00+00:00",
+      "closed_at": "2019-07-17T00:00:00+00:00",
+      "realized_pnl": "-246.6750",
+      "risk_amount": "999.72321428571353190",
+      "cost_r": "0.019859258544",
+      "net_r": "-0.266603"
+    },
+    {
       "fold": 27,
       "symbol": "AAPL.XNAS",
       "direction": "LONG",
@@ -7329,7 +7619,7 @@
       "signal_created_at": "2019-08-05T00:00:00+00:00",
       "opened_at": "2019-08-05T00:00:00+00:00",
       "closed_at": "2019-08-08T00:00:00+00:00",
-      "realized_pnl": "999.7",
+      "realized_pnl": "999.70",
       "risk_amount": "999.67660714285651350",
       "cost_r": "0.012425529166",
       "net_r": "0.987598"
@@ -8021,6 +8311,22 @@
       "risk_amount": "997.4679107142863280",
       "cost_r": "0.011190429402",
       "net_r": "0.988802"
+    },
+    {
+      "fold": 29,
+      "symbol": "AAPL.XNAS",
+      "direction": "LONG",
+      "quantity": 165,
+      "entry_price": "128.98",
+      "exit_price": "128.9100",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2021-01-11T00:00:00+00:00",
+      "opened_at": "2021-01-11T00:00:00+00:00",
+      "closed_at": "2021-01-14T00:00:00+00:00",
+      "realized_pnl": "-11.5500",
+      "risk_amount": "997.5929464285723125",
+      "cost_r": "0.010629247025",
+      "net_r": "-0.022207"
     },
     {
       "fold": 30,
