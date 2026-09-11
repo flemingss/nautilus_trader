@@ -2,6 +2,37 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, the ready-to-build group worked through
+
+Seven PRs from the ten rows that stood after the audit, #91 to #97. This entry closes the pass.
+
+### Added
+
+- **`DRAFT_NEXT_PREMISE.md`**, the groundwork for the next premise. Per-trade four-factor
+  attribution books timing to the market loading, so no long-only premise on the onboarded ETFs
+  can show alpha by construction; the playbook's randomised-signal control, which can judge
+  timing, is not built. Shortlist and one discovery look recorded as a look: turn of the month on
+  SPY recommended, overnight holding rejected on cost arithmetic.
+- **A ready row: build the random-entry null control.**
+
+### Regrouped
+
+- **Pick the next premise** moves to *Waiting on a decision*, with the draft's recommendation.
+- **Rank signals within the session cap** moves to *Deferred*, recommended: fourteen basket
+  records, no refusal in any, triggers in one session only.
+- **Corrected: the *Ready to build* header read one above its rows from #91 to #96.** The total
+  was right throughout; the changelog entries for #91 to #95 give ready counts one too high.
+- Open work is twenty-three items: three ready to build, five waiting on the VM, two on the
+  account, three on a decision, one charter conflict, two on spend, seven deferred.
+
+### Refiled
+
+- **All twelve verdicts** under the code #96 left, every number unchanged. The afternoon's
+  generation stays, because the newest attribution record names it as its input, and the
+  retention rule now says so. The morning's generation, filed by the fifth pass and superseded
+  within the hour, was never committed; the evening record's manifest still names it, with
+  identical numbers on either side.
+
 ## 2026-09-11, operator-day pass five: a live strategy no longer subscribes to broker bars
 
 ### Fixed
