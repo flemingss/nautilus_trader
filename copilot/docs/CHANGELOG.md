@@ -2,6 +2,34 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the kill switch
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 9).
+[ADR-0027](decisions/0027-the-kill-switch-is-a-host-latch.md) records the design.
+
+### Added
+
+- **`python -m copilot.live.kill`**, the playbook's safe mode as a command: engage a halt
+  latch, alert, run the broker-confirmed sweep, flatten nothing, print the recovery
+  checklist. `--status`, and `--release` with the latch's id retyped.
+- **The halt latch** (`live/halt.py`, `~/.nautilus_copilot/HALT.json`). `build_paper_node`
+  starts any order-capable node `HALTED` while it exists; a session declared cancels-only -
+  the sweep - is exempt, because cancelling is safe mode and cancels bypass the risk engine.
+  It had to be a file: `HALTED` lives in one node and every `day` step is a new process.
+  An unreadable latch reads as engaged, and a second trigger never replaces the first reason.
+- **The consumer ADR-0023 lacked.** The alerter records every delivered `CRITICAL` receipt
+  (`ReceiptLog`); every `day` phase, including a scheduled run with nothing to do, settles
+  outstanding receipts first, and one that expired unacknowledged engages the latch. While
+  latched, each phase prints the latch and sends a `WARNING` reminder.
+
+### Measured
+
+- **Drilled against paper TWS, 2026-09-10 22:44 ET.** The command engaged latch `cb59138d`;
+  the sweep ran under it to `BROKER CLEAR`. Nodes built while latched read, from the real
+  risk engine, `HALTED` when requesting orders and `ACTIVE` when cancels-only; after release
+  the order-requesting node read `ACTIVE`. A wrong id was refused; the release is filed at
+  `live/out/halt_release_20260911T024522Z.json`.
+
 ## 2026-09-10, who is told
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 3 and 4). Delivery

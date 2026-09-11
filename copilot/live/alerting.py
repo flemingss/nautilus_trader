@@ -58,6 +58,7 @@ from dataclasses import field
 from datetime import UTC
 from datetime import datetime
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING
 from typing import Protocol
 from urllib.error import HTTPError
@@ -66,6 +67,7 @@ from urllib.parse import urlencode
 from urllib.request import Request
 from urllib.request import urlopen
 
+from copilot.paths import ALERT_RECEIPTS_PATH
 from copilot.paths import PUSHOVER_TOKEN_ENV
 from copilot.paths import PUSHOVER_USER_KEY_ENV
 
@@ -495,6 +497,73 @@ class FloodGuard:
         return self._suppressed.pop(alert.key, 0)
 
 
+class ReceiptLog:
+    """
+    Every delivered ``CRITICAL`` alert's receipt, and how each one ended.
+
+    The kill switch's trigger - *a critical alert unacknowledged by deadline* - needs the
+    receipt after the process that sent the alert has gone, so it is kept on disk. Append
+    only: a ``sent`` line when the alert goes, a ``resolved`` line when it is acknowledged or
+    expires. Like everything else here it never raises into its caller.
+
+    """
+
+    def __init__(self, path: Path) -> None:
+        """
+        Point at ``path``; nothing is created until a receipt is remembered.
+        """
+        self.path = path
+
+    def remember(self, delivery: Delivery) -> None:
+        """
+        Record a delivered alert's receipt, if it has one.
+        """
+        if not (delivery.delivered and delivery.receipt):
+            return
+        self._append(
+            {
+                "event": "sent",
+                "receipt": delivery.receipt,
+                "title": delivery.alert.title,
+                "sent_at": delivery.alert.occurred_at.isoformat(),
+            },
+        )
+
+    def resolve(self, receipt: str, how: str) -> None:
+        """
+        Record that a receipt is settled - ``acknowledged`` or ``expired``.
+        """
+        self._append({"event": "resolved", "receipt": receipt, "how": how})
+
+    def outstanding(self) -> dict[str, str]:
+        """
+        Return receipts sent and not yet resolved, mapped to their alert's title.
+        """
+        if not self.path.exists():
+            return {}
+        sent: dict[str, str] = {}
+        resolved: set[str] = set()
+        for line in self.path.read_text().splitlines():
+            try:
+                row = json.loads(line)
+            except ValueError:
+                print(f"warning: unreadable receipt line in {self.path}: {line!r}", file=sys.stderr)
+                continue
+            if row.get("event") == "sent":
+                sent[row["receipt"]] = row.get("title", "")
+            elif row.get("event") == "resolved":
+                resolved.add(row["receipt"])
+        return {receipt: title for receipt, title in sent.items() if receipt not in resolved}
+
+    def _append(self, row: Mapping[str, object]) -> None:
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            with self.path.open("a") as handle:
+                handle.write(json.dumps(row) + "\n")
+        except OSError as e:
+            print(f"warning: could not record alert receipt in {self.path}: {e}", file=sys.stderr)
+
+
 class Alerter:
     """
     The thing callers hold: a notifier, a flood guard, and a promise not to raise.
@@ -505,12 +574,25 @@ class Alerter:
 
     """
 
-    def __init__(self, notifier: Notifier, guard: FloodGuard | None = None) -> None:
+    def __init__(
+        self,
+        notifier: Notifier,
+        guard: FloodGuard | None = None,
+        receipts: ReceiptLog | None = None,
+    ) -> None:
         """
-        Wrap a notifier with flood control and the promise not to raise.
+        Wrap a notifier with flood control, receipts, and the promise not to raise.
         """
         self._notifier = notifier
         self._guard = guard if guard is not None else FloodGuard()
+        self._receipts = receipts
+
+    @property
+    def notifier(self) -> Notifier:
+        """
+        The transport, for reading a receipt back.
+        """
+        return self._notifier
 
     @property
     def notifier_name(self) -> str:
@@ -541,6 +623,8 @@ class Alerter:
                 detail=f"notifier raised {type(e).__name__}: {e}",
                 suppressed=suppressed,
             )
+        if self._receipts is not None:
+            self._receipts.remember(delivery)
         if suppressed:
             return Delivery(
                 alert=delivery.alert,
@@ -592,11 +676,21 @@ def notifier_from_environment(environ: Mapping[str, str] | None = None) -> Notif
     )
 
 
-def alerter_from_environment(environ: Mapping[str, str] | None = None) -> Alerter:
+def alerter_from_environment(
+    environ: Mapping[str, str] | None = None,
+    receipts_path: str | Path = ALERT_RECEIPTS_PATH,
+) -> Alerter:
     """
     Build the alerter a session needs, reading credentials from the environment.
+
+    Its ``CRITICAL`` receipts are kept at ``receipts_path``, so the kill switch can find one
+    nobody acknowledged after the process that sent it has ended.
+
     """
-    return Alerter(notifier_from_environment(environ))
+    return Alerter(
+        notifier_from_environment(environ),
+        receipts=ReceiptLog(Path(receipts_path).expanduser()),
+    )
 
 
 def _send_test(args: argparse.Namespace) -> int:
@@ -696,6 +790,7 @@ __all__ = [
     "FloodGuard",
     "Notifier",
     "PushoverNotifier",
+    "ReceiptLog",
     "Severity",
     "StreamNotifier",
     "alerter_from_environment",

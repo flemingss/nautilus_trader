@@ -542,3 +542,35 @@ def test_a_scheduled_morning_with_nothing_to_do_still_beats(monkeypatch, capsys)
 
     assert main(["morning", "--scheduled"]) == 0
     assert pinged == ["https://watcher.example/push/abc"]
+
+
+def test_every_phase_checks_the_halt_first_and_says_so(monkeypatch, capsys) -> None:
+    """
+    Even a scheduled weekend run: an unanswered Friday alert must halt before Monday.
+    """
+    from copilot.live.halt import OPERATOR
+    from copilot.live.halt import Latch
+
+    saturday = eastern(2026, 9, 12, 8, 30)
+    checked: list[bool] = []
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN206 - matches datetime.now
+            return saturday.astimezone(tz)
+
+    monkeypatch.setattr("copilot.live.day.datetime", Frozen)
+    monkeypatch.setattr(
+        "copilot.live.day.acknowledgement_check",
+        lambda: (checked.append(True), ["UNACKNOWLEDGED: sweep STILL WORKING"])[1],
+    )
+    monkeypatch.setattr(
+        "copilot.live.day.read_latch",
+        lambda: Latch("3f9a1c2e", "2026-09-11T02:00:00+00:00", OPERATOR, "drill", "vm"),
+    )
+
+    assert main(["evening", "--scheduled"]) == 0
+    out = capsys.readouterr().out
+    assert checked == [True]
+    assert "HALT LATCH ENGAGED" in out
+    assert out.index("HALT LATCH ENGAGED") < out.index("nothing to do")

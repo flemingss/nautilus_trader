@@ -74,7 +74,7 @@ last column is what makes it done.
 | 6   | **`copilot/ops/`: runbook, units, compose, env template** | The stand-up below is written as commands; systemd units and timers, the Gateway compose file and an environment template exist      |
 | 7   | **A host check**                                          | One command reports what a fresh VM is missing: variables, secrets file mode, Docker, Gateway port, clock sync, catalog, disk        |
 | 8   | **Confirm the sweep against the broker** (done)           | *Clear* means the broker's own open orders are empty, not that no rejection arrived; testable against TWS on the dev box             |
-| 9   | **The operator kill command**                             | One command halts, cancels per policy, alerts and prints the recovery checklist; testable against TWS                                |
+| 9   | **The operator kill command** (done)                      | One command halts, cancels per policy, alerts and prints the recovery checklist; testable against TWS                                |
 
 Items 1 to 7 are what the stand-up needs. Items 8 and 9 are what unattended running needs, and
 can land in the VM's first week if time runs out. The next premise (a separate roadmap row)

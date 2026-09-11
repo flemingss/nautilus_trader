@@ -50,9 +50,12 @@ paper session that decides anything is an actor publishing the catalog's own bar
 from __future__ import annotations
 
 import asyncio
+import sys
 from collections.abc import Callable
 from typing import Protocol
 
+from copilot.live.halt import orders_allowed
+from copilot.live.halt import read_latch
 from copilot.live.session import PaperSession
 from copilot.live.symbology import ROUTING_BY_VENUE
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
@@ -178,7 +181,20 @@ def build_paper_node(
         node.add_actor(actor)
 
     risk_engine = node.risk_engine
-    apply_order_switch(risk_engine, orders_enabled=session.orders_enabled)
+    latch = read_latch()
+    allowed = orders_allowed(
+        requested=session.orders_enabled,
+        cancels_only=session.cancels_only,
+        latch=latch,
+    )
+    if session.orders_enabled and not allowed and latch is not None:
+        print(
+            f"HALT LATCH {latch.latch_id} engaged {latch.engaged_at} ({latch.trigger}): "
+            f"{latch.reason}. This node starts HALTED; release with "
+            "python -m copilot.live.kill --release.",
+            file=sys.stderr,
+        )
+    apply_order_switch(risk_engine, orders_enabled=allowed)
     return node, risk_engine
 
 

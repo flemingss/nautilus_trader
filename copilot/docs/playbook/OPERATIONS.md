@@ -238,6 +238,13 @@ Safe mode means:
 
 **Test it deliberately in paper.** An untested kill switch is a comment.
 
+**In this overlay** it is `python -m copilot.live.kill --reason "..."`
+([ADR-0027](../decisions/0027-the-kill-switch-is-a-host-latch.md)). It engages a halt latch
+every order-capable node reads at build, alerts, runs the broker-confirmed sweep, flattens
+nothing, and prints the recovery checklist; `--release` takes the latch's id. A `CRITICAL`
+alert that expires unacknowledged engages the same latch, checked before every `day` phase.
+Drilled against paper on 2026-09-10.
+
 ## Tiny live canary
 
 Live trading is initially an **execution experiment**, not an income attempt.

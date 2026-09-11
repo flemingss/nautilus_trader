@@ -100,7 +100,10 @@ from copilot.data.calendar import trading_days
 from copilot.live.alerting import Alert
 from copilot.live.alerting import Severity
 from copilot.live.alerting import alerter_from_environment
+from copilot.live.halt import read_latch
 from copilot.live.heartbeat import ping
+from copilot.live.kill import acknowledgement_check
+from copilot.live.kill import describe as describe_latch
 from copilot.live.session import PAPER_ACCOUNT_ENV
 from copilot.live.session import add_connection_arguments
 from copilot.live.warmup import session_to_prepare
@@ -682,11 +685,37 @@ def notify(
     Send the run's alerts, and the morning's heartbeat, reporting each delivery.
     """
     alerter = alerter_from_environment()
-    for alert in alerts_for(phase, session, steps, results):
+    pending = alerts_for(phase, session, steps, results)
+    latch = read_latch()
+    if latch is not None:
+        pending.append(
+            Alert(
+                severity=Severity.WARNING,
+                title="halt latch still engaged",
+                body=f"Latch {latch.latch_id} since {latch.engaged_at}: {latch.reason}",
+                context={"phase": phase, "session": session or "?"},
+            ),
+        )
+    for alert in pending:
         delivery = alerter.send(alert)
         print(f"  alert {alert.severity} {alert.title!r}: {delivery.outcome}")
     if phase == MORNING:
         beat()
+
+
+def _check_the_halt() -> None:
+    """
+    Settle outstanding CRITICAL receipts, and say plainly if this host is halted.
+
+    First, on every phase and every day a timer fires, so an alert nobody answered on a
+    Friday night engages the latch before Monday's evening builds a node.
+
+    """
+    for line in acknowledgement_check():
+        print(line)
+    latch = read_latch()
+    if latch is not None:
+        print(describe_latch(latch) + "\n")
 
 
 def beat() -> None:
@@ -787,6 +816,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     now = datetime.now(tz=UTC)
+    if not args.dry_run:
+        _check_the_halt()
     if args.scheduled:
         if args.session:
             parser.error("--scheduled decides the session itself; do not pass --session")

@@ -68,6 +68,21 @@ def risk_ledger_path(account_id: str, directory: str = RISK_LEDGER_DIR) -> Path:
     return Path(directory).expanduser() / f"outcomes_{safe}.jsonl"
 
 
+HALT_LATCH_PATH = "~/.nautilus_copilot/HALT.json"
+"""
+The operator kill switch's latch. Present means every order-capable node on this host
+starts halted; see :mod:`copilot.live.halt`.
+
+Per host, not per account: a kill switch that halted one account while another kept
+trading on the same machine would be a switch the operator has to remember the scope of.
+
+"""
+
+ALERT_RECEIPTS_PATH = "~/.nautilus_copilot/alerts/receipts.jsonl"
+"""
+Every ``CRITICAL`` alert's receipt, so an unacknowledged one can engage the halt latch.
+"""
+
 HEARTBEAT_URL_ENV = "COPILOT_HEARTBEAT_URL"
 """
 A push-monitor URL the morning pings, so an external watcher notices when it stops.
@@ -117,11 +132,13 @@ def add_catalog_argument(parser: argparse.ArgumentParser) -> None:
 
 
 __all__ = [
+    "ALERT_RECEIPTS_PATH",
     "CATALOG_PATH_ENV",
     "DATABENTO_API_KEY_ENV",
     "DEFAULT_CATALOG",
     "DEFAULT_OPERATOR_TZ",
     "DEFAULT_STORE",
+    "HALT_LATCH_PATH",
     "HEARTBEAT_URL_ENV",
     "MARKETSTACK_API_KEY_ENV",
     "OPERATOR_TZ_ENV",

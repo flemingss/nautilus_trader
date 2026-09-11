@@ -92,6 +92,15 @@ class PaperSession:
     exec_client_id: int = 2
     orders_enabled: bool = False
     instrument_ids: tuple[str, ...] = field(default_factory=tuple)
+    cancels_only: bool = False
+    """
+    The session cancels and never submits - the sweep.
+
+    Exempts it from the halt latch (:mod:`copilot.live.halt`), because cancelling is what
+    safe mode does. A session that sets this and submits anyway is a bug the latch will not
+    catch, so only the sweep sets it.
+
+    """
 
     def __post_init__(self) -> None:
         """
