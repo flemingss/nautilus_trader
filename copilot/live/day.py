@@ -517,7 +517,7 @@ def evening_steps(
             "copilot.live.cancel_working",
             ("--all", *connection.argv),
             stops_on_failure=False,
-            why="an order is still working; confirm against the broker's own list",
+            why="the broker still reports an order working, or could not be asked",
         ),
     )
 
@@ -531,7 +531,7 @@ def sweep_steps(connection: Connection) -> tuple[Step, ...]:
             "sweep",
             "copilot.live.cancel_working",
             ("--all", *connection.argv),
-            why="an order is still working; confirm against the broker's own list",
+            why="the broker still reports an order working, or could not be asked",
         ),
     )
 
