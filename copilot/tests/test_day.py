@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from copilot.live.alerting import Severity
 from copilot.live.day import EVENING
 from copilot.live.day import MORNING
 from copilot.live.day import REQUIRED_TIMEZONE_ALIAS
@@ -24,7 +25,9 @@ from copilot.live.day import SWEEP
 from copilot.live.day import TIMEZONE_ALIASES_ENV
 from copilot.live.day import Connection
 from copilot.live.day import Step
+from copilot.live.day import StepResult
 from copilot.live.day import _clock_line
+from copilot.live.day import alerts_for
 from copilot.live.day import closed_session
 from copilot.live.day import completed_record
 from copilot.live.day import evening_steps
@@ -39,8 +42,11 @@ from copilot.live.day import scheduled_session
 from copilot.live.day import session_clock
 from copilot.live.day import summarise
 from copilot.live.day import sweep_steps
+from copilot.paths import HEARTBEAT_URL_ENV
 from copilot.paths import MARKETSTACK_API_KEY_ENV
 from copilot.paths import OPERATOR_TZ_ENV
+from copilot.paths import PUSHOVER_TOKEN_ENV
+from copilot.paths import PUSHOVER_USER_KEY_ENV
 
 
 CONNECTION = Connection(host="172.17.112.1", port=7497, account="DUT067974")
@@ -441,3 +447,98 @@ def test_a_sweep_after_the_open_names_todays_session_not_tomorrows() -> None:
     assert monitoring_session(eastern(2026, 9, 11, 10, 30)) == date(2026, 9, 11)
     assert monitoring_session(eastern(2026, 9, 11, 8, 0)) == date(2026, 9, 11)
     assert monitoring_session(eastern(2026, 9, 12, 10, 30)) == date(2026, 9, 14)
+
+
+# --------------------------------------------------------------------------- who is told
+
+
+def _result(name: str, code: int | None, *, skipped: bool = False) -> StepResult:
+    return StepResult(name, ("python", "-m", name), code, 1.0, skipped=skipped)
+
+
+def test_a_clean_morning_sends_only_its_summary() -> None:
+    steps = morning_steps("~/cat", today=date(2026, 9, 11))
+    results = tuple(_result(s.name, 0) for s in steps)
+
+    alerts = alerts_for(MORNING, "2026-09-11", steps, results)
+
+    assert [a.severity for a in alerts] == [Severity.INFO]
+    assert "4 of 4 steps passed" in alerts[0].body
+
+
+def test_a_stopping_failure_warns_and_names_what_it_protects() -> None:
+    steps = evening_steps(
+        "~/cat",
+        session=date(2026, 9, 11),
+        connection=CONNECTION,
+        allocation=None,
+        risk_fraction=None,
+    )
+    codes = {"append": 0, "corporate actions": 0, "preflight": 0, "warmup": 1}
+    results = tuple(_result(s.name, codes.get(s.name), skipped=s.name not in codes) for s in steps)
+
+    alerts = alerts_for(EVENING, "2026-09-11", steps, results)
+
+    assert len(alerts) == 1, "skipped steps are not failures, and an evening sends no summary"
+    assert alerts[0].severity == Severity.WARNING
+    assert alerts[0].title == "day evening: warmup failed"
+    assert "stopped the day" in alerts[0].body
+    assert "cannot warm every activation" in alerts[0].body
+
+
+def test_a_failed_sweep_is_not_repeated_by_the_day_it_ran_in() -> None:
+    """
+    The sweep raises its own CRITICAL; a second WARNING for the same order is noise.
+    """
+    steps = sweep_steps(CONNECTION)
+    assert steps[0].alerts_itself
+
+    assert alerts_for(SWEEP, "2026-09-11", steps, (_result("sweep", 1),)) == []
+
+
+def test_a_reporting_failure_still_warns() -> None:
+    steps = morning_steps("~/cat", today=date(2026, 9, 11))
+    results = tuple(_result(s.name, 3 if s.name == "append" else 0) for s in steps)
+
+    alerts = alerts_for(MORNING, "2026-09-11", steps, results)
+
+    assert [a.severity for a in alerts] == [Severity.WARNING, Severity.INFO]
+    assert "stopped the day" not in alerts[0].body
+
+
+def test_a_scheduled_run_refuses_without_alerting_credentials() -> None:
+    complete = {
+        TIMEZONE_ALIASES_ENV: REQUIRED_TIMEZONE_ALIAS,
+        MARKETSTACK_API_KEY_ENV: "k",
+    }
+    assert required_environment(EVENING, environ=complete, account="DU1") == ()
+
+    missing = required_environment(EVENING, environ=complete, account="DU1", scheduled=True)
+
+    assert len(missing) == 1
+    assert PUSHOVER_TOKEN_ENV in missing[0]
+    armed = {**complete, PUSHOVER_TOKEN_ENV: "t", PUSHOVER_USER_KEY_ENV: "u"}
+    assert required_environment(EVENING, environ=armed, account="DU1", scheduled=True) == ()
+
+
+def test_a_scheduled_morning_with_nothing_to_do_still_beats(monkeypatch, capsys) -> None:
+    """
+    A quiet weekend has to read as alive to the watcher, or it pages every Saturday.
+    """
+    saturday = eastern(2026, 9, 12, 17, 0)
+    pinged: list[str] = []
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN206 - matches datetime.now
+            return saturday.astimezone(tz)
+
+    monkeypatch.setattr("copilot.live.day.datetime", Frozen)
+    monkeypatch.setattr(
+        "copilot.live.day.ping",
+        lambda url: (pinged.append(url), (True, "pinged"))[1],
+    )
+    monkeypatch.setenv(HEARTBEAT_URL_ENV, "https://watcher.example/push/abc")
+
+    assert main(["morning", "--scheduled"]) == 0
+    assert pinged == ["https://watcher.example/push/abc"]

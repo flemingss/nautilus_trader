@@ -68,8 +68,8 @@ last column is what makes it done.
 | --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | 1   | **Make `day` safe to fire from a timer** (done)           | On a weekend, a holiday or a second run for the same session, each phase exits 0 saying there is nothing to do, and a test proves it |
 | 2   | **Fix the evening's ordering** (done)                     | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
-| 3   | **Wire alerting into its callers**                        | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
-| 4   | **The heartbeat's summary**                               | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
+| 3   | **Wire alerting into its callers** (done)                 | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
+| 4   | **The heartbeat's summary** (done)                        | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
 | 5   | **Review the guard's cooldown across a restart** (done)   | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
 | 6   | **`copilot/ops/`: runbook, units, compose, env template** | The stand-up below is written as commands; systemd units and timers, the Gateway compose file and an environment template exist      |
 | 7   | **A host check**                                          | One command reports what a fresh VM is missing: variables, secrets file mode, Docker, Gateway port, clock sync, catalog, disk        |
@@ -85,15 +85,15 @@ runs alongside all of it on the dev box.
 Each stage has a check that must pass before the next starts. Nothing is scheduled until
 stage six.
 
-| Stage | Do                                                                                         | Passes when                                                                                                           |
-| ----- | ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- |
-| 1     | Provision; clone; re-arm the git guards; toolchain; `make build-debug` with the linker fix | The build links, and `pytest copilot/tests` passes on the VM                                                          |
-| 2     | Copy `~/.nautilus_copilot` from the dev box; place `secrets.env`                           | **`validate --changed` reports every verdict unchanged**: the VM reproduces the dev box from the same commit and data |
-| 3     | Pushover: `alerting --send-test`, then a `CRITICAL` acknowledged from the phone            | Delivery and the acknowledgement receipt both read back                                                               |
-| 4     | Gateway container: paper, `READ_ONLY_API=no`, host port 4002 to the container's 4004       | `preflight` passes 15 of 15 against Gateway; the host check is clean                                                  |
-| 5     | One supervised day by hand, the loop above in order                                        | Every phase exits as designed; the sweep is clear against the broker; morning's comparison matches replay             |
-| 6     | Enable the timers; watch the first Gateway restart                                         | The loop runs a second day untouched, and the node reconnects and reconciles across the restart                       |
-| 7     | Unattended                                                                                 | The playbook's gate: alerts and recovery drills passed, the kill command exists, a week of stage six clean            |
+| Stage | Do                                                                                                                                     | Passes when                                                                                                           |
+| ----- | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| 1     | Provision; clone; re-arm the git guards; toolchain; `make build-debug` with the linker fix                                             | The build links, and `pytest copilot/tests` passes on the VM                                                          |
+| 2     | Copy `~/.nautilus_copilot` from the dev box; place `secrets.env`                                                                       | **`validate --changed` reports every verdict unchanged**: the VM reproduces the dev box from the same commit and data |
+| 3     | Pushover: `alerting --send-test`, then a `CRITICAL` acknowledged from the phone; set `COPILOT_HEARTBEAT_URL` to the watcher's push URL | Delivery and the acknowledgement receipt both read back; a scheduled morning's ping arrives at the watcher            |
+| 4     | Gateway container: paper, `READ_ONLY_API=no`, host port 4002 to the container's 4004                                                   | `preflight` passes 15 of 15 against Gateway; the host check is clean                                                  |
+| 5     | One supervised day by hand, the loop above in order                                                                                    | Every phase exits as designed; the sweep is clear against the broker; morning's comparison matches replay             |
+| 6     | Enable the timers; watch the first Gateway restart                                                                                     | The loop runs a second day untouched, and the node reconnects and reconciles across the restart                       |
+| 7     | Unattended                                                                                                                             | The playbook's gate: alerts and recovery drills passed, the kill command exists, a week of stage six clean            |
 
 ## To settle at stand-up, not before
 

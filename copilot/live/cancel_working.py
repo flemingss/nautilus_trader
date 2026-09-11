@@ -87,6 +87,9 @@ from typing import Any
 
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import find_account
+from copilot.live.alerting import Alert
+from copilot.live.alerting import Severity
+from copilot.live.alerting import alerter_from_environment
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
 from copilot.live.node import wait_for_settlement
@@ -467,7 +470,37 @@ def main(argv: list[str] | None = None) -> int:
     confirmation = asyncio.run(
         confirm(lambda: census(census_session, instrument_ids=instrument_ids)),
     )
-    return report(confirmation)
+    code = report(confirmation)
+    alert = sweep_alert(confirmation, account=args.account)
+    if alert is not None:
+        delivery = alerter_from_environment().send(alert)
+        print(f"alert CRITICAL {alert.title!r}: {delivery.outcome}")
+    return code
+
+
+def sweep_alert(confirmation: Confirmation, *, account: str) -> Alert | None:
+    """
+    Return the ``CRITICAL`` alert a sweep owes, or None when the broker is clear.
+
+    Critical because the monitoring-end policy names this exact case - *alert on any order
+    whose status cannot be confirmed* - and because it is the one failure in the day whose
+    cost grows while nobody looks: an order left working overnight is a position by morning.
+
+    """
+    if confirmation.verdict == BROKER_CLEAR:
+        return None
+    last = confirmation.censuses[-1] if confirmation.censuses else None
+    if confirmation.verdict == STILL_WORKING and last is not None:
+        body = f"The broker still reports orders open after the sweep: {last.open}."
+    else:
+        body = "No census could read the broker, so no order's status can be confirmed."
+    return Alert(
+        severity=Severity.CRITICAL,
+        title=f"sweep {confirmation.verdict}",
+        body=body + " Check the broker's own order list now, and do not re-enable orders "
+        "until it reconciles.",
+        context={"account": account, "censuses": str(len(confirmation.censuses))},
+    )
 
 
 def report(confirmation: Confirmation) -> int:
@@ -510,6 +543,7 @@ __all__ = [
     "instruments_to_sweep",
     "report",
     "sweep",
+    "sweep_alert",
 ]
 
 

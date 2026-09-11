@@ -45,6 +45,18 @@ session in Eastern time - a morning after today's close, an evening before today
 sweep after it - and exits 0 saying there is nothing to do otherwise. A morning or evening
 that already passed for its session is not run again. Hand-run phases are unchanged.
 
+Who is told
+-----------
+The day is where every step's exit code is read, so it is where alerting is wired
+([ADR-0023](../docs/decisions/0023-a-critical-alert-demands-acknowledgement.md) sets the
+severities). A step that fails raises a ``WARNING`` naming the step and what its failure
+protects; a stopped day is the safe direction, so it does not wake anyone. The sweep raises
+its own ``CRITICAL`` - an order that may still be working is the case that must - so the day
+does not repeat it. Every morning that runs ends with an ``INFO`` summary, and every morning,
+run or not, pings ``COPILOT_HEARTBEAT_URL`` for a watcher off the host. A scheduled run
+refuses without alerting credentials: an unattended run nobody is told about when it breaks
+is exactly what the playbook forbids.
+
 What the day needs exported, checked first
 ------------------------------------------
 Three variables, two of them in no ``.env``, one of which fails opaquely. They are checked
@@ -85,12 +97,19 @@ from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import session_close
 from copilot.data.calendar import session_open
 from copilot.data.calendar import trading_days
+from copilot.live.alerting import Alert
+from copilot.live.alerting import Severity
+from copilot.live.alerting import alerter_from_environment
+from copilot.live.heartbeat import ping
 from copilot.live.session import PAPER_ACCOUNT_ENV
 from copilot.live.session import add_connection_arguments
 from copilot.live.warmup import session_to_prepare
 from copilot.paths import DEFAULT_OPERATOR_TZ
+from copilot.paths import HEARTBEAT_URL_ENV
 from copilot.paths import MARKETSTACK_API_KEY_ENV
 from copilot.paths import OPERATOR_TZ_ENV
+from copilot.paths import PUSHOVER_TOKEN_ENV
+from copilot.paths import PUSHOVER_USER_KEY_ENV
 from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import load_activations
 
@@ -165,6 +184,10 @@ class Step:
     why: str = ""
     """
     One line on what a failure here protects, printed when it stops the day.
+    """
+    alerts_itself: bool = False
+    """
+    The step raises its own alert, so the day does not repeat it.
     """
 
     @property
@@ -360,11 +383,17 @@ def required_environment(
     *,
     environ: Mapping[str, str],
     account: str = "",
+    scheduled: bool = False,
 ) -> tuple[str, ...]:
     """
     Return what the phase needs exported and does not have, one line each.
     """
     missing: list[str] = []
+    if scheduled and not (environ.get(PUSHOVER_TOKEN_ENV) and environ.get(PUSHOVER_USER_KEY_ENV)):
+        missing.append(
+            f"{PUSHOVER_TOKEN_ENV} and {PUSHOVER_USER_KEY_ENV}: a scheduled run must be able to "
+            "tell someone when it breaks",
+        )
     if phase in (MORNING, EVENING) and not environ.get(MARKETSTACK_API_KEY_ENV):
         missing.append(f"{MARKETSTACK_API_KEY_ENV}: append and the corporate-actions scan need it")
     if phase in (EVENING, SWEEP):
@@ -518,6 +547,7 @@ def evening_steps(
             ("--all", *connection.argv),
             stops_on_failure=False,
             why="the broker still reports an order working, or could not be asked",
+            alerts_itself=True,
         ),
     )
 
@@ -532,6 +562,7 @@ def sweep_steps(connection: Connection) -> tuple[Step, ...]:
             "copilot.live.cancel_working",
             ("--all", *connection.argv),
             why="the broker still reports an order working, or could not be asked",
+            alerts_itself=True,
         ),
     )
 
@@ -599,6 +630,71 @@ def summarise(results: tuple[StepResult, ...]) -> int:
     total = sum(r.seconds for r in results)
     print(f"{'':<20}{'':<10}{total:>8.1f}")
     return 0 if all(r.passed for r in results) else 1
+
+
+def alerts_for(
+    phase: str,
+    session: str | None,
+    steps: tuple[Step, ...],
+    results: tuple[StepResult, ...],
+) -> list[Alert]:
+    """
+    Return what the operator is told about one run: each failure, and the morning's summary.
+    """
+    context = {"phase": phase, "session": session or "?"}
+    alerts: list[Alert] = []
+    for step, result in zip(steps, results, strict=True):
+        if result.skipped or result.passed or step.alerts_itself:
+            continue
+        stopped = " and stopped the day" if step.stops_on_failure else ""
+        alerts.append(
+            Alert(
+                severity=Severity.WARNING,
+                title=f"day {phase}: {step.name} failed",
+                body=f"{step.name} exited {result.exit_code}{stopped}: {step.why}.",
+                context={**context, "command": " ".join(step.command)},
+            ),
+        )
+    if phase == MORNING:
+        passed = sum(1 for r in results if r.passed)
+        lines = [
+            f"{r.name}: {'skipped' if r.skipped else 'PASS' if r.passed else f'exit {r.exit_code}'}"
+            for r in results
+        ]
+        alerts.append(
+            Alert(
+                severity=Severity.INFO,
+                title="day morning summary",
+                body=f"{passed} of {len(results)} steps passed.\n" + "\n".join(lines),
+                context=context,
+            ),
+        )
+    return alerts
+
+
+def notify(
+    phase: str,
+    session: str | None,
+    steps: tuple[Step, ...],
+    results: tuple[StepResult, ...],
+) -> None:
+    """
+    Send the run's alerts, and the morning's heartbeat, reporting each delivery.
+    """
+    alerter = alerter_from_environment()
+    for alert in alerts_for(phase, session, steps, results):
+        delivery = alerter.send(alert)
+        print(f"  alert {alert.severity} {alert.title!r}: {delivery.outcome}")
+    if phase == MORNING:
+        beat()
+
+
+def beat() -> None:
+    """
+    Ping the heartbeat URL and say what happened.
+    """
+    _, line = ping(os.environ.get(HEARTBEAT_URL_ENV, "").strip())
+    print(f"  {line}")
 
 
 @dataclass
@@ -697,9 +793,17 @@ def main(argv: list[str] | None = None) -> int:
         nothing = _nothing_scheduled(args, now)
         if nothing:
             print(f"nothing to do: {nothing}")
+            if args.phase == MORNING:
+                # A quiet weekend must still read as alive to the watcher.
+                beat()
             return 0
 
-    missing = required_environment(args.phase, environ=os.environ, account=args.account)
+    missing = required_environment(
+        args.phase,
+        environ=os.environ,
+        account=args.account,
+        scheduled=args.scheduled,
+    )
     if missing and not args.dry_run:
         print("refused: the day needs these exported first")
         for line in missing:
@@ -724,6 +828,7 @@ def main(argv: list[str] | None = None) -> int:
     path = OUT_DIR / f"day_{args.phase}_{now.strftime('%Y%m%dT%H%M%SZ')}.json"
     path.write_text(json.dumps(vars(record), indent=2, default=str) + "\n")
     print(f"\n  filed {path}")
+    notify(args.phase, record.session, steps, results)
     return exit_code
 
 
@@ -740,11 +845,14 @@ __all__ = [
     "SessionClock",
     "Step",
     "StepResult",
+    "alerts_for",
+    "beat",
     "closed_session",
     "completed_record",
     "evening_steps",
     "monitoring_session",
     "morning_steps",
+    "notify",
     "operator_zone",
     "registered_symbols",
     "required_environment",

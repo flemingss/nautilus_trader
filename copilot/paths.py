@@ -68,6 +68,16 @@ def risk_ledger_path(account_id: str, directory: str = RISK_LEDGER_DIR) -> Path:
     return Path(directory).expanduser() / f"outcomes_{safe}.jsonl"
 
 
+HEARTBEAT_URL_ENV = "COPILOT_HEARTBEAT_URL"
+"""
+A push-monitor URL the morning pings, so an external watcher notices when it stops.
+
+Pushover reports what the system sends and cannot report that it stopped sending. The
+watcher - Uptime Kuma, healthchecks, or the owner's cluster monitoring - alerts on a
+missed ping. Optional; unset, nothing is pinged and the morning says so.
+
+"""
+
 MARKETSTACK_API_KEY_ENV = "MARKETSTACK_API_KEY"
 DATABENTO_API_KEY_ENV = "DATABENTO_API_KEY"
 PUSHOVER_TOKEN_ENV = "PUSHOVER_TOKEN"  # noqa: S105 - the variable's name, never its value
@@ -112,6 +122,7 @@ __all__ = [
     "DEFAULT_CATALOG",
     "DEFAULT_OPERATOR_TZ",
     "DEFAULT_STORE",
+    "HEARTBEAT_URL_ENV",
     "MARKETSTACK_API_KEY_ENV",
     "OPERATOR_TZ_ENV",
     "PUSHOVER_TOKEN_ENV",

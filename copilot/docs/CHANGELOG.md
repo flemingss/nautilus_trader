@@ -2,6 +2,29 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, who is told
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 3 and 4). Delivery
+with real credentials is shaken out on the VM.
+
+### Added
+
+- **Alerting is called.** Until now `live/alerting.py` existed and nothing used it. Wired
+  where exit codes are read, at the severities
+  [ADR-0023](decisions/0023-a-critical-alert-demands-acknowledgement.md) binds:
+  - **`CRITICAL`** from the sweep when the broker is not confirmed clear - still working, or
+    unreadable. The monitoring-end policy names this case, and it is the failure whose cost
+    grows while nobody looks.
+  - **`WARNING`** from `day` for each failed step, naming what its failure protects and
+    whether it stopped the day. A stopped day is the safe direction and wakes no one. Steps
+    that alert for themselves are not repeated.
+  - **`INFO`**, every morning that runs: a summary of its steps.
+- **A heartbeat.** Every morning - run, or scheduled with nothing to do, so a weekend reads
+  as alive - pings `COPILOT_HEARTBEAT_URL`, for a push monitor off the host to alert on a
+  missed one. Pushover cannot report that the system stopped sending. Never raises.
+- **A scheduled run refuses without Pushover credentials.** Hand runs are unchanged; an
+  unattended one that cannot tell anyone it broke is what the playbook forbids.
+
 ## 2026-09-10, the sweep asks the broker
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 8).
