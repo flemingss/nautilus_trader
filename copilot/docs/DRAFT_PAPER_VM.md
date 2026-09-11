@@ -70,7 +70,7 @@ last column is what makes it done.
 | 2   | **Fix the evening's ordering** (done)                     | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
 | 3   | **Wire alerting into its callers**                        | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
 | 4   | **The heartbeat's summary**                               | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
-| 5   | **Review the guard's cooldown across a restart**          | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
+| 5   | **Review the guard's cooldown across a restart** (done)   | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
 | 6   | **`copilot/ops/`: runbook, units, compose, env template** | The stand-up below is written as commands; systemd units and timers, the Gateway compose file and an environment template exist      |
 | 7   | **A host check**                                          | One command reports what a fresh VM is missing: variables, secrets file mode, Docker, Gateway port, clock sync, catalog, disk        |
 | 8   | **Confirm the sweep against the broker**                  | *Clear* means the broker's own open orders are empty, not that no rejection arrived; testable against TWS on the dev box             |

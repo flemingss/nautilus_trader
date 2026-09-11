@@ -50,6 +50,24 @@ Tokyo remains the default because the playbook's schedule is written in JST.
 
 """
 
+RISK_LEDGER_DIR = "~/.nautilus_copilot/risk"
+"""
+The protection breaker's closed-trade evidence, one file per account.
+
+Per account because paper and live keep separate everything, and a paper loss must never
+count toward a live cooldown or the reverse.
+
+"""
+
+
+def risk_ledger_path(account_id: str, directory: str = RISK_LEDGER_DIR) -> Path:
+    """
+    Return the breaker's ledger for one account.
+    """
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in account_id)
+    return Path(directory).expanduser() / f"outcomes_{safe}.jsonl"
+
+
 MARKETSTACK_API_KEY_ENV = "MARKETSTACK_API_KEY"
 DATABENTO_API_KEY_ENV = "DATABENTO_API_KEY"
 PUSHOVER_TOKEN_ENV = "PUSHOVER_TOKEN"  # noqa: S105 - the variable's name, never its value
@@ -98,7 +116,9 @@ __all__ = [
     "OPERATOR_TZ_ENV",
     "PUSHOVER_TOKEN_ENV",
     "PUSHOVER_USER_KEY_ENV",
+    "RISK_LEDGER_DIR",
     "add_catalog_argument",
     "catalog_path",
+    "risk_ledger_path",
     "store_path",
 ]
