@@ -161,6 +161,14 @@ pub struct InteractiveBrokersExecutionClientConfig {
     /// Whether to fetch all open orders (reqAllOpenOrders vs reqOpenOrders).
     #[builder(default)]
     pub fetch_all_open_orders: bool,
+    /// Whether a cancel-all command also sends IB's global cancel (reqGlobalCancel).
+    ///
+    /// IB lets an API client cancel only the orders it placed; a cancel for another client
+    /// id's order is ignored without an error. The global cancel is the one request that
+    /// cancels every open order on the account, whoever placed it. Off by default because it
+    /// reaches beyond the command's instrument; for a client that exists to sweep an account.
+    #[builder(default)]
+    pub global_cancel_on_cancel_all: bool,
     /// Whether to track option exercise from position updates.
     #[builder(default)]
     pub track_option_exercise_from_position_update: bool,

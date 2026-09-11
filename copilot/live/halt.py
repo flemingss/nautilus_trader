@@ -13,8 +13,10 @@ exemption is a session declared **cancels only** - the sweep - because cancellin
 safe mode does, and cancel commands do not pass through the risk engine anyway
 (``crates/risk/src/engine/mod.rs`` handles submit, modify and account queries only).
 
-Engaged by the operator (``python -m copilot.live.kill``) or by an unacknowledged
-``CRITICAL`` alert. Released only by the operator, retyping the latch's id.
+Engaged by the operator (``python -m copilot.live.kill``), by a ``CRITICAL`` alert that
+expired unacknowledged, or by one that could not be delivered at all. Released only by the
+operator, retyping the latch's id. The two automatic triggers mean nobody has been told, so
+while one holds the morning withholds its heartbeat (:func:`engaged_automatically`).
 
 """
 
@@ -34,6 +36,7 @@ from copilot.paths import HALT_LATCH_PATH
 
 OPERATOR = "operator"
 UNACKNOWLEDGED_CRITICAL = "unacknowledged_critical"
+UNDELIVERED_CRITICAL = "undelivered_critical"
 
 
 @dataclass(frozen=True)
@@ -128,6 +131,17 @@ def release(latch_id: str, *, path: str | Path = HALT_LATCH_PATH) -> Latch:
     return latch
 
 
+def engaged_automatically(latch: Latch | None) -> bool:
+    """
+    Whether a latch no operator engaged holds, so nobody may know the host is halted.
+
+    Everything but ``operator``: the two unanswered-alert triggers, and an unreadable latch,
+    whose trigger cannot be known.
+
+    """
+    return latch is not None and latch.trigger != OPERATOR
+
+
 def orders_allowed(*, requested: bool, cancels_only: bool, latch: Latch | None) -> bool:
     """
     Return whether a node may leave its risk engine active.
@@ -144,8 +158,10 @@ def orders_allowed(*, requested: bool, cancels_only: bool, latch: Latch | None) 
 __all__ = [
     "OPERATOR",
     "UNACKNOWLEDGED_CRITICAL",
+    "UNDELIVERED_CRITICAL",
     "Latch",
     "engage",
+    "engaged_automatically",
     "latch_path",
     "orders_allowed",
     "read_latch",

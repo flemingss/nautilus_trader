@@ -596,7 +596,7 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
 
         tracing::info!("Connecting Interactive Brokers execution client...");
         log::debug!(
-            "Execution client config host={} port={} client_id={} account_id={:?} request_timeout={} connection_timeout={} fetch_all_open_orders={} track_option_exercise_from_position_update={}",
+            "Execution client config host={} port={} client_id={} account_id={:?} request_timeout={} connection_timeout={} fetch_all_open_orders={} global_cancel_on_cancel_all={} track_option_exercise_from_position_update={}",
             self.config.host,
             self.config.port,
             self.config.client_id,
@@ -604,6 +604,7 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
             self.config.request_timeout,
             self.config.connection_timeout,
             self.config.fetch_all_open_orders,
+            self.config.global_cancel_on_cancel_all,
             self.config.track_option_exercise_from_position_update
         );
 
@@ -1702,6 +1703,29 @@ impl ExecutionClient for InteractiveBrokersExecutionClient {
         }
 
         let client = self.ib_client.as_ref().context("IB client not connected")?;
+
+        if self.config.global_cancel_on_cancel_all {
+            // IB ignores a cancel for an order another client id placed, without an error, so
+            // per-order cancels reach only this client's own orders. The global cancel reaches
+            // every open order on the account, including ones the cache never adopted, and it
+            // replaces the per-order path: an order it has already removed would otherwise log
+            // a failed perm-id resolution at ERROR on every sweep that found one.
+            tracing::info!(
+                "Sending IB global cancel for every open order on the account (cancel-all for {})",
+                cmd.instrument_id
+            );
+            let global_client = client.as_arc().clone();
+            let global = get_runtime().spawn(async move {
+                if let Err(e) = global_client.global_cancel().await {
+                    tracing::error!("IB global cancel failed: {e}");
+                }
+            });
+            self.pending_tasks
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Failed to lock pending tasks"))?
+                .push(global);
+            return Ok(());
+        }
 
         // Get open orders from cache before spawning async task (Rc doesn't work across async boundaries)
         // Note: In Rust, instrument_id is always required, so we always filter by it

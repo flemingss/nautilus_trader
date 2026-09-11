@@ -28,6 +28,14 @@ still writes every alert to stderr and reports ``delivered=False``. The failure 
 avoids is the expensive one: a notifier that swallows alerts looks exactly like a system
 with nothing to report.
 
+**A CRITICAL that cannot be delivered halts the host.** Nobody can acknowledge an alert that
+never arrived, so it is the kill switch's own condition reached early: an alerter built by
+:func:`alerter_from_environment` engages the halt latch
+(:mod:`copilot.live.halt`, trigger ``undelivered_critical``), and while an automatic latch is
+engaged the morning withholds its heartbeat, so the watcher off the host - the one path that
+does not depend on Pushover - raises the alarm instead. Until 2026-09-11 an undelivered
+CRITICAL was printed and forgotten (``docs/AUDIT_2026-09-11.md``, F3).
+
 **Flooding is a delivery failure too.** An unattended loop can send thousands of
 identical alerts, burn the monthly quota and train the operator to ignore the app.
 :class:`FloodGuard` collapses repeats of the same severity and title inside a window and
@@ -55,6 +63,7 @@ import sys
 import time
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from datetime import UTC
 from datetime import datetime
 from enum import StrEnum
@@ -67,12 +76,16 @@ from urllib.parse import urlencode
 from urllib.request import Request
 from urllib.request import urlopen
 
+from copilot.live.halt import UNDELIVERED_CRITICAL
+from copilot.live.halt import engage
 from copilot.paths import ALERT_RECEIPTS_PATH
+from copilot.paths import HALT_LATCH_PATH
 from copilot.paths import PUSHOVER_TOKEN_ENV
 from copilot.paths import PUSHOVER_USER_KEY_ENV
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from collections.abc import Mapping
     from collections.abc import MutableMapping
     from typing import TextIO
@@ -113,6 +126,67 @@ RETRY_SECONDS_ENV = "COPILOT_ALERT_RETRY_SECONDS"
 EXPIRE_SECONDS_ENV = "COPILOT_ALERT_EXPIRE_SECONDS"
 
 TITLE_PREFIX = "copilot"
+
+
+def deadline_problem(retry_seconds: int, expire_seconds: int) -> str:
+    """
+    Return why Pushover would not honour this retry and expiry, or "" when it would.
+    """
+    if retry_seconds < RETRY_SECONDS_MIN:
+        return f"retry_seconds must be at least {RETRY_SECONDS_MIN}, got {retry_seconds}"
+    if expire_seconds > EXPIRE_SECONDS_MAX:
+        return f"expire_seconds must be at most {EXPIRE_SECONDS_MAX}, got {expire_seconds}"
+    if expire_seconds // retry_seconds > RETRY_CAP:
+        return (
+            f"retry_seconds={retry_seconds} over expire_seconds={expire_seconds} implies "
+            f"more than {RETRY_CAP} retries, which Pushover caps; widen the interval"
+        )
+    return ""
+
+
+@dataclass(frozen=True)
+class AlertSettings:
+    """
+    The declared acknowledgement deadline, and anything wrong with how it was declared.
+    """
+
+    retry_seconds: int = DEFAULT_RETRY_SECONDS
+    expire_seconds: int = DEFAULT_EXPIRE_SECONDS
+    problems: tuple[str, ...] = ()
+
+
+def alert_settings(environ: Mapping[str, str]) -> AlertSettings:
+    """
+    Read the declared deadline, putting the default in place of what would not work.
+
+    **A bad setting must not stop a trading phase.** Until 2026-09-11 an empty
+    ``COPILOT_ALERT_RETRY_SECONDS=`` or an expiry Pushover caps raised inside every ``day``
+    phase before it did anything (``docs/AUDIT_2026-09-11.md``, F2). Nor may it be replaced
+    silently, or the operator believes a deadline that is not in force: each problem is named,
+    for stderr and for the host check. A blank value is the template's, not a problem.
+
+    """
+    problems: list[str] = []
+    values: dict[str, int] = {}
+    for name, default in (
+        (RETRY_SECONDS_ENV, DEFAULT_RETRY_SECONDS),
+        (EXPIRE_SECONDS_ENV, DEFAULT_EXPIRE_SECONDS),
+    ):
+        raw = environ.get(name, "").strip()
+        try:
+            values[name] = int(raw) if raw else default
+        except ValueError:
+            problems.append(f"{name}={raw!r} is not a whole number of seconds")
+    if not problems:
+        refused = deadline_problem(values[RETRY_SECONDS_ENV], values[EXPIRE_SECONDS_ENV])
+        if not refused:
+            return AlertSettings(values[RETRY_SECONDS_ENV], values[EXPIRE_SECONDS_ENV])
+        problems.append(refused)
+    problems.append(
+        f"the default deadline is in force instead: {DEFAULT_RETRY_SECONDS}s retries over "
+        f"{DEFAULT_EXPIRE_SECONDS}s",
+    )
+    return AlertSettings(problems=tuple(problems))
 
 
 class Severity(StrEnum):
@@ -334,19 +408,9 @@ class PushoverNotifier:
         """
         Hold the credentials and a deadline Pushover will honour.
         """
-        if retry_seconds < RETRY_SECONDS_MIN:
-            raise ValueError(
-                f"retry_seconds must be at least {RETRY_SECONDS_MIN}, got {retry_seconds}",
-            )
-        if expire_seconds > EXPIRE_SECONDS_MAX:
-            raise ValueError(
-                f"expire_seconds must be at most {EXPIRE_SECONDS_MAX}, got {expire_seconds}",
-            )
-        if expire_seconds // retry_seconds > RETRY_CAP:
-            raise ValueError(
-                f"retry_seconds={retry_seconds} over expire_seconds={expire_seconds} implies "
-                f"more than {RETRY_CAP} retries, which Pushover caps; widen the interval",
-            )
+        problem = deadline_problem(retry_seconds, expire_seconds)
+        if problem:
+            raise ValueError(problem)
         self._token = token
         self._user_key = user_key
         self._retry_seconds = retry_seconds
@@ -504,7 +568,8 @@ class ReceiptLog:
     The kill switch's trigger - *a critical alert unacknowledged by deadline* - needs the
     receipt after the process that sent the alert has gone, so it is kept on disk. Append
     only: a ``sent`` line when the alert goes, a ``resolved`` line when it is acknowledged or
-    expires. Like everything else here it never raises into its caller.
+    expires. Writing never raises into its caller; reading a log that exists and cannot be
+    read does, because the caller has to say so rather than read it as nothing outstanding.
 
     """
 
@@ -538,6 +603,10 @@ class ReceiptLog:
     def outstanding(self) -> dict[str, str]:
         """
         Return receipts sent and not yet resolved, mapped to their alert's title.
+
+        A malformed line is skipped and named on stderr. A log that exists and cannot be
+        read raises ``OSError``: an unreadable log is not an empty one.
+
         """
         if not self.path.exists():
             return {}
@@ -546,13 +615,14 @@ class ReceiptLog:
         for line in self.path.read_text().splitlines():
             try:
                 row = json.loads(line)
-            except ValueError:
+                event, receipt = row.get("event"), str(row["receipt"])
+            except (ValueError, TypeError, KeyError, AttributeError):
                 print(f"warning: unreadable receipt line in {self.path}: {line!r}", file=sys.stderr)
                 continue
-            if row.get("event") == "sent":
-                sent[row["receipt"]] = row.get("title", "")
-            elif row.get("event") == "resolved":
-                resolved.add(row["receipt"])
+            if event == "sent":
+                sent[receipt] = row.get("title", "")
+            elif event == "resolved":
+                resolved.add(receipt)
         return {receipt: title for receipt, title in sent.items() if receipt not in resolved}
 
     def _append(self, row: Mapping[str, object]) -> None:
@@ -579,13 +649,19 @@ class Alerter:
         notifier: Notifier,
         guard: FloodGuard | None = None,
         receipts: ReceiptLog | None = None,
+        on_undelivered_critical: Callable[[Delivery], str] | None = None,
     ) -> None:
         """
-        Wrap a notifier with flood control, receipts, and the promise not to raise.
+        Wrap a notifier with flood control, receipts, escalation, and no raising.
+
+        ``on_undelivered_critical`` is called with a ``CRITICAL`` delivery that did not
+        arrive, and returns a note for the delivery's detail - what it did about it.
+
         """
         self._notifier = notifier
         self._guard = guard if guard is not None else FloodGuard()
         self._receipts = receipts
+        self._on_undelivered_critical = on_undelivered_critical
 
     @property
     def notifier(self) -> Notifier:
@@ -616,25 +692,32 @@ class Alerter:
         try:
             delivery = self._notifier.send(alert)
         except Exception as e:  # noqa: BLE001 - an alert must never take a session down
-            return Delivery(
+            delivery = Delivery(
                 alert=alert,
                 delivered=False,
                 notifier=self._notifier.name,
                 detail=f"notifier raised {type(e).__name__}: {e}",
-                suppressed=suppressed,
             )
         if self._receipts is not None:
             self._receipts.remember(delivery)
         if suppressed:
-            return Delivery(
-                alert=delivery.alert,
-                delivered=delivery.delivered,
-                notifier=delivery.notifier,
-                detail=delivery.detail,
-                receipt=delivery.receipt,
-                suppressed=suppressed,
-            )
+            delivery = replace(delivery, suppressed=suppressed)
+        if alert.severity is Severity.CRITICAL and not delivery.delivered:
+            delivery = self._escalate(delivery)
         return delivery
+
+    def _escalate(self, delivery: Delivery) -> Delivery:
+        """
+        Act on an undelivered ``CRITICAL`` and note on the delivery what was done.
+        """
+        if self._on_undelivered_critical is None:
+            return delivery
+        try:
+            note = self._on_undelivered_critical(delivery)
+        except Exception as e:  # noqa: BLE001 - an alert must never take a session down
+            note = f"escalation raised {type(e).__name__}: {e}"
+        detail = f"{delivery.detail}; {note}" if delivery.detail else note
+        return replace(delivery, detail=detail)
 
     def info(self, title: str, body: str, context: Mapping[str, str] | None = None) -> Delivery:
         """
@@ -668,28 +751,58 @@ def notifier_from_environment(environ: Mapping[str, str] | None = None) -> Notif
     user_key = source.get(PUSHOVER_USER_KEY_ENV, "").strip()
     if not token or not user_key:
         return StreamNotifier()
+    settings = alert_settings(source)
+    for problem in settings.problems:
+        print(f"warning: alert deadline setting: {problem}", file=sys.stderr)
     return PushoverNotifier(
         token,
         user_key,
-        retry_seconds=int(source.get(RETRY_SECONDS_ENV, DEFAULT_RETRY_SECONDS)),
-        expire_seconds=int(source.get(EXPIRE_SECONDS_ENV, DEFAULT_EXPIRE_SECONDS)),
+        retry_seconds=settings.retry_seconds,
+        expire_seconds=settings.expire_seconds,
     )
+
+
+def halt_on_undelivered(delivery: Delivery, *, latch_path: str | Path = HALT_LATCH_PATH) -> str:
+    """
+    Engage the halt latch for a ``CRITICAL`` that did not arrive, and say so.
+
+    Nobody can acknowledge what never reached them, so the kill switch's condition - a
+    critical alert unacknowledged by its deadline - is already met.
+
+    """
+    alert = delivery.alert
+    latch, engaged = engage(
+        f"CRITICAL alert {alert.title!r} could not be delivered "
+        f"({delivery.detail or delivery.notifier})",
+        trigger=UNDELIVERED_CRITICAL,
+        path=latch_path,
+    )
+    verb = "engaged" if engaged else "already engaged"
+    message = f"halt latch {latch.latch_id} {verb}: nobody can acknowledge an undelivered CRITICAL"
+    print(f"HALT: {message}", file=sys.stderr)
+    return message
 
 
 def alerter_from_environment(
     environ: Mapping[str, str] | None = None,
     receipts_path: str | Path = ALERT_RECEIPTS_PATH,
+    latch_path: str | Path = HALT_LATCH_PATH,
 ) -> Alerter:
     """
     Build the alerter a session needs, reading credentials from the environment.
 
     Its ``CRITICAL`` receipts are kept at ``receipts_path``, so the kill switch can find one
-    nobody acknowledged after the process that sent it has ended.
+    nobody acknowledged after the process that sent it has ended, and a ``CRITICAL`` that
+    cannot be delivered engages the latch at ``latch_path``.
 
     """
     return Alerter(
         notifier_from_environment(environ),
         receipts=ReceiptLog(Path(receipts_path).expanduser()),
+        on_undelivered_critical=lambda delivery: halt_on_undelivered(
+            delivery,
+            latch_path=latch_path,
+        ),
     )
 
 
@@ -730,7 +843,10 @@ def _check_receipt(args: argparse.Namespace) -> int:
             f"no transport configured: export {PUSHOVER_TOKEN_ENV} and {PUSHOVER_USER_KEY_ENV}",
         )
         return 1
-    state = notifier.receipt_status(args.receipt)
+    state = receipt_status(notifier, args.receipt)
+    if state is None:
+        print(f"receipt {args.receipt} could not be read back; see the warning above")
+        return 1
     print(f"receipt        {state.receipt}")
     print(f"acknowledged   {state.acknowledged}")
     print(f"expired        {state.expired}")
@@ -774,17 +890,29 @@ def receipt_status(notifier: Notifier, receipt: str) -> Acknowledgement | None:
     Read an emergency alert's acknowledgement, when the transport supports one.
 
     Returns ``None`` for a transport with no receipts, which is the honest answer: the
-    alert's fate is unknown rather than acknowledged.
+    alert's fate is unknown rather than acknowledged. ``None`` too when the transport cannot
+    be read - unreachable, a bad response - named on stderr. Until 2026-09-11 that raised,
+    and ``day`` runs this check first, so a Pushover outage stopped every phase before it did
+    anything (``docs/AUDIT_2026-09-11.md``, F2).
 
     """
     if not isinstance(notifier, PushoverNotifier):
         return None
-    return notifier.receipt_status(receipt)
+    try:
+        return notifier.receipt_status(receipt)
+    except (OSError, ValueError, TypeError, OverflowError) as e:
+        print(
+            f"warning: receipt {receipt} could not be read back ({type(e).__name__}: {e}); "
+            "it stays outstanding",
+            file=sys.stderr,
+        )
+        return None
 
 
 __all__ = [
     "Acknowledgement",
     "Alert",
+    "AlertSettings",
     "Alerter",
     "Delivery",
     "FloodGuard",
@@ -793,7 +921,10 @@ __all__ = [
     "ReceiptLog",
     "Severity",
     "StreamNotifier",
+    "alert_settings",
     "alerter_from_environment",
+    "deadline_problem",
+    "halt_on_undelivered",
     "main",
     "notifier_from_environment",
     "receipt_status",

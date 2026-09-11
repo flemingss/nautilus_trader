@@ -70,24 +70,47 @@ The precautionary-size caveat above survives: an order held in the TWS or Gatewa
 reached the broker, so a census cannot see it either. The paper VM's Gateway is to bypass
 order precautions for API orders for that reason (``docs/DRAFT_PAPER_VM.md``).
 
+The cancel has to start before it can settle
+--------------------------------------------
+From 2026-09-10 to 2026-09-11 **the sweep cancelled nothing.** Its wait asked whether every
+order found working had been acknowledged, and before the strategy has started it has found
+nothing, so the answer was yes at once: the wait returned without yielding, the node was told
+to stop before it had connected, and it aborted startup - *Stop signal received during
+startup* - without issuing a cancel. The census was unaffected, so every ``BROKER CLEAR`` in
+that window was true, and it was true only because the account was already clear. The audit
+of 2026-09-11 found it (``docs/AUDIT_2026-09-11.md``, F1).
+
+So the sweep now waits in two stages - for the strategy to start, then for the
+acknowledgements - and a sweep whose node never started says so, in its output, its record
+and its alert. The verdict stays the census's: a broker that is clear is clear whoever
+cancelled, but a sweep that could not start is a broken safety limb even on a clear day.
+
+Every run files ``live/out/sweep_<stamp>.json``; before that nothing a sweep found was kept.
+
 """
 
 from __future__ import annotations
 
 import argparse
 import asyncio
+import json
+import sys
 from collections.abc import Awaitable
 from collections.abc import Callable
 from collections.abc import Sequence
+from dataclasses import asdict
 from dataclasses import dataclass
 from dataclasses import field
+from dataclasses import replace
 from datetime import UTC
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import find_account
 from copilot.live.alerting import Alert
+from copilot.live.alerting import Delivery
 from copilot.live.alerting import Severity
 from copilot.live.alerting import alerter_from_environment
 from copilot.live.node import CANCEL_DEADLINE_SECS
@@ -102,6 +125,9 @@ from nautilus_trader.model import InstrumentId
 from nautilus_trader.model import Venue
 from nautilus_trader.trading import Strategy
 from nautilus_trader.trading import StrategyConfig
+
+
+OUT_DIR = Path(__file__).parent / "out"
 
 
 class CancelWorkingConfig(StrategyConfig):
@@ -142,6 +168,13 @@ class CancelWorking(Strategy):
         Working orders found per instrument before the sweep, by client order id.
         """
         self.canceled: list[str] = []
+        self.started = False
+        """
+        True once the cancels have been issued.
+
+        Until then nothing has been looked at.
+
+        """
 
     def on_start(self) -> None:
         """
@@ -155,6 +188,18 @@ class CancelWorking(Strategy):
         self.log.info(f"Working orders before sweep: {found or 'none'}")
         for instrument_id in self.config.instrument_ids:
             self.cancel_all_orders(instrument_id, strategy_only=False)
+        self.started = True
+
+    def settled(self) -> bool:
+        """
+        Whether the sweep has run and every order it found has been acknowledged.
+
+        **Not merely the second half.** Before ``on_start`` nothing has been found, so
+        *nothing outstanding* holds trivially; waiting on that alone stopped the node before
+        it started, and the sweep cancelled nothing for a day.
+
+        """
+        return self.started and not self.outstanding()
 
     def on_order_canceled(self, event: Any) -> None:
         """
@@ -194,8 +239,25 @@ CENSUS_READ_DEADLINE_SECS = 90
 How long one census node may take to connect, reconcile and start before it is unread.
 """
 
-CENSUS_DATA_CLIENT_ID = 823
-CENSUS_EXEC_CLIENT_ID = 824
+SWEEP_START_DEADLINE_SECS = CENSUS_READ_DEADLINE_SECS
+"""
+How long the cancel node may take to connect, reconcile and issue its cancels.
+
+The same budget as a census, because it is the same startup. Measured 2026-09-11: twelve
+seconds from build to startup against paper TWS.
+
+"""
+
+CENSUS_CLIENT_IDS = ((823, 824), (825, 826), (827, 828), (829, 830))
+"""
+One (data, execution) client-id pair per scheduled census, never reused within a sweep.
+
+Measured 2026-09-11, the first time a census was ever retried against the broker: the
+second census reused the first's ids a minute after it disconnected, TWS refused the
+execution client with IB 326 *client id already in use*, and the node timed out
+starting.
+
+"""
 
 
 class OpenOrderCensusConfig(CancelWorkingConfig):
@@ -321,6 +383,12 @@ async def census(
 ) -> CensusResult | None:
     """
     Run one fresh node with orders denied until it has read the broker, and return that.
+
+    A node that fails to start - a client id still held, a connection refused - is an
+    **unread census**, ``None``, which :func:`confirm` retries and never reads as clear. Until
+    2026-09-11 that failure raised out of here and took the whole sweep down with it: no
+    verdict, no alert, no record.
+
     """
     strategy = OpenOrderCensus(OpenOrderCensusConfig(instrument_ids=instrument_ids))
     node, _risk_engine = build_paper_node(
@@ -337,11 +405,21 @@ async def census(
         )
     finally:
         handle.stop()
-        try:
-            await asyncio.wait_for(task, timeout=60)
-        except (TimeoutError, asyncio.CancelledError) as e:
-            strategy.log.error(f"Census node did not stop cleanly: {e!r}")
+        await _node_ended(task, "Census node")
     return strategy.result
+
+
+async def _node_ended(task: asyncio.Task[Any], name: str) -> None:
+    """
+    Wait for a node's run to end, reporting rather than raising however it ended.
+    """
+    try:
+        await asyncio.wait_for(task, timeout=60)
+    except (TimeoutError, asyncio.CancelledError) as e:
+        # Worth saying loudly: a node that will not stop may still hold a connection.
+        print(f"{name} did not stop cleanly: {e!r}", file=sys.stderr)
+    except Exception as e:  # noqa: BLE001 - a node that failed is a reading, not a crash
+        print(f"{name} failed: {type(e).__name__}: {e}", file=sys.stderr)
 
 
 async def sweep(
@@ -349,9 +427,15 @@ async def sweep(
     *,
     instrument_ids: tuple[Any, ...],
     settle_secs: int,
+    start_deadline_secs: int = SWEEP_START_DEADLINE_SECS,
 ) -> CancelWorking:
     """
-    Run the node until every acknowledgement is in, or the deadline passes.
+    Run the node until it has swept and been acknowledged, or a deadline passes.
+
+    Two waits, in order. The first is for the strategy to start, which is when the cancels
+    go out; the second, only once it has, is for their acknowledgements. A strategy that
+    never started is returned with ``started`` False, and nothing was cancelled.
+
     """
     strategy = CancelWorking(CancelWorkingConfig(instrument_ids=instrument_ids))
     node, _risk_engine = build_paper_node(
@@ -362,19 +446,32 @@ async def sweep(
     handle = node.handle()
     task = asyncio.create_task(node.run_async())
     try:
-        await wait_for_settlement(
-            lambda: not strategy.outstanding(),
-            deadline_secs=settle_secs,
+        started = await wait_for_settlement(
+            lambda: strategy.started,
+            deadline_secs=start_deadline_secs,
         )
+        if started:
+            await wait_for_settlement(strategy.settled, deadline_secs=settle_secs)
+        else:
+            print(
+                f"The cancel node did not start within {start_deadline_secs}s: nothing was "
+                "cancelled",
+                file=sys.stderr,
+            )
     finally:
         handle.stop()
-        try:
-            await asyncio.wait_for(task, timeout=60)
-        except (TimeoutError, asyncio.CancelledError) as e:
-            # Worth saying loudly: a node that will not stop may still hold a
-            # connection, and the sweep's result is only meaningful once it has.
-            strategy.log.error(f"Node did not stop cleanly: {e!r}")
+        await _node_ended(task, "Cancel node")
     return strategy
+
+
+def census_sessions_for(base: PaperSession) -> tuple[PaperSession, ...]:
+    """
+    Return one census session per scheduled census, each on its own client-id pair.
+    """
+    return tuple(
+        replace(base, data_client_id=data_id, exec_client_id=exec_id)
+        for data_id, exec_id in CENSUS_CLIENT_IDS
+    )
 
 
 def instruments_to_sweep(*, all_: bool, symbol: str | None, venue: str) -> tuple[str, ...]:
@@ -431,15 +528,19 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     instrument_ids = tuple(InstrumentId.from_str(s) for s in ids)
-    census_session = PaperSession(
-        account_id=args.account,
-        host=args.host,
-        port=args.port,
-        data_client_id=CENSUS_DATA_CLIENT_ID,
-        exec_client_id=CENSUS_EXEC_CLIENT_ID,
-        # A census reads; it must not be able to place or cancel anything.
-        orders_enabled=False,
-        instrument_ids=ids,
+    census_sessions = iter(
+        census_sessions_for(
+            PaperSession(
+                account_id=args.account,
+                host=args.host,
+                port=args.port,
+                data_client_id=CENSUS_CLIENT_IDS[0][0],
+                exec_client_id=CENSUS_CLIENT_IDS[0][1],
+                # A census reads; it must not be able to place or cancel anything.
+                orders_enabled=False,
+                instrument_ids=ids,
+            ),
+        ),
     )
     session = PaperSession(
         account_id=args.account,
@@ -462,6 +563,11 @@ def main(argv: list[str] | None = None) -> int:
 
     unacknowledged = strategy.outstanding()
     print()
+    if not strategy.started:
+        print(
+            "  THE CANCEL NODE NEVER STARTED: nothing was cancelled. The census below still "
+            "says\n  what the broker holds.",
+        )
     for instrument, orders in strategy.before.items():
         acknowledged = len(orders) - len(unacknowledged.get(instrument, []))
         print(f"  {instrument:<20} found {len(orders):>2}  acknowledged {acknowledged:>2}")
@@ -470,27 +576,54 @@ def main(argv: list[str] | None = None) -> int:
 
     print("\nAsking the broker on a fresh connection, orders denied:")
     confirmation = asyncio.run(
-        confirm(lambda: census(census_session, instrument_ids=instrument_ids)),
+        confirm(lambda: census(next(census_sessions), instrument_ids=instrument_ids)),
     )
     code = report(confirmation)
-    alert = sweep_alert(confirmation, account=args.account)
+    alert = sweep_alert(confirmation, account=args.account, swept=strategy.started)
+    delivery = None
     if alert is not None:
         delivery = alerter_from_environment().send(alert)
-        print(f"alert CRITICAL {alert.title!r}: {delivery.outcome}")
+        print(f"alert {alert.severity} {alert.title!r}: {delivery.outcome}")
+    path = file_record(
+        sweep_record(
+            run_at=started,
+            account=args.account,
+            strategy=strategy,
+            confirmation=confirmation,
+            delivery=delivery,
+        ),
+        started,
+    )
+    print(f"filed {path}")
     return code
 
 
-def sweep_alert(confirmation: Confirmation, *, account: str) -> Alert | None:
+def sweep_alert(confirmation: Confirmation, *, account: str, swept: bool = True) -> Alert | None:
     """
-    Return the ``CRITICAL`` alert a sweep owes, or None when the broker is clear.
+    Return the alert a sweep owes, or None when it swept and the broker is clear.
 
-    Critical because the monitoring-end policy names this exact case - *alert on any order
-    whose status cannot be confirmed* - and because it is the one failure in the day whose
-    cost grows while nobody looks: an order left working overnight is a position by morning.
+    ``CRITICAL`` when the broker is not confirmed clear, because the monitoring-end policy
+    names this exact case - *alert on any order whose status cannot be confirmed* - and
+    because it is the one failure in the day whose cost grows while nobody looks: an order
+    left working overnight is a position by morning.
+
+    ``WARNING`` when the broker is clear but the cancel node never started. Nothing is at
+    risk today, and the limb every sweep and the kill switch rely on is broken.
 
     """
+    context = {"account": account, "censuses": str(len(confirmation.censuses))}
+    not_swept = " The cancel node never started, so nothing was cancelled." if not swept else ""
     if confirmation.verdict == BROKER_CLEAR:
-        return None
+        if swept:
+            return None
+        return Alert(
+            severity=Severity.WARNING,
+            title="sweep never started",
+            body="The broker is clear, and the cancel node did not start, so a sweep "
+            "tonight would not have cancelled a working order. Run cancel_working by hand "
+            "and read why it did not start.",
+            context=context,
+        )
     last = confirmation.censuses[-1] if confirmation.censuses else None
     if confirmation.verdict == STILL_WORKING and last is not None:
         body = f"The broker still reports orders open after the sweep: {last.open}."
@@ -499,10 +632,52 @@ def sweep_alert(confirmation: Confirmation, *, account: str) -> Alert | None:
     return Alert(
         severity=Severity.CRITICAL,
         title=f"sweep {confirmation.verdict}",
-        body=body + " Check the broker's own order list now, and do not re-enable orders "
-        "until it reconciles.",
-        context={"account": account, "censuses": str(len(confirmation.censuses))},
+        body=body + not_swept + " Check the broker's own order list now, and do not "
+        "re-enable orders until it reconciles.",
+        context=context,
     )
+
+
+def sweep_record(
+    *,
+    run_at: datetime,
+    account: str,
+    strategy: CancelWorking,
+    confirmation: Confirmation,
+    delivery: Delivery | None,
+) -> dict[str, object]:
+    """
+    Return what one sweep did and what the broker said, as the record it files.
+    """
+    return {
+        "run_at": run_at.isoformat(),
+        "account": account,
+        "instruments": sorted(strategy.before),
+        "swept": strategy.started,
+        "found": {k: v for k, v in strategy.before.items() if v},
+        "acknowledged": list(strategy.canceled),
+        "never_acknowledged": strategy.outstanding(),
+        "verdict": confirmation.verdict,
+        "exit_code": EXIT_CODES[confirmation.verdict],
+        "censuses": [None if c is None else asdict(c) for c in confirmation.censuses],
+        "alert": None
+        if delivery is None
+        else {
+            "severity": str(delivery.alert.severity),
+            "title": delivery.alert.title,
+            "outcome": delivery.outcome,
+        },
+    }
+
+
+def file_record(record: dict[str, object], run_at: datetime, *, out_dir: Path = OUT_DIR) -> Path:
+    """
+    Write a sweep's record under ``out_dir`` and return where.
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    path = out_dir / f"sweep_{run_at.strftime('%Y%m%dT%H%M%SZ')}.json"
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    return path
 
 
 def report(confirmation: Confirmation) -> int:
@@ -531,8 +706,10 @@ def report(confirmation: Confirmation) -> int:
 
 __all__ = [
     "BROKER_CLEAR",
+    "CENSUS_CLIENT_IDS",
     "CENSUS_WAITS_SECS",
     "STILL_WORKING",
+    "SWEEP_START_DEADLINE_SECS",
     "UNCONFIRMED",
     "CancelWorking",
     "CancelWorkingConfig",
@@ -541,11 +718,14 @@ __all__ = [
     "OpenOrderCensus",
     "OpenOrderCensusConfig",
     "census",
+    "census_sessions_for",
     "confirm",
+    "file_record",
     "instruments_to_sweep",
     "report",
     "sweep",
     "sweep_alert",
+    "sweep_record",
 ]
 
 

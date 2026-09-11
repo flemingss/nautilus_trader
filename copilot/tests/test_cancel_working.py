@@ -11,10 +11,17 @@ having sent a cancel.
 from __future__ import annotations
 
 import asyncio
+import json
+from datetime import UTC
+from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 
+from copilot.live import cancel_working
+from copilot.live.alerting import Alert
+from copilot.live.alerting import Delivery
 from copilot.live.alerting import Severity
 from copilot.live.cancel_working import BROKER_CLEAR
 from copilot.live.cancel_working import CENSUS_WAITS_SECS
@@ -27,11 +34,15 @@ from copilot.live.cancel_working import Confirmation
 from copilot.live.cancel_working import OpenOrderCensus
 from copilot.live.cancel_working import OpenOrderCensusConfig
 from copilot.live.cancel_working import confirm
+from copilot.live.cancel_working import file_record
 from copilot.live.cancel_working import instruments_to_sweep
 from copilot.live.cancel_working import report
+from copilot.live.cancel_working import sweep
 from copilot.live.cancel_working import sweep_alert
+from copilot.live.cancel_working import sweep_record
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import wait_for_settlement
+from copilot.live.session import PaperSession
 from copilot.live.symbology import registered_instruments
 from nautilus_trader.model import InstrumentId
 
@@ -123,6 +134,141 @@ async def test_settlement_checks_before_it_waits() -> None:
     An already-settled condition must not sleep once, or every sweep pays a poll.
     """
     assert await wait_for_settlement(lambda: True, deadline_secs=0, poll_secs=30) is True
+
+
+def test_a_sweep_that_has_not_started_is_not_settled() -> None:
+    """
+    Audit F1: before ``on_start`` nothing is found, so *nothing outstanding* holds trivially.
+    """
+    strategy = _sweeper("AAPL=STK.SMART")
+
+    assert strategy.outstanding() == {}
+    assert strategy.settled() is False
+
+    strategy.started = True
+    assert strategy.settled() is True
+
+    strategy.before["AAPL=STK.SMART"] = ["O-1"]
+    assert strategy.settled() is False, "started, and an order found is not yet acknowledged"
+
+
+class _Handle:
+    def __init__(self) -> None:
+        self.stopped = False
+
+    def stop(self) -> None:
+        self.stopped = True
+
+
+class _Node:
+    """
+    Stands in for a ``LiveNode``: connects for a moment, then starts its strategy unless a stop
+    arrived first - which is what ``run_async`` does with a stop requested during startup.
+    """
+
+    def __init__(self, strategy: CancelWorking, events: list[str], *, starts: bool) -> None:
+        self._strategy = strategy
+        self._handle = _Handle()
+        self._events = events
+        self._starts = starts
+
+    def handle(self) -> _Handle:
+        return self._handle
+
+    async def run_async(self) -> None:
+        await asyncio.sleep(0.05)
+        if self._handle.stopped:
+            self._events.append("aborted startup")
+            return
+        if self._starts:
+            self._strategy.started = True
+            self._events.append("started")
+        while not self._handle.stopped:
+            await asyncio.sleep(0.01)
+        self._events.append("stopped")
+
+
+def _fake_builder(events: list[str], *, starts: bool):
+    def build(_session: object, *, strategies: tuple[object, ...], **_kwargs: object):
+        return _Node(strategies[0], events, starts=starts), None
+
+    return build
+
+
+SWEEP_SESSION = PaperSession(account_id="DU1234567", orders_enabled=True, cancels_only=True)
+AAPL = (InstrumentId.from_str("AAPL=STK.SMART"),)
+
+
+@pytest.mark.asyncio
+async def test_the_sweep_lets_its_node_start_before_it_stops_it(monkeypatch) -> None:
+    """
+    Audit F1, the regression.
+
+    The old wait returned before the node task ran, so the stop reached the node during
+    startup and it aborted without issuing a cancel.
+
+    """
+    events: list[str] = []
+    monkeypatch.setattr(cancel_working, "build_paper_node", _fake_builder(events, starts=True))
+
+    strategy = await sweep(SWEEP_SESSION, instrument_ids=AAPL, settle_secs=5, start_deadline_secs=5)
+
+    assert events == ["started", "stopped"]
+    assert strategy.started is True
+
+
+@pytest.mark.asyncio
+async def test_a_sweep_whose_node_never_starts_returns_unstarted(monkeypatch) -> None:
+    events: list[str] = []
+    monkeypatch.setattr(cancel_working, "build_paper_node", _fake_builder(events, starts=False))
+
+    strategy = await sweep(SWEEP_SESSION, instrument_ids=AAPL, settle_secs=5, start_deadline_secs=0)
+
+    assert strategy.started is False
+
+
+class _FailingNode(_Node):
+    """
+    The 2026-09-11 census: the execution client refused with IB 326, and the run raised.
+    """
+
+    async def run_async(self) -> None:
+        await asyncio.sleep(0.01)
+        raise RuntimeError("readiness timeout while waiting for engine connections")
+
+
+@pytest.mark.asyncio
+async def test_a_node_that_fails_to_start_is_an_unread_census_not_a_crashed_sweep(
+    monkeypatch,
+    capsys,
+) -> None:
+    def build(_session: object, *, strategies: tuple[object, ...], **_kwargs: object):
+        return _FailingNode(strategies[0], [], starts=False), None
+
+    monkeypatch.setattr(cancel_working, "build_paper_node", build)
+
+    result = await cancel_working.census(SWEEP_SESSION, instrument_ids=AAPL, read_deadline_secs=0)
+    swept = await sweep(SWEEP_SESSION, instrument_ids=AAPL, settle_secs=0, start_deadline_secs=0)
+
+    assert result is None
+    assert swept.started is False
+    assert "readiness timeout" in capsys.readouterr().err
+
+
+def test_every_census_in_a_sweep_has_its_own_client_ids() -> None:
+    """
+    2026-09-11: the retried census reused the first one's ids and IB refused it with 326.
+    """
+    base = PaperSession(account_id="DU1234567", data_client_id=823, exec_client_id=824)
+
+    sessions = cancel_working.census_sessions_for(base)
+    pairs = [(s.data_client_id, s.exec_client_id) for s in sessions]
+    ids = [i for pair in pairs for i in pair]
+
+    assert len(sessions) == len(CENSUS_WAITS_SECS), "one pair per scheduled census"
+    assert len(set(ids)) == len(ids)
+    assert not {821, 822} & set(ids), "the cancel node's own pair"
+    assert all(s.orders_enabled is False for s in sessions)
 
 
 def test_the_sweeps_deadline_is_long_enough_for_the_acknowledgement_seen() -> None:
@@ -315,3 +461,60 @@ def test_an_unreadable_broker_is_critical_too() -> None:
     assert alert is not None
     assert alert.severity == Severity.CRITICAL
     assert "No census could read the broker" in alert.body
+
+
+def test_a_clear_broker_after_a_sweep_that_never_started_still_warns() -> None:
+    """
+    Nothing is at risk today, and the limb every sweep and the kill switch rely on is
+    broken.
+    """
+    alert = sweep_alert(Confirmation(BROKER_CLEAR, (_census(),)), account="DU1", swept=False)
+
+    assert alert is not None
+    assert alert.severity == Severity.WARNING
+    assert alert.title == "sweep never started"
+
+
+def test_an_order_still_working_after_a_sweep_that_never_started_says_nothing_was_cancelled() -> (
+    None
+):
+    confirmation = Confirmation(STILL_WORKING, (_census(SPY_STK_SMART=["O-9"]),))
+
+    alert = sweep_alert(confirmation, account="DU1", swept=False)
+
+    assert alert is not None
+    assert alert.severity == Severity.CRITICAL
+    assert "nothing was cancelled" in alert.body
+
+
+def test_every_sweep_files_what_it_found_and_what_the_broker_said(tmp_path: Path) -> None:
+    strategy = _sweeper("AAPL=STK.SMART", "SCHX=STK.SMART")
+    strategy.started = True
+    strategy.before["AAPL=STK.SMART"] = ["O-1", "O-2"]
+    strategy.canceled = ["O-1"]
+    confirmation = Confirmation(STILL_WORKING, (_census(AAPL_STK_SMART=["O-2"]), None))
+    alert = Alert(Severity.CRITICAL, "sweep STILL WORKING", "b")
+    run_at = datetime(2026, 9, 11, 14, 30, tzinfo=UTC)
+
+    record = sweep_record(
+        run_at=run_at,
+        account="DU1",
+        strategy=strategy,
+        confirmation=confirmation,
+        delivery=Delivery(alert=alert, delivered=True, notifier="pushover"),
+    )
+    path = file_record(record, run_at, out_dir=tmp_path)
+
+    filed = json.loads(path.read_text())
+    assert path.name == "sweep_20260911T143000Z.json"
+    assert filed["swept"] is True
+    assert filed["found"] == {"AAPL=STK.SMART": ["O-1", "O-2"]}
+    assert filed["never_acknowledged"] == {"AAPL=STK.SMART": ["O-2"]}
+    assert filed["verdict"] == STILL_WORKING
+    assert filed["exit_code"] == 1
+    assert filed["censuses"][1] is None
+    assert filed["alert"] == {
+        "severity": "CRITICAL",
+        "title": "sweep STILL WORKING",
+        "outcome": "sent",
+    }

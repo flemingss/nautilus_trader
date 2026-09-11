@@ -35,9 +35,10 @@ latch skips only the shakedown phases that place orders; `day` prints the latch 
 phase with every node built `HALTED`. The morning runs on weekends too, so the heartbeat never
 goes quiet.
 
-**Known before stand-up (2026-09-11 audit):** the sweep's cancel does not run, the
-acknowledgement check crashes a phase when Pushover is unreachable, and an undelivered CRITICAL
-is forgotten. Fix those rows before stage five; see `ROADMAP.md`.
+**Closed before stand-up (2026-09-11 audit, batch A):** the sweep's cancel runs and reaches every
+open order on the account through IB's global cancel, the acknowledgement check cannot stop a
+phase, and an undelivered CRITICAL halts the host. Batch B, in `ROADMAP.md`, is what stage seven
+still needs.
 
 ## Stand-up
 
@@ -83,7 +84,14 @@ dev box from the same commit and the same data.
 .venv/bin/python -m copilot.live.alerting --receipt <receipt it printed>
 ```
 
-Set `COPILOT_HEARTBEAT_URL` in `copilot.env` to the watcher's push URL.
+Set `COPILOT_HEARTBEAT_URL` in `copilot.env` to the watcher's push URL. Treat it as required
+for unattended running: a CRITICAL that cannot be delivered engages the halt latch and the
+morning then **withholds** its heartbeat, so the watcher's missed-beat alarm is the only thing
+that tells you ([ADR-0028](../docs/decisions/0028-an-undelivered-critical-halts-the-host.md)).
+
+This hand drill is the only place the CRITICAL receipt and deadline are exercised. The
+timer-fired pre-open phase sends a WARNING self-test, so it proves delivery every morning
+without paging you.
 
 **Passes when** both arrive, and the receipt reads back acknowledged.
 
@@ -155,6 +163,7 @@ trigger, until that check has a timer of its own (roadmap row).
 | ------------------------------- | ------------------------------------------------ |
 | Stop all trading on this host   | `python -m copilot.live.kill --reason "..."`     |
 | See whether it is halted        | `python -m copilot.live.kill --status`           |
+| See what the last sweep found   | `ls -t copilot/live/out/sweep_*.json \| head -1` |
 | See what ran                    | `journalctl --user -u 'copilot-*' --since today` |
 | See what is scheduled           | `systemctl --user list-timers 'copilot-*'`       |
 | Pause the schedule, not trading | `systemctl --user stop 'copilot-*.timer'`        |

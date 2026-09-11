@@ -538,10 +538,66 @@ def test_a_scheduled_morning_with_nothing_to_do_still_beats(monkeypatch, capsys)
         "copilot.live.day.ping",
         lambda url: (pinged.append(url), (True, "pinged"))[1],
     )
+    monkeypatch.setattr("copilot.live.day.acknowledgement_check", list)
+    monkeypatch.setattr("copilot.live.day.read_latch", lambda: None)
     monkeypatch.setenv(HEARTBEAT_URL_ENV, "https://watcher.example/push/abc")
 
     assert main(["morning", "--scheduled"]) == 0
     assert pinged == ["https://watcher.example/push/abc"]
+
+
+@pytest.mark.parametrize(
+    ("trigger", "beats"),
+    [("operator", True), ("unacknowledged_critical", False), ("undelivered_critical", False)],
+)
+def test_the_heartbeat_is_withheld_while_the_host_halted_itself_unheard(
+    monkeypatch,
+    capsys,
+    trigger: str,
+    beats: bool,
+) -> None:
+    """
+    Audit F3: when Pushover has failed to reach anyone, the missed beat is what the watcher,
+    which does not depend on it, alerts on. A halt the operator engaged is one they know of.
+    """
+    from copilot.live.day import beat
+    from copilot.live.halt import Latch
+
+    pinged: list[str] = []
+    monkeypatch.setattr(
+        "copilot.live.day.ping",
+        lambda url: (pinged.append(url), (True, "pinged"))[1],
+    )
+    monkeypatch.setenv(HEARTBEAT_URL_ENV, "https://watcher.example/push/abc")
+
+    beat(Latch("cb59138d", "t", trigger, "r", "vm"))
+
+    assert bool(pinged) is beats
+    assert ("heartbeat withheld" in capsys.readouterr().out) is not beats
+
+
+def test_an_acknowledgement_check_that_raises_does_not_stop_the_phase(monkeypatch, capsys) -> None:
+    """
+    Audit F2: it ran first, outside any ``try``, so a Pushover outage stopped the sweep.
+    """
+    saturday = eastern(2026, 9, 12, 10, 30)
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN206 - matches datetime.now
+            return saturday.astimezone(tz)
+
+    def outage() -> list[str]:
+        raise ConnectionError("api.pushover.net unreachable")
+
+    monkeypatch.setattr("copilot.live.day.datetime", Frozen)
+    monkeypatch.setattr("copilot.live.day.acknowledgement_check", outage)
+    monkeypatch.setattr("copilot.live.day.read_latch", lambda: None)
+
+    assert main(["sweep", "--scheduled"]) == 0
+    out = capsys.readouterr().out
+    assert "acknowledgement check failed (ConnectionError" in out
+    assert "nothing to do" in out, "the phase went on to decide for itself"
 
 
 def test_every_phase_checks_the_halt_first_and_says_so(monkeypatch, capsys) -> None:

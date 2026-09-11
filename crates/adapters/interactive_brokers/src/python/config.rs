@@ -163,7 +163,7 @@ impl InteractiveBrokersDataClientConfig {
 impl InteractiveBrokersExecutionClientConfig {
     /// Creates a new `InteractiveBrokersExecutionClientConfig` instance.
     #[new]
-    #[pyo3(signature = (host=None, port=None, client_id=None, account_id=None, connection_timeout=None, request_timeout=None, fetch_all_open_orders=None, track_option_exercise_from_position_update=None, instrument_provider=None, dockerized_gateway=None))]
+    #[pyo3(signature = (host=None, port=None, client_id=None, account_id=None, connection_timeout=None, request_timeout=None, fetch_all_open_orders=None, track_option_exercise_from_position_update=None, instrument_provider=None, dockerized_gateway=None, global_cancel_on_cancel_all=None))]
     #[allow(clippy::too_many_arguments)]
     fn py_new(
         host: Option<String>,
@@ -176,6 +176,7 @@ impl InteractiveBrokersExecutionClientConfig {
         track_option_exercise_from_position_update: Option<bool>,
         instrument_provider: Option<InteractiveBrokersInstrumentProviderConfig>,
         dockerized_gateway: Option<&DockerizedIBGatewayConfig>,
+        global_cancel_on_cancel_all: Option<bool>,
     ) -> PyResult<Self> {
         if dockerized_gateway.is_some() {
             return Err(to_pyvalue_err(
@@ -197,6 +198,7 @@ impl InteractiveBrokersExecutionClientConfig {
             connection_timeout: connection_timeout.unwrap_or(300),
             request_timeout,
             fetch_all_open_orders: fetch_all_open_orders.unwrap_or(false),
+            global_cancel_on_cancel_all: global_cancel_on_cancel_all.unwrap_or(false),
             track_option_exercise_from_position_update: track_option_exercise_from_position_update
                 .unwrap_or(false),
             instrument_provider: instrument_provider.unwrap_or_default(),
@@ -243,6 +245,12 @@ impl InteractiveBrokersExecutionClientConfig {
     #[getter]
     fn fetch_all_open_orders(&self) -> bool {
         self.fetch_all_open_orders
+    }
+
+    /// Returns whether a cancel-all command also sends IB's global cancel.
+    #[getter]
+    fn global_cancel_on_cancel_all(&self) -> bool {
+        self.global_cancel_on_cancel_all
     }
 
     /// Returns whether to track option exercise from position updates.

@@ -12,6 +12,7 @@ from __future__ import annotations
 import pytest
 
 from copilot.live.node import apply_order_switch
+from copilot.live.node import execution_client_config
 from copilot.live.session import GATEWAY_LIVE_PORT
 from copilot.live.session import GATEWAY_PAPER_PORT
 from copilot.live.session import TWS_LIVE_PORT
@@ -166,6 +167,29 @@ def test_orders_enabled_sets_nothing_at_all():
     apply_order_switch(engine, orders_enabled=True)
 
     assert engine.states == []
+
+
+@pytest.mark.parametrize(("cancels_only", "global_cancel"), [(True, True), (False, False)])
+def test_only_a_session_that_only_cancels_sends_the_global_cancel(
+    cancels_only: bool,
+    global_cancel: bool,
+) -> None:
+    """
+    2026-09-11: a sweep's cancels cannot reach an order another client id placed.
+
+    The global cancel can, and it reaches every open order on the account, so no session
+    that places orders may carry it.
+    """
+    from nautilus_trader.adapters.interactive_brokers import (
+        InteractiveBrokersInstrumentProviderConfig,
+    )
+
+    session = PaperSession(account_id="DU1234567", orders_enabled=True, cancels_only=cancels_only)
+
+    config = execution_client_config(session, InteractiveBrokersInstrumentProviderConfig())
+
+    assert config.global_cancel_on_cancel_all is global_cancel
+    assert config.fetch_all_open_orders is True
 
 
 def test_a_session_defaults_to_orders_disabled():

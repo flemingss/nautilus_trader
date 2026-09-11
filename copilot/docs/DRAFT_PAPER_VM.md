@@ -83,10 +83,12 @@ Items 1 to 7 are what the stand-up needs. Items 8 and 9 are what unattended runn
 can land in the VM's first week if time runs out. The next premise (a separate roadmap row)
 runs alongside all of it on the dev box.
 
-**Found by the 2026-09-11 audit, and needed before stage five below:** the sweep's cancel has
-not run since 2026-09-10 (the settlement poll stops the node before it starts), the
-acknowledgement check crashes every scheduled phase when Pushover is unreachable, and an
-undelivered CRITICAL is forgotten. The rows are in [`ROADMAP.md`](ROADMAP.md), first seven
+**Found by the 2026-09-11 audit and closed the same day in batch A:** the sweep's cancel had
+not run since 2026-09-10, and once it ran could not reach another client's order until it sent
+IB's global cancel ([ADR-0029](decisions/0029-the-sweep-cancels-with-the-global-cancel.md)); the
+acknowledgement check crashed every scheduled phase when Pushover was unreachable; an
+undelivered CRITICAL was forgotten and now halts the host
+([ADR-0028](decisions/0028-an-undelivered-critical-halts-the-host.md)). The rows are in [`ROADMAP.md`](ROADMAP.md), first seven
 under *Ready to build*; the daily CRITICAL self-test and the 10:30/10:45 overlap sit with
 them. [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) is the evidence and the batch plan: batch A
 before stage five, batch B before stage seven.

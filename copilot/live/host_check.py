@@ -27,6 +27,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
+from copilot.live.alerting import alert_settings
 from copilot.live.day import EVENING
 from copilot.live.day import MORNING
 from copilot.live.day import required_environment
@@ -121,6 +122,16 @@ def check_environment(environ: Mapping[str, str]) -> list[Finding]:
             bool(heartbeat),
             ADVISED,
             heartbeat or f"{HEARTBEAT_URL_ENV} unset: nothing off the host will notice a stop",
+        ),
+    )
+    deadline = alert_settings(environ)
+    findings.append(
+        Finding(
+            "alert deadline",
+            not deadline.problems,
+            REQUIRED,
+            "; ".join(deadline.problems)
+            or f"{deadline.retry_seconds}s retries over {deadline.expire_seconds}s",
         ),
     )
     return findings

@@ -200,10 +200,19 @@ def reference_price(catalog: str, symbol: str, venue: str) -> Decimal:
     return Decimal(str(bars[-1].close))
 
 
-def pre_open_steps(connection: Connection) -> tuple[ShakedownStep, ...]:
+def pre_open_steps(connection: Connection, *, scheduled: bool = False) -> tuple[ShakedownStep, ...]:
     """
     Build the questions that can only be asked before the bell.
+
+    The alerting self-test is ``CRITICAL`` by hand and ``WARNING`` from a timer. CRITICAL is
+    emergency priority - it retries every two minutes until acknowledged - and on a weekday
+    timer it paged the operator every trading morning, which is the noise ADR-0023 warns
+    teaches an operator to ignore the app (``docs/AUDIT_2026-09-11.md``, F5). The daily run
+    proves delivery; the receipt and the deadline are proven by the hand drill, stand-up stage
+    three.
+
     """
+    severity = "warning" if scheduled else "critical"
     return (
         ShakedownStep(
             name="quotes-realtime",
@@ -226,13 +235,14 @@ def pre_open_steps(connection: Connection) -> tuple[ShakedownStep, ...]:
         ShakedownStep(
             name="alerting",
             module="copilot.live.alerting",
-            argv=("--send-test", "--severity", "critical"),
+            argv=("--send-test", "--severity", severity),
             why=(
                 "the scorecard wants *all alerts arriving and acknowledged inside the "
-                "declared deadline* and nothing had ever fired one. CRITICAL goes out at "
-                "emergency priority, so acknowledging it on the phone exercises the "
-                "receipt as well as the delivery. Exits non-zero on a box where alerting "
-                "is not configured, which is the honest answer for the unattended gate"
+                "declared deadline* and nothing had ever fired one. By hand it is CRITICAL, "
+                "whose acknowledgement on the phone exercises the receipt as well as the "
+                "delivery; from a timer it is WARNING, proving delivery without paging every "
+                "morning. Exits non-zero on a box where alerting is not configured, which is "
+                "the honest answer for the unattended gate"
             ),
         ),
         ShakedownStep(
@@ -365,7 +375,7 @@ def close_steps(connection: Connection) -> tuple[ShakedownStep, ...]:
     )
 
 
-def phases(connection: Connection, price: Decimal) -> tuple[Phase, ...]:
+def phases(connection: Connection, price: Decimal, *, scheduled: bool = False) -> tuple[Phase, ...]:
     """
     Build the day in the order it happens, each phase pinned to when it means something.
     """
@@ -375,7 +385,7 @@ def phases(connection: Connection, price: Decimal) -> tuple[Phase, ...]:
             opens=clock_time(7, 30),
             closes=clock_time(9, 29),
             why="before the bell, while the answer is still about pre-market",
-            steps=pre_open_steps(connection),
+            steps=pre_open_steps(connection, scheduled=scheduled),
         ),
         Phase(
             name="open",
@@ -574,7 +584,7 @@ def main(argv: list[str] | None = None) -> int:
 
     connection = Connection(args.host, args.port, args.account)
     price = reference_price(args.catalog or catalog_path(), args.symbol, args.venue)
-    available = phases(connection, price)
+    available = phases(connection, price, scheduled=args.scheduled)
 
     if args.plan or not args.phase:
         print_plan(available, price)
