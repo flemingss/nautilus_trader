@@ -88,7 +88,8 @@ not run since 2026-09-10 (the settlement poll stops the node before it starts), 
 acknowledgement check crashes every scheduled phase when Pushover is unreachable, and an
 undelivered CRITICAL is forgotten. The rows are in [`ROADMAP.md`](ROADMAP.md), first seven
 under *Ready to build*; the daily CRITICAL self-test and the 10:30/10:45 overlap sit with
-them.
+them. [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) is the evidence and the batch plan: batch A
+before stage five, batch B before stage seven.
 
 ## On the 15th and after: stand-up, in stages
 
