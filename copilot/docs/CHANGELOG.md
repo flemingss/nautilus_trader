@@ -2,6 +2,33 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, six decisions taken
+
+The owner concurred with each recommendation put to them, and answered the account question.
+
+### Decided
+
+- **The charter's mode table carries the integration-testing carve-out.** Its two paper rows now
+  admit broker-integration testing before the research gates, in the playbook's own words, and
+  forward testing still waits for a candidate. The audit's charter conflict closes.
+- **A triggered next-close entry is a DAY marketable limit at the decision close plus a declared
+  concession, cancelled by 10:30 Eastern**
+  ([ADR-0032](decisions/0032-a-next-close-trigger-is-placed-as-a-marketable-day-limit.md)). Stop
+  and target from the fill and the frozen ATR, no carry to a later session, partial fills kept.
+  Building it waits on a frozen candidate.
+- **The next premise is the turn of the month on SPY**, after the random-entry null control is
+  built. The card comes before any backtest and declares the effect size.
+- **The account runs cash, and moves to margin when margin is available.** The settled-cash cap
+  built today is therefore the one that binds in the live account; shorts stay out.
+- **No EODHD key for now.** The probe stays, Marketstack stays, nothing is cancelled.
+- **GLDM's holes and signal ranking stay deferred**, as recommended.
+
+### Regrouped
+
+- Open work is twenty-one items: four ready to build, five waiting on the VM, one on the account,
+  none on a decision, one charter conflict, one on spend, nine deferred. The charter conflict row
+  is the survivor-biased universe, which still stands.
+
 ## 2026-09-11, the ready-to-build group worked through
 
 Seven PRs from the ten rows that stood after the audit, #91 to #97. This entry closes the pass.
