@@ -43,19 +43,19 @@ The organising frame for everything below: the eleven stages between finding a t
 banking it, ordered as the trade travels, so a break shows where everything downstream
 stalls.
 
-| #   | Stage                | Covered by                    | State as of 2026-09-11                                                                                       |
-| --- | -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| 00  | Historical data      | `copilot/data`                | **Ready, with known holes.** 9 registered symbols, 29,722 daily bars to 2026-09-09                           |
-| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                                                                          |
-| 02  | Research / strategy  | `copilot/strategies`          | **NOT READY.** Gap-fade family rejected 2026-09-10; no premise in research                                   |
-| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                                          |
-| 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Interval and attribution built; the effect-size knob is never set                   |
-| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash                               |
-| 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live; the breaker runs in the basket** with its ledger since 2026-09-11                        |
-| 07  | Orders / exits       | Nautilus execution            | **Exercised; the sweep cancels, confirmed live.** IB's global cancel since 2026-09-11 (ADR-0029)             |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Packaged for the VM.** One broker session at a time, unit failures alerted (ADR-0030); stand-up 2026-09-15 |
-| 09  | Monitoring           | Nautilus analysis + tearsheet | **Alerting wired, kill switch built.** An undelivered CRITICAL halts the host (ADR-0028)                     |
-| 10  | Cost calibration     | `copilot/calibration`         | **Strongest stage.** Spread and commission both corroborated against the broker                              |
+| #   | Stage                | Covered by                    | State as of 2026-09-11                                                                                                 |
+| --- | -------------------- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 00  | Historical data      | `copilot/data`                | **Ready, with known holes.** 9 registered symbols, 29,722 daily bars to 2026-09-09                                     |
+| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                                                                                    |
+| 02  | Research / strategy  | `copilot/strategies`          | **NOT READY.** Gap-fade family rejected 2026-09-10; no premise in research                                             |
+| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                                                    |
+| 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Interval, calendar clustering and attribution; the effect size must be predeclared (ADR-0031) |
+| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash                                         |
+| 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live; the breaker runs in the basket** with its ledger since 2026-09-11                                  |
+| 07  | Orders / exits       | Nautilus execution            | **Exercised; the sweep cancels, confirmed live.** IB's global cancel since 2026-09-11 (ADR-0029)                       |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Packaged for the VM.** One broker session at a time, unit failures alerted (ADR-0030); stand-up 2026-09-15           |
+| 09  | Monitoring           | Nautilus analysis + tearsheet | **Alerting wired, kill switch built.** An undelivered CRITICAL halts the host (ADR-0028)                               |
+| 10  | Cost calibration     | `copilot/calibration`         | **Strongest stage.** Spread and commission both corroborated against the broker                                        |
 
 **Read the table by where it breaks, not by how much is green.** Ten of eleven stages are
 built and seven are proven against a live broker. The one that is not is stage 02, and it is
@@ -464,18 +464,20 @@ decision to skip a separate consolidated-data purchase stands - Databento remain
 intraday source ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). The spread coefficient was called on 2026-09-02
 ([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)).
 
-### Carrying cost, tracked (36 files)
+### Carrying cost, tracked (39 files)
 
 Not work items - the standing bill. Reported by `python -m copilot.tools.upstream_delta`,
 with the reasoning for each in `docs/UPSTREAM_DELTA.md`, which is the register and the only
 list kept by hand. A table here went stale at nine files while the register grew to
-thirty-six, so the numbers now come from the tool: on 2026-09-11 it reported **36 files
-changed outside `copilot/`** against the 2026-08-31 merge base, 97 commits of ours against
-189 of upstream's, and **a forecast of 8 conflicting files** - the README, `AGENTS.md`,
-`CONTRIBUTING.md`, an issue template, the IB adapter's data and execution cores, the live
-node's Python binding and the risk engine's tests. Twenty of the thirty-six are the retired
-contribution scaffolding (templates, policies, the code of conduct); the code deltas are the
-IB adapter fixes, the execution and risk engine fixes, and the `set_trading_state` binding.
+thirty-six, so the numbers now come from the tool: after the audit's batches on 2026-09-11 it
+reported **39 files changed outside `copilot/`** against the 2026-08-31 merge base - the three
+added that day are the IB adapter's global-cancel option, its Python binding and the generated
+stub (ADR-0029) - and **a forecast of 8 conflicting files**: the README, `AGENTS.md`,
+`CONTRIBUTING.md`, an issue template, the IB adapter's data and execution cores, the live node's
+Python binding and the risk engine's tests. Twenty of the thirty-nine are the retired
+contribution scaffolding (templates, policies, the code of conduct); the code deltas are the IB
+adapter fixes and its global cancel, the execution and risk engine fixes, and the
+`set_trading_state` binding.
 
 **Nothing is due.** Syncing is on demand only - the fork is deliberately held still while
 development is active, so every conflict above is a forecast for a sync that has not been
