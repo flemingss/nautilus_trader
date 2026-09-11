@@ -2,6 +2,41 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the owner's decisions on the gap-fade family
+
+### Decided
+
+- **The gap-fade family is rejected as a source of edge**, on the attribution result: no
+  four-factor alpha above zero anywhere, under either exit-session treatment.
+- **The pooled holdout stays unspent**, with AAPL excluded from any future pool.
+- **The assisted-decision layer's second tier stays deferred.**
+
+### Closed with the family
+
+Four open rows refined a premise that is no longer being pursued, and are retired rather
+than left to look like work:
+
+- *Revise the AAPL next-close premise as a new experiment* - superseded by the rejection.
+- *Pool over a constant membership, or accept the pool is two experiments* - a question
+  about the rejected pool.
+- *Spend the SCHX holdout again, on the corrected series* - spending single-use evidence on a
+  rejected premise buys nothing; the window stays unviewed.
+- *Build the pooled holdout spend* - moved to *Deferred by decision*, not closed, because a
+  future premise will want it.
+
+### Recorded, not decided
+
+- The market-neutral revision offered with the rejection needs a short leg, and the charter
+  is long only with shorts under *Not yet*. It can run as research into whether the gap
+  signal carries information; it cannot become a tradable candidate without a charter
+  change.
+
+### Opened, for the paper VM due 2026-09-16
+
+Five rows: pick the next premise; the VM's bootstrap, services and environment template;
+IB Gateway headless; a heartbeat so silence is an alert; and the guard's cooldown across a
+restart. The roadmap's open work is twenty-seven items.
+
 ## 2026-09-10, attribution
 
 ### Added
