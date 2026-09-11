@@ -447,9 +447,11 @@ def main(argv: list[str] | None = None) -> int:
         port=args.port,
         data_client_id=args.data_client_id,
         exec_client_id=args.exec_client_id,
-        # Cancelling is an order command, so the engine must not be halted.
+        # Cancelling is an order command, so the engine must not be halted - and it is
+        # what safe mode does, so the halt latch exempts a session that only cancels.
         orders_enabled=True,
         instrument_ids=ids,
+        cancels_only=True,
     )
 
     started = datetime.now(UTC)

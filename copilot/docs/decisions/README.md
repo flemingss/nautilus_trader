@@ -42,3 +42,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0024](0024-a-holdout-pass-needs-an-interval.md)                | A holdout pass needs an interval                                     | Accepted   |
 | [0025](0025-commission-is-modelled-per-plan.md)                 | Commission is modelled per plan, and the plan is pinned              | Accepted   |
 | [0026](0026-attribution-is-measured-per-trade.md)               | Attribution is measured per trade, against pinned factor returns     | Accepted   |
+| [0027](0027-the-kill-switch-is-a-host-latch.md)                 | The kill switch is a latch on the host, read by every node at build  | Accepted   |

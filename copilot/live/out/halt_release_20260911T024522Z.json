@@ -1,0 +1,8 @@
+{
+  "latch_id": "cb59138d",
+  "engaged_at": "2026-09-11T02:44:07.176726+00:00",
+  "trigger": "operator",
+  "reason": "prep drill 2026-09-10: latch against paper, released after",
+  "host": "LAPTOP-IQ0QFSE1",
+  "released_at": "2026-09-11T02:45:22.023825+00:00"
+}
