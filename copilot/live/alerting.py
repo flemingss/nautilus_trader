@@ -61,6 +61,7 @@ import json
 import os
 import sys
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
@@ -76,8 +77,10 @@ from urllib.parse import urlencode
 from urllib.request import Request
 from urllib.request import urlopen
 
+from copilot.live.filelock import exclusive
 from copilot.live.halt import UNDELIVERED_CRITICAL
 from copilot.live.halt import engage
+from copilot.paths import ALERT_FLOOD_PATH
 from copilot.paths import ALERT_RECEIPTS_PATH
 from copilot.paths import HALT_LATCH_PATH
 from copilot.paths import PUSHOVER_TOKEN_ENV
@@ -86,6 +89,7 @@ from copilot.paths import PUSHOVER_USER_KEY_ENV
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from collections.abc import Iterator
     from collections.abc import Mapping
     from collections.abc import MutableMapping
     from typing import TextIO
@@ -529,13 +533,24 @@ class FloodGuard:
     Nothing is dropped silently: the next alert that gets through carries the suppressed
     count, so the record says how long the condition was repeating.
 
+    **Across processes, with a state file.** On the paper VM every sender is a one-shot
+    process, so a guard that remembers only in memory collapsed nothing
+    (``docs/AUDIT_2026-09-11.md``, F10). Given ``state_path`` it keeps its memory there, on
+    the wall clock, under a lock.
+
     """
 
-    def __init__(self, window_seconds: float = DEFAULT_FLOOD_WINDOW_SECONDS) -> None:
+    def __init__(
+        self,
+        window_seconds: float = DEFAULT_FLOOD_WINDOW_SECONDS,
+        *,
+        state_path: Path | None = None,
+    ) -> None:
         """
         Collapse repeats seen within ``window_seconds`` of the last one through.
         """
         self._window_seconds = window_seconds
+        self._state_path = state_path
         self._last_sent: MutableMapping[tuple[str, str], float] = {}
         self._suppressed: MutableMapping[tuple[str, str], int] = {}
 
@@ -548,7 +563,21 @@ class FloodGuard:
         the kill switch depends on.
 
         """
-        moment = time.monotonic() if now is None else now
+        if self._state_path is None:
+            return self._admit(alert, time.monotonic() if now is None else now)
+        state = self._state_path
+        try:
+            with exclusive(state.with_name(state.name + ".lock")):
+                self._load(state)
+                admitted = self._admit(alert, time.time() if now is None else now)
+                self._save(state)
+        except OSError as e:
+            # A guard that cannot remember must let the alert through, never swallow it.
+            print(f"warning: flood state {self._state_path} unusable ({e})", file=sys.stderr)
+            return 0
+        return admitted
+
+    def _admit(self, alert: Alert, moment: float) -> int | None:
         if alert.severity is Severity.CRITICAL:
             return self._suppressed.pop(alert.key, 0)
 
@@ -559,6 +588,34 @@ class FloodGuard:
 
         self._last_sent[alert.key] = moment
         return self._suppressed.pop(alert.key, 0)
+
+    def _load(self, state: Path) -> None:
+        self._last_sent, self._suppressed = {}, {}
+        if not state.exists():
+            return
+        try:
+            rows = json.loads(state.read_text())
+            for row in rows:
+                key = (str(row["severity"]), str(row["title"]))
+                self._last_sent[key] = float(row["last_sent"])
+                self._suppressed[key] = int(row["suppressed"])
+        except (ValueError, TypeError, KeyError) as e:
+            # Unreadable memory admits everything: the safe direction for a flood guard.
+            print(f"warning: flood state {state} unreadable ({e})", file=sys.stderr)
+            self._last_sent, self._suppressed = {}, {}
+
+    def _save(self, state: Path) -> None:
+        rows = [
+            {
+                "severity": severity,
+                "title": title,
+                "last_sent": sent,
+                "suppressed": self._suppressed.get((severity, title), 0),
+            }
+            for (severity, title), sent in self._last_sent.items()
+        ]
+        state.parent.mkdir(parents=True, exist_ok=True)
+        state.write_text(json.dumps(rows, indent=2) + "\n")
 
 
 class ReceiptLog:
@@ -578,6 +635,22 @@ class ReceiptLog:
         Point at ``path``; nothing is created until a receipt is remembered.
         """
         self.path = path
+        self._held = False
+
+    @contextmanager
+    def settling(self) -> Iterator[None]:
+        """
+        Hold the log's lock while settling, so two checks cannot settle one receipt.
+
+        Appends made inside the block do not take the lock again.
+
+        """
+        with exclusive(self.path.with_name(self.path.name + ".lock")):
+            self._held = True
+            try:
+                yield
+            finally:
+                self._held = False
 
     def remember(self, delivery: Delivery) -> None:
         """
@@ -627,11 +700,18 @@ class ReceiptLog:
 
     def _append(self, row: Mapping[str, object]) -> None:
         try:
-            self.path.parent.mkdir(parents=True, exist_ok=True)
-            with self.path.open("a") as handle:
-                handle.write(json.dumps(row) + "\n")
+            if self._held:
+                self._write(row)
+            else:
+                with exclusive(self.path.with_name(self.path.name + ".lock")):
+                    self._write(row)
         except OSError as e:
             print(f"warning: could not record alert receipt in {self.path}: {e}", file=sys.stderr)
+
+    def _write(self, row: Mapping[str, object]) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        with self.path.open("a") as handle:
+            handle.write(json.dumps(row) + "\n")
 
 
 class Alerter:
@@ -787,6 +867,7 @@ def alerter_from_environment(
     environ: Mapping[str, str] | None = None,
     receipts_path: str | Path = ALERT_RECEIPTS_PATH,
     latch_path: str | Path = HALT_LATCH_PATH,
+    flood_path: str | Path = ALERT_FLOOD_PATH,
 ) -> Alerter:
     """
     Build the alerter a session needs, reading credentials from the environment.
@@ -798,6 +879,7 @@ def alerter_from_environment(
     """
     return Alerter(
         notifier_from_environment(environ),
+        guard=FloodGuard(state_path=Path(flood_path).expanduser()),
         receipts=ReceiptLog(Path(receipts_path).expanduser()),
         on_undelivered_critical=lambda delivery: halt_on_undelivered(
             delivery,
@@ -833,6 +915,50 @@ def _send_test(args: argparse.Namespace) -> int:
             "\nAlerting is NOT working. The unattended-paper gate requires it, and a "
             "system that cannot tell you it broke is not ready to run unattended.",
         )
+    return 0 if delivery.delivered else 1
+
+
+UNITS_THAT_LEAVE_ORDERS = frozenset(
+    {
+        "copilot-day-sweep",
+        "copilot-shakedown-order-window",
+        "copilot-shakedown-midday",
+        "copilot-shakedown-close",
+    },
+)
+"""
+Units whose unforeseen failure may leave an order working: they sweep or place orders.
+"""
+
+
+def unit_failure_alert(unit: str, *, host: str) -> Alert:
+    """
+    Return the alert for a unit that failed in a way its own code did not report.
+
+    ``CRITICAL`` for a unit that sweeps or places orders, because it may have stopped with an
+    order working and nothing confirmed; ``WARNING`` otherwise, because a stopped phase is the
+    safe direction.
+
+    """
+    severity = Severity.CRITICAL if unit in UNITS_THAT_LEAVE_ORDERS else Severity.WARNING
+    risk = (
+        " It sweeps or places orders, so check the broker's own order list now."
+        if severity is Severity.CRITICAL
+        else ""
+    )
+    return Alert(
+        severity=severity,
+        title=f"unit {unit} failed",
+        body=f"The systemd unit {unit} failed - a traceback, a memory kill or a timeout, not a "
+        f"result its code reported.{risk} Read: journalctl --user -u 'copilot-*' --since today",
+        context={"host": host, "unit": unit},
+    )
+
+
+def _unit_failed(args: argparse.Namespace) -> int:
+    alert = unit_failure_alert(args.unit_failed, host=os.uname().nodename)
+    delivery = alerter_from_environment().send(alert)
+    print(f"alert {alert.severity} {alert.title!r}: {delivery.outcome}")
     return 0 if delivery.delivered else 1
 
 
@@ -873,6 +999,11 @@ def main(argv: list[str] | None = None) -> int:
         "--receipt",
         help="poll an emergency alert's receipt for acknowledgement",
     )
+    group.add_argument(
+        "--unit-failed",
+        metavar="UNIT",
+        help="alert that a systemd unit failed (its OnFailure handler runs this)",
+    )
     parser.add_argument(
         "--severity",
         default=Severity.WARNING.value,
@@ -882,6 +1013,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.receipt:
         return _check_receipt(args)
+    if args.unit_failed:
+        return _unit_failed(args)
     return _send_test(args)
 
 
@@ -910,6 +1043,7 @@ def receipt_status(notifier: Notifier, receipt: str) -> Acknowledgement | None:
 
 
 __all__ = [
+    "UNITS_THAT_LEAVE_ORDERS",
     "Acknowledgement",
     "Alert",
     "AlertSettings",
@@ -928,6 +1062,7 @@ __all__ = [
     "main",
     "notifier_from_environment",
     "receipt_status",
+    "unit_failure_alert",
 ]
 
 

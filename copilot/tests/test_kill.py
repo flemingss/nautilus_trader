@@ -5,6 +5,7 @@ the thing an unanswered critical alert finally reaches.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -304,3 +305,176 @@ def test_the_receipt_log_survives_its_writer(tmp_path: Path) -> None:
     assert ReceiptLog(path).outstanding() == {"r-5": "sweep STILL WORKING"}
     ReceiptLog(path).resolve("r-5", "acknowledged")
     assert ReceiptLog(path).outstanding() == {}
+
+
+# ------------------------------------------------------------ the latch in a running node
+
+
+class _Engine:
+    def __init__(self) -> None:
+        self.states: list[object] = []
+
+    def set_trading_state(self, state: object) -> None:
+        self.states.append(state)
+
+
+class _Log:
+    def __init__(self) -> None:
+        self.errors: list[str] = []
+
+    def error(self, message: str) -> None:
+        self.errors.append(message)
+
+
+class _WatchStandIn:
+    """
+    ``HaltLatchWatch`` is a pyo3 actor whose ``log`` cannot be stubbed on a real
+    instance, so its ``check`` runs unbound against the three attributes it reads.
+    """
+
+    def __init__(self, latch_path: Path) -> None:
+        self._risk_engine = _Engine()
+        self._latch_path = latch_path
+        self._halted = False
+        self.log = _Log()
+
+
+def test_a_running_node_halts_when_the_latch_appears(tmp_path: Path) -> None:
+    """
+    Audit F7: the latch was read at build only, so ``kill`` could not stop a running session.
+    """
+    from copilot.live.node import HaltLatchWatch
+    from nautilus_trader.model import TradingState
+
+    path = tmp_path / "HALT.json"
+    watch = _WatchStandIn(path)
+
+    assert HaltLatchWatch.check(watch) is False
+    assert watch._risk_engine.states == []
+
+    latch, _ = engage("fills look wrong", path=path)
+    assert HaltLatchWatch.check(watch) is True
+    assert watch._risk_engine.states == [TradingState.HALTED]
+    assert latch.latch_id in watch.log.errors[0]
+
+    release(latch.latch_id, path=path)
+    assert HaltLatchWatch.check(watch) is False
+    assert watch._risk_engine.states == [TradingState.HALTED], "the watch never releases"
+
+
+def test_the_watch_can_be_built_and_configured() -> None:
+    from copilot.live.node import LATCH_WATCH_SECS
+    from copilot.live.node import HaltLatchWatch
+    from nautilus_trader.common import DataActorConfig
+
+    watch = HaltLatchWatch(DataActorConfig())
+    watch.configure(_Engine())
+
+    assert watch._interval_secs == LATCH_WATCH_SECS
+
+
+@pytest.mark.parametrize(
+    ("orders_enabled", "cancels_only", "allowed", "watches"),
+    [
+        (True, False, True, True),  # a node that may place orders
+        (True, True, True, False),  # the sweep: cancelling is safe mode
+        (False, False, False, False),  # orders denied: already halted
+        (True, False, False, False),  # built under the latch: already halted
+    ],
+)
+def test_only_a_node_that_may_place_orders_watches_the_latch(
+    orders_enabled: bool,
+    cancels_only: bool,
+    allowed: bool,
+    watches: bool,
+) -> None:
+    from copilot.live.node import watches_the_latch
+
+    session = PaperSession(
+        account_id="DU1234567",
+        orders_enabled=orders_enabled,
+        cancels_only=cancels_only,
+    )
+
+    assert watches_the_latch(session, allowed=allowed) is watches
+
+
+# ------------------------------------------------------------------------------ locking
+
+
+def test_engagements_at_once_make_one_latch_and_every_caller_names_it(tmp_path: Path) -> None:
+    """
+    Audit F13: every engagement staged through one ``HALT.tmp``, and nothing locked.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    path = tmp_path / "HALT.json"
+    start = Barrier(8)
+
+    def racer(n: int) -> tuple[Latch, bool]:
+        start.wait()
+        return engage(f"racer {n}", path=path)
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        results = list(pool.map(racer, range(8)))
+
+    assert sum(1 for _, engaged in results if engaged) == 1
+    assert {latch.latch_id for latch, _ in results} == {read_latch(path).latch_id}
+    assert not list(tmp_path.glob(".HALT.*.tmp")), "no staging file is left behind"
+
+
+def test_two_acknowledgement_checks_at_once_settle_a_receipt_once(tmp_path: Path) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    log_path = tmp_path / "receipts.jsonl"
+    ReceiptLog(log_path).remember(_critical("r-7"))
+    start = Barrier(4)
+
+    def checker(_n: int) -> list[str]:
+        start.wait()
+        return check_acknowledgements(
+            ReceiptLog(log_path),
+            lambda r: _state(r, expired=True),
+            latch_path=tmp_path / "HALT.json",
+        )
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        lines = [line for result in pool.map(checker, range(4)) for line in result]
+
+    resolved = [row for row in log_path.read_text().splitlines() if '"resolved"' in row]
+    assert len(resolved) == 1
+    assert len(lines) == 1
+
+
+# ------------------------------------------------------------------- the builder rule
+
+
+OVERLAY = Path(__file__).resolve().parents[1]
+NODE_BUILDER = OVERLAY / "live" / "node.py"
+DATA_ONLY_BUILDERS = {
+    OVERLAY / "calibration" / "spread_snapshot.py",
+    OVERLAY / "live" / "probes" / "subscription_interference.py",
+}
+
+
+def test_every_order_capable_node_is_built_by_the_one_builder_that_reads_the_latch() -> None:
+    """
+    ADR-0027's own consequence: the latch is only as good as the rule that every node
+    with an execution client comes from ``build_paper_node``, and a builder that adds
+    one bypasses it.
+    """
+    execution = re.compile(r"add_exec_client|ExecutionClientFactory|ExecutionClientConfig\(")
+    builds = re.compile(r"LiveNode\.builder\(")
+    offenders = []
+    for path in sorted(OVERLAY.rglob("*.py")):
+        if path.parent.name == "tests" or path == NODE_BUILDER:
+            continue
+        source = path.read_text()
+        if execution.search(source):
+            offenders.append(f"{path.relative_to(OVERLAY)} configures an execution client")
+        if builds.search(source) and path not in DATA_ONLY_BUILDERS:
+            offenders.append(f"{path.relative_to(OVERLAY)} builds a node of its own")
+
+    assert offenders == []

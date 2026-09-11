@@ -1,0 +1,20 @@
+# Settles outstanding CRITICAL receipts, and engages the halt latch for one that expired
+# unanswered. ADR-0023's deadline is an hour; the day's phases alone reached it at most three
+# times a day, so a CRITICAL from the 10:30 sweep could expire at 11:30 and engage nothing
+# until 17:00, after the 11:35 phase had placed orders.
+
+[Unit]
+Description=copilot acknowledgement check
+OnFailure=copilot-unit-failed@%N.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+EnvironmentFile=%h/.config/copilot/copilot.env
+EnvironmentFile=%h/.config/copilot/secrets.env
+Environment=PYTHONPATH=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m copilot.live.kill --check-acknowledgements
+# Exit 1 is the check reporting a halted host, not the check failing.
+SuccessExitStatus=1
+TimeoutStartSec=5min
+MemoryMax=1G

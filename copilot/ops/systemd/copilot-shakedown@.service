@@ -6,6 +6,7 @@
 Description=copilot shakedown %i
 Wants=network-online.target
 After=network-online.target
+OnFailure=copilot-unit-failed@%p-%i.service
 
 [Service]
 Type=oneshot
@@ -13,7 +14,9 @@ WorkingDirectory=@REPO@
 EnvironmentFile=%h/.config/copilot/copilot.env
 EnvironmentFile=%h/.config/copilot/secrets.env
 Environment=PYTHONPATH=@REPO@
-ExecStart=@REPO@/.venv/bin/python -m copilot.live.shakedown --phase %i --scheduled
+ExecStartPre=-@REPO@/.venv/bin/python -m copilot.live.host_check --wait-for-broker 300
+# The same broker lock as the day's units.
+ExecStart=/usr/bin/flock --wait 1800 %t/copilot-broker.lock @REPO@/.venv/bin/python -m copilot.live.shakedown --phase %i --scheduled
 TimeoutStartSec=90min
 MemoryMax=6G
 Nice=5

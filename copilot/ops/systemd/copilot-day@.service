@@ -6,6 +6,9 @@
 Description=copilot day %i
 Wants=network-online.target
 After=network-online.target
+# A unit that dies for a reason the code did not foresee - a traceback, an OOM kill, the
+# timeout below - tells someone rather than leaving a journal line.
+OnFailure=copilot-unit-failed@%p-%i.service
 
 [Service]
 Type=oneshot
@@ -13,9 +16,15 @@ WorkingDirectory=@REPO@
 EnvironmentFile=%h/.config/copilot/copilot.env
 EnvironmentFile=%h/.config/copilot/secrets.env
 Environment=PYTHONPATH=@REPO@
-ExecStart=@REPO@/.venv/bin/python -m copilot.live.day %i --scheduled
-# The evening's sweep can retry its broker census for about ten minutes.
-TimeoutStartSec=45min
+# Gives a Gateway that is still logging in after a reboot up to five minutes, then goes on
+# either way ("-"): the phase's own preflight is what decides.
+ExecStartPre=-@REPO@/.venv/bin/python -m copilot.live.host_check --wait-for-broker 300
+# One broker session at a time on this host. Every day and shakedown unit takes this lock,
+# so the 10:30 sweep's census retries and the 10:45 order window cannot overlap.
+ExecStart=/usr/bin/flock --wait 1800 %t/copilot-broker.lock @REPO@/.venv/bin/python -m copilot.live.day %i --scheduled
+# The lock's wait, then the evening's worst case: its steps and a sweep whose census retries
+# for ten minutes (test_host_check holds this against the sweep's constants).
+TimeoutStartSec=90min
 # The whole day peaked under 0.5 GiB on 2026-09-10. A runaway is killed, not the host.
 MemoryMax=6G
 Nice=5

@@ -38,6 +38,16 @@ written on the same understanding, but neither has met a running node. Confirmin
 the first thing stage one exists to do, and until then no run is left unattended on the
 strength of it.
 
+The halt latch, read at build and while running
+------------------------------------------------
+Every node reads the host's halt latch at build (:mod:`copilot.live.halt`), and a node that is
+allowed to place orders also **re-reads it while it runs**, through :class:`HaltLatchWatch`,
+and halts its own engine the moment the latch appears. Until 2026-09-11 the read was at build
+only, so ``python -m copilot.live.kill`` could not stop a session already running
+(``docs/AUDIT_2026-09-11.md``, F7). The watch only ever halts; release is a new process, after
+the operator releases the latch. A cancels-only session carries no watch, because cancelling
+is what safe mode does.
+
 Actors
 ------
 ``LiveNode.add_actor`` **is** exposed to Python on this build - it was added to the fork
@@ -52,12 +62,15 @@ from __future__ import annotations
 import asyncio
 import sys
 from collections.abc import Callable
+from datetime import timedelta
+from pathlib import Path
 from typing import Protocol
 
 from copilot.live.halt import orders_allowed
 from copilot.live.halt import read_latch
 from copilot.live.session import PaperSession
 from copilot.live.symbology import ROUTING_BY_VENUE
+from copilot.paths import HALT_LATCH_PATH
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientFactory
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersExecutionClientConfig
@@ -65,6 +78,8 @@ from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersExecu
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersInstrumentProviderConfig
 from nautilus_trader.adapters.interactive_brokers import MarketDataType
 from nautilus_trader.adapters.interactive_brokers import SymbologyMethod
+from nautilus_trader.common import DataActor
+from nautilus_trader.common import DataActorConfig
 from nautilus_trader.common import Environment
 from nautilus_trader.live import LiveNode
 from nautilus_trader.live import LiveRiskEngineConfig
@@ -88,6 +103,86 @@ class SupportsTradingState(Protocol):
         """
         Set the engine-wide trading state.
         """
+
+
+LATCH_WATCH_SECS = 5
+"""
+Seconds between the running node's reads of the halt latch.
+
+A small file, read locally; five seconds is the longest a kill waits to reach an engine
+that is already up.
+
+"""
+
+
+class HaltLatchWatch(DataActor):
+    """
+    Re-reads the halt latch while the node runs, and halts the engine when it appears.
+
+    ``DataActor`` is a pyo3 class whose ``__new__`` takes only the config, so the engine handle
+    and the latch's path are attached by :meth:`configure` after construction.
+
+    """
+
+    def configure(
+        self,
+        risk_engine: SupportsTradingState,
+        *,
+        latch_path: str | Path = HALT_LATCH_PATH,
+        interval_secs: int = LATCH_WATCH_SECS,
+    ) -> None:
+        """
+        Attach the engine to halt and where the latch lives.
+        """
+        self._risk_engine = risk_engine
+        self._latch_path = latch_path
+        self._interval_secs = interval_secs
+        self._halted = False
+
+    def on_start(self) -> None:
+        """
+        Read the latch once now, then on a timer.
+        """
+        self.check()
+        self.clock.set_timer(
+            name="copilot-halt-latch-watch",
+            interval=timedelta(seconds=self._interval_secs),
+        )
+
+    def on_time_event(self, _event: object) -> None:
+        """
+        Read the latch on the timer.
+        """
+        self.check()
+
+    def check(self) -> bool:
+        """
+        Halt the engine once if the latch is engaged, and say whether this call did.
+
+        Only ever halts. A latch released while this node runs does not re-enable it:
+        the node was started under one decision and is stopped under another, and
+        resuming belongs to a new process started after the recovery checklist.
+
+        """
+        if self._halted:
+            return False
+        latch = read_latch(self._latch_path)
+        if latch is None:
+            return False
+        self._risk_engine.set_trading_state(TradingState.HALTED)
+        self._halted = True
+        self.log.error(
+            f"HALT LATCH {latch.latch_id} engaged while this node runs ({latch.trigger}): "
+            f"{latch.reason}. Trading state HALTED; new orders are denied.",
+        )
+        return True
+
+
+def watches_the_latch(session: PaperSession, *, allowed: bool) -> bool:
+    """
+    Whether a node needs the running latch watch: it may place orders, and not only cancel.
+    """
+    return allowed and not session.cancels_only
 
 
 NODE_NAME = "COPILOT-PAPER"
@@ -181,6 +276,10 @@ def build_paper_node(
             file=sys.stderr,
         )
     apply_order_switch(risk_engine, orders_enabled=allowed)
+    if watches_the_latch(session, allowed=allowed):
+        watch = HaltLatchWatch(DataActorConfig())
+        watch.configure(risk_engine)
+        node.add_actor(watch)
     return node, risk_engine
 
 
@@ -274,11 +373,14 @@ def apply_order_switch(risk_engine: SupportsTradingState, *, orders_enabled: boo
 __all__ = [
     "CANCEL_DEADLINE_SECS",
     "CONNECTION_TIMEOUT_SECS",
+    "LATCH_WATCH_SECS",
     "NODE_NAME",
     "TRADER_ID",
+    "HaltLatchWatch",
     "SupportsTradingState",
     "apply_order_switch",
     "build_paper_node",
     "execution_client_config",
     "wait_for_settlement",
+    "watches_the_latch",
 ]

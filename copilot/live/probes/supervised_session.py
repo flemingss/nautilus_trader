@@ -57,6 +57,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
@@ -376,8 +377,16 @@ def main(argv: list[str] | None = None) -> int:
         help="Deployable USD. The real account, not the paper balance.",
     )
     parser.add_argument("--settle-secs", type=int, default=90)
-    parser.add_argument("--data-client-id", type=int, default=861)
-    parser.add_argument("--exec-client-id", type=int, default=862)
+    parser.add_argument(
+        "--data-client-id",
+        type=int,
+        default=BROKER_PAIRS["supervised_session"].data,
+    )
+    parser.add_argument(
+        "--exec-client-id",
+        type=int,
+        default=BROKER_PAIRS["supervised_session"].execution,
+    )
     args = parser.parse_args(argv)
 
     if not args.account:

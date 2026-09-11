@@ -39,6 +39,15 @@ kill) is left in force when the breach closes. The first version released any ``
 it found on expiry, so a breach that opened and expired inside an orders-denied run would
 have re-enabled orders.
 
+Settings that exist only after connecting
+-----------------------------------------
+The drawdown limit's denominator is the capital the session sizes against, and on the broker
+that is read from the account once the execution client has connected - after the node, and
+the guard with it, has started. So :meth:`ProtectionGuard.configure` may come **after** start:
+a guard started without settings waits, and configuring it runs the start-time evaluation
+then. The basket (``copilot.live.run_activation``) configures it before it hands any strategy
+a bar, so no order can precede the first evaluation.
+
 Across a restart
 ----------------
 The breaker's evidence is the closed trades, and the node's cache forgets them when the
@@ -151,6 +160,8 @@ class ProtectionGuard(Strategy):
         self._breach: ProtectionBreach | None = None
         self._halted_by_guard = False
         self._ledger = OutcomeLedger(settings.ledger_path) if settings.ledger_path else None
+        if getattr(self, "_started", False):
+            self._begin()
 
     @property
     def breach(self) -> ProtectionBreach | None:
@@ -164,7 +175,17 @@ class ProtectionGuard(Strategy):
 
     def on_start(self) -> None:
         """
-        Announce the policy and start the evaluation timer.
+        Begin evaluating, or wait for settings that arrive after connecting.
+        """
+        self._started = True
+        if getattr(self, "_settings", None) is None:
+            self.log.info("ProtectionGuard started without settings; waiting for configure()")
+            return
+        self._begin()
+
+    def _begin(self) -> None:
+        """
+        Announce the policy, evaluate once, and start the evaluation timer.
         """
         self.log.info(
             f"ProtectionGuard active: {self._settings.policy}",
@@ -192,6 +213,8 @@ class ProtectionGuard(Strategy):
         """
         Re-evaluate immediately on new evidence.
         """
+        if getattr(self, "_settings", None) is None:
+            return
         # Evaluate immediately on new evidence rather than waiting for the timer;
         # the breaker exists to react to a losing sequence, and a whole timer
         # interval of delay is exactly the window it is meant to remove.

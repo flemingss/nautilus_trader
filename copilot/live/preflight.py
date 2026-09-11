@@ -73,6 +73,7 @@ from copilot.data.calendar import session_close
 from copilot.data.calendar import session_open
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import find_account
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.session import add_broker_arguments
@@ -436,7 +437,11 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.live.preflight",
         description="Paper stages one and two: connect with orders disabled, confirm environment.",
     )
-    add_broker_arguments(parser, data_client_id=801, exec_client_id=802)
+    add_broker_arguments(
+        parser,
+        data_client_id=BROKER_PAIRS["preflight"].data,
+        exec_client_id=BROKER_PAIRS["preflight"].execution,
+    )
     parser.add_argument("--settle-secs", type=int, default=DEFAULT_SETTLE_SECS)
     parser.add_argument(
         "--instruments",

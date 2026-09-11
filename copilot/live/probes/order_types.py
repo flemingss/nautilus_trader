@@ -50,6 +50,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
@@ -346,8 +347,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--venue", default="XNAS")
     parser.add_argument("--reference-price", required=True)
     parser.add_argument("--settle-secs", type=int, default=45)
-    parser.add_argument("--data-client-id", type=int, default=841)
-    parser.add_argument("--exec-client-id", type=int, default=842)
+    parser.add_argument("--data-client-id", type=int, default=BROKER_PAIRS["order_types"].data)
+    parser.add_argument(
+        "--exec-client-id",
+        type=int,
+        default=BROKER_PAIRS["order_types"].execution,
+    )
     args = parser.parse_args(argv)
 
     if not args.account:

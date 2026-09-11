@@ -176,6 +176,19 @@ def verify_paper_session(
         )
 
 
+BASKET_ORDERS_ENABLED = False
+"""
+Whether the evening's basket may place orders. False until paper stage seven.
+
+One constant rather than a literal in ``run_activation``, because the evening reads it too:
+while orders are denied nothing the basket did can be working, so the evening ends with the
+sweep; the day orders are enabled, a sweep at the end of the evening would cancel the entries
+it just placed, before the session they are for, so the sweep is ``day sweep`` at 10:30
+alone (``docs/AUDIT_2026-09-11.md``, F8). Enabling orders is a charter gate, not a flag flip,
+and this is where the diff that crosses it lands.
+
+"""
+
 PAPER_ACCOUNT_ENV = "COPILOT_PAPER_ACCOUNT"
 """
 The environment variable naming the paper account, read by every broker command.
@@ -214,6 +227,7 @@ def add_broker_arguments(
 
 
 __all__ = [
+    "BASKET_ORDERS_ENABLED",
     "CLIENT_ID_PARTITION",
     "GATEWAY_LIVE_PORT",
     "GATEWAY_PAPER_PORT",

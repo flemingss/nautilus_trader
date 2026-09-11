@@ -113,6 +113,8 @@ from copilot.live.alerting import Alert
 from copilot.live.alerting import Delivery
 from copilot.live.alerting import Severity
 from copilot.live.alerting import alerter_from_environment
+from copilot.live.client_ids import BROKER_PAIRS
+from copilot.live.client_ids import census_pairs
 from copilot.live.node import CANCEL_DEADLINE_SECS
 from copilot.live.node import build_paper_node
 from copilot.live.node import wait_for_settlement
@@ -239,6 +241,11 @@ CENSUS_READ_DEADLINE_SECS = 90
 How long one census node may take to connect, reconcile and start before it is unread.
 """
 
+NODE_STOP_SECS = 60
+"""
+How long a sweep or census node may take to stop before it is reported as not stopping.
+"""
+
 SWEEP_START_DEADLINE_SECS = CENSUS_READ_DEADLINE_SECS
 """
 How long the cancel node may take to connect, reconcile and issue its cancels.
@@ -248,7 +255,24 @@ seconds from build to startup against paper TWS.
 
 """
 
-CENSUS_CLIENT_IDS = ((823, 824), (825, 826), (827, 828), (829, 830))
+
+def sweep_worst_case_secs() -> int:
+    """
+    Return the longest a sweep can run before its verdict, from its own deadlines.
+
+    The cancel node's start, acknowledgement and stop deadlines, then every census's
+    wait, read and stop. The systemd timeout is held against this, so a slow broker day
+    ends in a verdict and not in a unit killed mid-census.
+
+    """
+    cancel = SWEEP_START_DEADLINE_SECS + CANCEL_DEADLINE_SECS + NODE_STOP_SECS
+    censuses = sum(CENSUS_WAITS_SECS) + len(CENSUS_WAITS_SECS) * (
+        CENSUS_READ_DEADLINE_SECS + NODE_STOP_SECS
+    )
+    return cancel + censuses
+
+
+CENSUS_CLIENT_IDS = tuple((pair.data, pair.execution) for pair in census_pairs())
 """
 One (data, execution) client-id pair per scheduled census, never reused within a sweep.
 
@@ -414,7 +438,7 @@ async def _node_ended(task: asyncio.Task[Any], name: str) -> None:
     Wait for a node's run to end, reporting rather than raising however it ended.
     """
     try:
-        await asyncio.wait_for(task, timeout=60)
+        await asyncio.wait_for(task, timeout=NODE_STOP_SECS)
     except (TimeoutError, asyncio.CancelledError) as e:
         # Worth saying loudly: a node that will not stop may still hold a connection.
         print(f"{name} did not stop cleanly: {e!r}", file=sys.stderr)
@@ -502,7 +526,11 @@ def main(argv: list[str] | None = None) -> int:
         description="Cancel every working order on the registered instruments and verify "
         "the broker agrees.",
     )
-    add_broker_arguments(parser, data_client_id=821, exec_client_id=822)
+    add_broker_arguments(
+        parser,
+        data_client_id=BROKER_PAIRS["cancel_working"].data,
+        exec_client_id=BROKER_PAIRS["cancel_working"].execution,
+    )
     parser.add_argument(
         "--all",
         action="store_true",
@@ -726,6 +754,7 @@ __all__ = [
     "sweep",
     "sweep_alert",
     "sweep_record",
+    "sweep_worst_case_secs",
 ]
 
 

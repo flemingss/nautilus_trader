@@ -48,6 +48,7 @@ from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
+from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
 from copilot.live.symbology import broker_instrument_id
@@ -459,8 +460,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--uncapped-price", default="240.00", help="Far below market, cannot fill")
     parser.add_argument("--venue", default="XNAS")
     parser.add_argument("--settle-secs", type=int, default=60)
-    parser.add_argument("--data-client-id", type=int, default=871)
-    parser.add_argument("--exec-client-id", type=int, default=872)
+    parser.add_argument(
+        "--data-client-id",
+        type=int,
+        default=BROKER_PAIRS["failure_injection"].data,
+    )
+    parser.add_argument(
+        "--exec-client-id",
+        type=int,
+        default=BROKER_PAIRS["failure_injection"].execution,
+    )
     args = parser.parse_args(argv)
 
     if not args.account:

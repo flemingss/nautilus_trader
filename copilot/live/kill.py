@@ -98,9 +98,11 @@ def check_acknowledgements(
     does not stop the phase that asked.
 
     """
-    lines: list[str] = []
+    if not receipts.path.exists():
+        return []
     try:
-        outstanding = receipts.outstanding()
+        with receipts.settling():
+            return _settle(receipts, read_receipt, latch_path=latch_path)
     except OSError as e:
         return [
             (
@@ -108,7 +110,19 @@ def check_acknowledgements(
                 "unanswered CRITICAL cannot engage the halt until it can"
             ),
         ]
-    for receipt, title in outstanding.items():
+
+
+def _settle(
+    receipts: ReceiptLog,
+    read_receipt: Callable[[str], Acknowledgement | None],
+    *,
+    latch_path: str | Path,
+) -> list[str]:
+    """
+    Settle each outstanding receipt, under the log's lock the caller holds.
+    """
+    lines: list[str] = []
+    for receipt, title in receipts.outstanding().items():
         state = read_receipt(receipt)
         if state is None or state.outstanding:
             continue

@@ -349,3 +349,61 @@ def test_a_breach_found_at_start_cancels_but_does_not_flatten():
     assert "cancel SPY=STK.SMART" in restored.actions
     assert not any(a.startswith("flatten") for a in restored.actions)
     assert "flatten SPY=STK.SMART" in live.actions
+
+
+# --------------------------------------------------- settings that arrive after connecting
+
+
+class _StartingGuard(_GuardStandIn):
+    """
+    Records what beginning does, so ``on_start`` and ``configure`` can run unbound.
+    """
+
+    def __init__(self) -> None:
+        super().__init__(_FakeRiskEngine())
+        del self._settings
+        self.began = 0
+
+    def _begin(self) -> None:
+        self.began += 1
+
+
+def test_a_guard_started_without_settings_waits_and_begins_when_configured(tmp_path) -> None:
+    """
+    The drawdown limit is a fraction of the capital the basket sizes against, which exists only
+    once the broker has connected - after the node, and the guard, have started.
+    """
+    from copilot.risk.guard import ProtectionGuardSettings
+    from copilot.risk.protections import ProtectionPolicy
+
+    guard = _StartingGuard()
+
+    ProtectionGuard.on_start(guard)
+    assert guard.began == 0, "no settings, so nothing to evaluate against"
+
+    settings = ProtectionGuardSettings(
+        policy=ProtectionPolicy(),
+        instrument_ids=(),
+        account_value=Decimal(1000),
+        ledger_path=tmp_path / "outcomes.jsonl",
+    )
+    ProtectionGuard.configure(guard, settings, risk_engine=_FakeRiskEngine())
+
+    assert guard.began == 1, "configured after start, it evaluates then"
+
+
+def test_a_guard_configured_before_start_begins_at_start() -> None:
+    from copilot.risk.guard import ProtectionGuardSettings
+    from copilot.risk.protections import ProtectionPolicy
+
+    guard = _StartingGuard()
+    settings = ProtectionGuardSettings(
+        policy=ProtectionPolicy(),
+        instrument_ids=(),
+        account_value=Decimal(1000),
+    )
+
+    ProtectionGuard.configure(guard, settings)
+    assert guard.began == 0
+    ProtectionGuard.on_start(guard)
+    assert guard.began == 1

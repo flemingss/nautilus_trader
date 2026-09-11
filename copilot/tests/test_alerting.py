@@ -551,6 +551,7 @@ def test_an_alerter_from_the_environment_halts_on_an_undelivered_critical(tmp_pa
         {},
         receipts_path=tmp_path / "receipts.jsonl",
         latch_path=latch_path,
+        flood_path=tmp_path / "flood.json",
     )
 
     delivery = alerter.critical("sweep UNCONFIRMED", "b")
@@ -613,3 +614,54 @@ def test_the_self_check_exits_zero_once_delivery_works(monkeypatch, capsys):
 
     assert alerting.main(["--send-test"]) == 0
     assert "delivered  True" in capsys.readouterr().out
+
+
+def test_repeats_collapse_across_processes_through_the_state_file(tmp_path):
+    """
+    Audit F10: every sender on the VM is a one-shot process, so an in-memory guard saw no
+    repeats at all.
+    """
+    state = tmp_path / "flood.json"
+
+    first = FloodGuard(window_seconds=300.0, state_path=state)
+    assert first.admit(_alert(), now=1000.0) == 0
+
+    second = FloodGuard(window_seconds=300.0, state_path=state)
+    assert second.admit(_alert(), now=1100.0) is None, "a new process sees the last send"
+
+    third = FloodGuard(window_seconds=300.0, state_path=state)
+    assert third.admit(_alert(), now=1400.0) == 1, "the collapsed repeat rides the next one"
+
+
+def test_an_unreadable_flood_state_lets_the_alert_through(tmp_path, capsys):
+    state = tmp_path / "flood.json"
+    state.write_text("{not json")
+
+    assert FloodGuard(state_path=state).admit(_alert(), now=1.0) == 0
+    assert "unreadable" in capsys.readouterr().err
+
+
+def test_a_critical_is_never_suppressed_by_the_state_file_either(tmp_path):
+    state = tmp_path / "flood.json"
+    for moment in (1.0, 2.0, 3.0):
+        assert FloodGuard(state_path=state).admit(_alert(Severity.CRITICAL), now=moment) is not None
+
+
+@pytest.mark.parametrize(
+    ("unit", "severity"),
+    [
+        ("copilot-day-sweep", Severity.CRITICAL),
+        ("copilot-shakedown-order-window", Severity.CRITICAL),
+        ("copilot-day-evening", Severity.WARNING),
+        ("copilot-acknowledgements", Severity.WARNING),
+    ],
+)
+def test_a_failed_unit_that_may_leave_orders_is_critical(unit, severity):
+    """
+    Audit F11: a unit that died for a reason its code did not foresee told nobody.
+    """
+    alert = alerting.unit_failure_alert(unit, host="vm")
+
+    assert alert.severity is severity
+    assert unit in alert.title
+    assert "journalctl" in alert.body

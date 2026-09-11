@@ -40,6 +40,7 @@ its own exit code and its own session check.
 | 15:20        | `shakedown --phase close`        | The closing contrast against the measured spread                   |
 | 17:00        | `day morning`                    | Append, corporate actions, verdicts, live-versus-replay comparison |
 | 17:15        | heartbeat                        | One `INFO` summary; an external check alerts if it does not arrive |
+| every 15 min | `kill --check-acknowledgements`  | An unanswered CRITICAL engages the halt latch within its deadline  |
 | Gateway sets | IB Gateway restart               | The daily recovery drill, whether we want one or not               |
 
 **Built 2026-09-10** as `copilot/ops/systemd/` - every service runs with `--scheduled`, and the

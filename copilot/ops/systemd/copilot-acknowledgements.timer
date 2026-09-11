@@ -1,0 +1,12 @@
+# copilot acknowledgement check, every fifteen minutes, every day
+
+[Unit]
+Description=copilot acknowledgement check, every fifteen minutes, every day
+
+[Timer]
+OnCalendar=*-*-* *:00/15:00 America/New_York
+Persistent=false
+Unit=copilot-acknowledgements.service
+
+[Install]
+WantedBy=timers.target

@@ -39,6 +39,7 @@ from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 
+from copilot.live.client_ids import DATA_ONLY
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientConfig
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersDataClientFactory
 from nautilus_trader.adapters.interactive_brokers import InteractiveBrokersInstrumentProviderConfig
@@ -278,7 +279,7 @@ def main() -> None:
     """
     host = os.getenv("IB_V2_HOST", "172.17.112.1")
     port = int(os.getenv("IB_V2_PORT", "7497"))
-    client_id = int(os.getenv("COPILOT_CAL_CLIENT_ID", "701"))
+    client_id = int(os.getenv("COPILOT_CAL_CLIENT_ID", str(DATA_ONLY["spread_snapshot"])))
     seconds = int(os.getenv("COPILOT_CAL_SECONDS", "120"))
     symbols = os.getenv("COPILOT_CAL_SYMBOLS", ",".join(DEFAULT_SYMBOLS)).split(",")
     mdt_name = os.getenv("COPILOT_CAL_MARKET_DATA_TYPE", "DELAYED").upper()

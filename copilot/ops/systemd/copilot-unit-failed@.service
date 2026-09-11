@@ -1,0 +1,15 @@
+# Tells the operator that a copilot unit failed, named by its instance. CRITICAL for a unit
+# that sweeps or places orders, because an order may be left working; WARNING otherwise.
+
+[Unit]
+Description=copilot alert: %i failed
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+EnvironmentFile=%h/.config/copilot/copilot.env
+EnvironmentFile=%h/.config/copilot/secrets.env
+Environment=PYTHONPATH=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m copilot.live.alerting --unit-failed %i
+TimeoutStartSec=2min
+MemoryMax=1G

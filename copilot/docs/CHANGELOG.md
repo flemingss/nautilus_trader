@@ -2,6 +2,53 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, audit batch B: the host runs one broker session at a time
+
+The rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before unattended running.
+[ADR-0030](decisions/0030-the-host-runs-one-broker-session-at-a-time.md) records the shape.
+
+### Fixed
+
+- **Units cannot overlap on the broker** (F6). Every day and shakedown unit runs under one
+  `flock`, waiting up to thirty minutes; a phase that waits past its window is refused by its own
+  scheduled check. Each first waits up to five minutes for the Gateway's port and goes on either
+  way.
+- **A unit that dies tells someone** (F11). `OnFailure=` starts `copilot-unit-failed@`, CRITICAL
+  for a unit that sweeps or places orders and WARNING otherwise; start timeouts are sized from the
+  sweep's own deadlines plus the lock's wait, and a test holds them there.
+- **The acknowledgement check has its own timer** (F4), every fifteen minutes, every day, and
+  keeps running when the phase timers are paused. The runbook's pause command no longer stops it.
+- **`kill` stops a running session** (F7). A node allowed to place orders re-reads the latch every
+  five seconds and halts its engine; it never releases.
+- **One client-id table** (F12). The basket and the failure-injection probe shared 871/872, and
+  the order-type matrix and strand recovery shared 841/842; the probes move to 881/882 and 851/852,
+  and a test refuses a literal id anywhere else.
+- **The evening sweeps only while the basket's orders are denied** (F8), through
+  `session.BASKET_ORDERS_ENABLED`, so enabling orders cannot cancel the entries an hour before the
+  session they are for.
+- **The flood guard remembers across processes** (F10), on disk under a lock; the halt reminder
+  goes out from the morning only.
+- **The latch and the receipts log are locked** (F13); engagements at once make one latch, and
+  checks at once settle a receipt once.
+- **The protection guard runs in the basket, with its ledger** (F15). It may now be configured
+  after start, because its drawdown denominator is the equity the broker reports once connected.
+- **A test holds the builder rule** ADR-0027 relies on (F14), and **the ops package is tested
+  against the code** (F30): timers against the runbook table, the env templates against what every
+  scheduled phase requires, the compose file's paper and localhost invariants, and
+  `install-units.sh` run against a stand-in `systemctl`.
+
+### Moved to a decision
+
+- **How a triggered next-close entry is placed in its session.** Building it means choosing the
+  order type, the concession and when the bracket's levels are set; the row is under *Waiting on
+  a decision* with a recommendation.
+
+### Measured
+
+- Against paper TWS: the latch watch halted a running node within eight seconds; the basket for
+  the 2026-09-10 session ran with the guard configured after connect, active, no breach.
+- `systemd-analyze verify` passes on the rendered units. 1,117 overlay tests pass.
+
 ## 2026-09-11, audit batch A: the sweep cancels, and a CRITICAL nobody received halts
 
 The four rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before the VM's supervised day.

@@ -23,14 +23,17 @@ while one holds the morning withholds its heartbeat (:func:`engaged_automaticall
 from __future__ import annotations
 
 import json
+import os
 import secrets
 import socket
+import tempfile
 from dataclasses import asdict
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
 from pathlib import Path
 
+from copilot.live.filelock import exclusive
 from copilot.paths import HALT_LATCH_PATH
 
 
@@ -95,40 +98,52 @@ def engage(
 
     An engaged latch is never overwritten: the first reason is the one the recovery
     checklist has to answer, and a second trigger replacing it would erase why it started.
+    The check and the write happen under one lock, and the write stages through a file of
+    its own, so two engagements at once produce one latch and both callers name it.
 
     """
-    existing = read_latch(path)
-    if existing is not None:
-        return existing, False
-    latch = Latch(
-        latch_id=secrets.token_hex(4),
-        engaged_at=(now or datetime.now(UTC)).isoformat(),
-        trigger=trigger,
-        reason=reason,
-        host=socket.gethostname(),
-    )
     target = latch_path(path)
-    target.parent.mkdir(parents=True, exist_ok=True)
-    staging = target.with_suffix(".tmp")
-    staging.write_text(json.dumps(asdict(latch), indent=2) + "\n")
-    staging.replace(target)
-    return latch, True
+    with exclusive(_lock_for(target)):
+        existing = read_latch(target)
+        if existing is not None:
+            return existing, False
+        latch = Latch(
+            latch_id=secrets.token_hex(4),
+            engaged_at=(now or datetime.now(UTC)).isoformat(),
+            trigger=trigger,
+            reason=reason,
+            host=socket.gethostname(),
+        )
+        descriptor, staging = tempfile.mkstemp(dir=target.parent, prefix=".HALT.", suffix=".tmp")
+        with os.fdopen(descriptor, "w") as handle:
+            handle.write(json.dumps(asdict(latch), indent=2) + "\n")
+        Path(staging).replace(target)
+        return latch, True
+
+
+def _lock_for(target: Path) -> Path:
+    """
+    Return the lock file that serialises every change to ``target``.
+    """
+    return target.with_name(target.name + ".lock")
 
 
 def release(latch_id: str, *, path: str | Path = HALT_LATCH_PATH) -> Latch:
     """
     Release the latch if ``latch_id`` is its id, and return what was released.
     """
-    latch = read_latch(path)
-    if latch is None:
-        raise ValueError("the halt latch is not engaged; nothing to release")
-    if latch_id != latch.latch_id:
-        raise ValueError(
-            f"{latch_id!r} is not the engaged latch's id. Retype the id `kill --status` "
-            "prints; a release is not tab-completed.",
-        )
-    latch_path(path).unlink()
-    return latch
+    target = latch_path(path)
+    with exclusive(_lock_for(target)):
+        latch = read_latch(target)
+        if latch is None:
+            raise ValueError("the halt latch is not engaged; nothing to release")
+        if latch_id != latch.latch_id:
+            raise ValueError(
+                f"{latch_id!r} is not the engaged latch's id. Retype the id `kill --status` "
+                "prints; a release is not tab-completed.",
+            )
+        target.unlink()
+        return latch
 
 
 def engaged_automatically(latch: Latch | None) -> bool:
