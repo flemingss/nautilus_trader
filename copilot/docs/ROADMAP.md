@@ -50,7 +50,7 @@ stalls.
 | 02  | Research / strategy  | `copilot/strategies`          | **NOT READY.** Gap-fade family rejected 2026-09-10; no premise in research                                             |
 | 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                                                    |
 | 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Interval, calendar clustering and attribution; the effect size must be predeclared (ADR-0031) |
-| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash                                         |
+| 05  | Position sizing      | `copilot/risk/sizing`         | **Settled cash capped on a cash account**, not applicable on margin; binding untested until live                       |
 | 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live; the breaker runs in the basket** with its ledger since 2026-09-11                                  |
 | 07  | Orders / exits       | Nautilus execution            | **Exercised; the sweep cancels, confirmed live.** IB's global cancel since 2026-09-11 (ADR-0029)                       |
 | 08  | Live deployment      | Nautilus `LiveNode`           | **Packaged for the VM.** One broker session at a time, unit failures alerted (ADR-0030); stand-up 2026-09-15           |
@@ -97,10 +97,12 @@ Three groups of open work, and they gate different things:
   unit failures alerted, the acknowledgement check on its own timer, the latch read inside a
   running node, and the protection guard in the basket. IB Gateway headless is the one prep
   item only the VM can close.
-- **Real money in a cash account** - stages 05 and 06, three rows. Settled-cash sizing, the
-  T+1 rules confirmed with the carrying entity, and the margin-or-cash question. The paper
-  account is MARGIN with USD 1M and **cannot surface any of them**, which is why they stay
-  open however well paper goes.
+- **Real money in a cash account** - stages 05 and 06, two rows. The T+1 rules confirmed with
+  the carrying entity, and the margin-or-cash question. Settled-cash sizing is built
+  (2026-09-11): the session caps buys at the settled cash IB reports and refuses a cash account
+  that reports none. The paper account is MARGIN with USD 1M, and IB sends it no settled figure
+  at all, so **paper cannot surface any of this** - which is why the rows stay open however
+  well paper goes.
 
 ### Stage 02 - the gap fade, and the first real verdict
 
@@ -230,7 +232,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twenty-four items. Grouped by blocking condition rather than by component, because that is
+Twenty-three items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -400,7 +402,7 @@ questions the stand-up plan defers to its stages, each now a row of its own.
 | **Whether `IBAPI_TIMEZONE_ALIASES` is still needed against an Eastern Gateway** | 08    | Stand-up stage four. `day` refuses without it; the alias exists for a TWS configured in Japan and the Gateway container runs in `America/New_York`. Connect once without it and once with it; relax the check only on that evidence, and record both results here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | **Whether IBC's paper login prompts for two-factor**                            | 08    | Stand-up stage four. If it prompts, the Gateway's nightly restart needs the owner present and unattended running is blocked on it; if not, record that it did not and when the check was made.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-### Ready to build (9)
+### Ready to build (8)
 
 Twenty-two rows closed on 2026-09-03, 2026-09-04 and 2026-09-05 moved to [`CHANGELOG.md`](CHANGELOG.md);
 this table holds open work only, and its count is the checksum. **Thirty-three rows were
@@ -430,7 +432,6 @@ The fourteen rows carried from before the audit:
 | **Iterate the operator-day draft**                         | 08    | [`DRAFT_OPERATOR_DAY.md`](DRAFT_OPERATOR_DAY.md) walks the JST clock from the close through the execution window to the next morning. Four passes so far, three of them **run** rather than read against the real catalog and a live TWS. The fourth, 2026-09-05, ran the day as `python -m copilot.live.day morning` and `day evening`: two commands, 3m00s and 2m11s, and the first replay comparison found the live ATR one bar behind the engine's in eight sessions of nine. Its own open questions are listed at the end of it.                                                                       |
 | **Fill GLDM's thirteen 2018-2019 holes**                   | 00    | A hole census on 2026-09-09 found GLDM missing thirteen sessions between 2018-06-28 and 2019-07-31, all of them after Databento's 2018-05-01 start and therefore fillable by `patch` once the store covers them. EEM, HYG and SCHX each miss 2017-03-20, which is before that start and is **not** fillable from this source. None of them is new; the census is.                                                                                                                                                                                                                                           |
 | **Switch the account to Tiered in the Client Portal**      | 02    | Owner decision 2026-09-10: switch. The model is built and the revalidation is done - ADR-0025, `calibration/out/commission_revalidation_20260910.json`, 0 of 12 verdicts change their majority under Tiered. What remains is the owner's Client Portal action and confirming its effective date. Once the account is actually on Tiered, `SCHEDULE` moves to `TIERED` in a commit of its own and the verdicts are recomputed. Until then the pin stays on Fixed, because a verdict priced on a plan the broker is not running describes a different account.                                                |
-| **Size from settled cash, not headline equity**            | 06    | The charter requires it for a cash account and no code reads a settled figure. The paper account is MARGIN with USD 1M, so it **cannot** surface the bug ([paper fidelity limits](PAPER_CAMPAIGN.md)). Pairs with the settlement-rules item under the account group.                                                                                                                                                                                                                                                                                                                                        |
 | **Pick the next premise to research**                      | 02    | The gap-fade family is rejected (2026-09-10), so Track A has nothing in it and paper stage seven stays blocked however well the host runs. The loop that should now show its worth is the charter's: a falsifiable hypothesis, the walk-forward, the net evidence interval, attribution, and only then a holdout. **Constraint to design against**: the charter is long only and daily, and attribution charges a long-only premise for the market it holds, so a candidate needs a reason to beat its own exposure - not merely to be positive. The market-neutral gap test is available as research only. |
 
 ### Deferred by decision (5)

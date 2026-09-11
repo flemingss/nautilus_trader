@@ -70,10 +70,12 @@ scores every trade at ``r_multiple == 0`` and reports no edge anywhere.
 
 from __future__ import annotations
 
+from decimal import ROUND_FLOOR
 from decimal import Decimal
 from typing import TYPE_CHECKING
 from typing import Any
 
+from copilot.calibration.cost_model import commission
 from copilot.risk.exposure import ExposureLedger
 from copilot.risk.sizing import Sizing
 from copilot.risk.sizing import size_from_levels
@@ -250,6 +252,17 @@ class GapReversalConfig(StrategyConfig):
         self.require_unfilled = require_unfilled
         self.long = long
         self.entry_timing = entry_timing
+
+
+def _cash_for(quantity: Decimal, price: Decimal) -> Decimal:
+    """
+    Return the settled cash a buy spends: its notional and its commission.
+
+    The live path's quantities are real shares, so no split correction applies.
+
+    """
+    notional = quantity * price
+    return notional + commission(quantity, notional)
 
 
 class GapReversalStrategy(Strategy):
@@ -514,8 +527,21 @@ class GapReversalStrategy(Strategy):
             self._skip("unsizeable")
             return
 
-        if self._ledger is not None and not self._ledger.reserve(str(self.strategy_id), risk):
-            # The session-wide cap, which no per-order control can see. The ledger has
+        cash = Decimal(0)
+        if self._ledger is not None and self.config.long:
+            quantity, risk, cash = self._fit_to_settled_cash(
+                entry,
+                entry - stop_price,
+                quantity,
+                risk,
+            )
+
+        if self._ledger is not None and not self._ledger.reserve(
+            str(self.strategy_id),
+            risk,
+            cash,
+        ):
+            # The session-wide caps, which no per-order control can see. The ledger has
             # recorded who was refused and why; here it is one more reason not to trade.
             self._skip("portfolio_risk_capped")
             return
@@ -534,11 +560,47 @@ class GapReversalStrategy(Strategy):
         self.last_outcome = ENTRY_SUBMITTED
         self.submit_order_list(orders)
 
+    def _fit_to_settled_cash(
+        self,
+        entry: Decimal,
+        distance: Decimal,
+        quantity: Decimal,
+        risk: Decimal,
+    ) -> tuple[Decimal, Decimal, Decimal]:
+        """
+        Return ``(quantity, risk, cash)``, sized down to the settled cash left.
+
+        The playbook's ``floor(C_settled_net / P)``, taken after the stop and notional caps
+        because it is the smallest of them that applies: a buy costs its notional plus its
+        commission, on the pinned plan. Sized down rather than refused, the way the notional
+        cap already sizes down, so the recorded risk is the floored quantity's and says so.
+
+        When not one share fits, the original size comes back unchanged and the ledger
+        refuses it - which is what records *why* the entry was not taken.
+
+        """
+        headroom = self._ledger.cash_headroom if self._ledger is not None else None
+        if headroom is None:
+            return quantity, risk, Decimal(0)
+        needed = _cash_for(quantity, entry)
+        if needed <= headroom:
+            return quantity, risk, needed
+        fitted = min(quantity, (headroom / entry).to_integral_value(rounding=ROUND_FLOOR))
+        while fitted > 0 and _cash_for(fitted, entry) > headroom:
+            fitted -= 1
+        if fitted <= 0:
+            return quantity, risk, needed
+        return fitted, fitted * distance, _cash_for(fitted, entry)
+
     def on_position_closed(self, _event: Any) -> None:
         """
-        Give the session back the risk this position was holding.
+        Give the session back the risk this position was holding, but not its cash.
+
+        The sale's proceeds settle the next session, so the cash the buy committed stays
+        committed for this one.
+
         """
-        self._release_reservation()
+        self._release_reservation(cash=False)
 
     def on_order_denied(self, event: Any) -> None:
         """
@@ -568,11 +630,17 @@ class GapReversalStrategy(Strategy):
             self._entry_order_id is not None
             and str(getattr(event, "client_order_id", "")) == self._entry_order_id
         ):
-            self._release_reservation()
+            # An entry that filled in part before it was cancelled has spent some cash, and
+            # which part is not worth guessing: keep all of it committed, the safe direction.
+            order = self.cache.order(event.client_order_id)
+            partly_filled = order is not None and order.filled_qty.as_decimal() > 0
+            self._release_reservation(cash=not partly_filled)
 
-    def _release_reservation(self) -> None:
+    def _release_reservation(self, *, cash: bool) -> None:
         if self._ledger is not None:
             self._ledger.release(str(self.strategy_id))
+            if cash:
+                self._ledger.release_cash(str(self.strategy_id))
         self._entry_order_id = None
 
     def on_position_opened(self, event: Any) -> None:

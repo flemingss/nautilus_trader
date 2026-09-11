@@ -129,7 +129,45 @@ class TestBudgetFor:
             "max_total_risk_fraction": "0.0050",
             "max_total_risk": "5.00",
             "max_new_entries": "2",
+            "settled_cash": "",
+            "spendable_cash": "",
+            "settled_cash_basis": "",
         }
+
+
+class TestSettledCash:
+    """
+    How much of the broker's settled cash one activation may spend.
+    """
+
+    def test_spendable_is_the_settled_cash_when_it_is_smaller(self) -> None:
+        budget = budget_for(Decimal(10_000), settled_cash=Decimal("6500.25"))
+        assert budget.spendable_cash == Decimal("6500.25")
+        assert budget.as_record()["settled_cash"] == "6500.25"
+
+    def test_an_allocation_caps_what_may_be_spent(self) -> None:
+        """
+        An activation run on a thousand dollars of a larger account buys with a
+        thousand.
+        """
+        budget = budget_for(
+            Decimal(1_000_000),
+            allocation=Decimal(1000),
+            settled_cash=Decimal(1_000_000),
+        )
+        assert budget.spendable_cash == Decimal(1000)
+
+    def test_a_negative_figure_spends_nothing(self) -> None:
+        budget = budget_for(Decimal(10_000), settled_cash=Decimal("-40.00"))
+        assert budget.spendable_cash == Decimal(0)
+        assert budget.as_record()["settled_cash"] == "-40.00"
+
+    def test_floored_to_the_cent(self) -> None:
+        budget = budget_for(Decimal(10_000), settled_cash=Decimal("123.459"))
+        assert budget.spendable_cash == Decimal("123.45")
+
+    def test_without_a_figure_no_cash_cap_is_recorded(self) -> None:
+        assert budget_for(Decimal(10_000)).spendable_cash is None
 
 
 class TestSessionCaps:

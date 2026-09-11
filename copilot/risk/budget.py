@@ -15,9 +15,15 @@ The playbook already says what the number should be ([RISK.md]):
 
 This module is the first two terms. ``r`` and ``c`` come from the playbook's initial
 live-risk defaults, at the conservative end because they are defaults for a canary and
-not a policy anyone has argued up. The settled-cash term is not here: the paper account
-is margin with a million dollars in it and cannot exercise it, and a term that cannot be
-tested belongs on the roadmap rather than in a path that looks tested.
+not a policy anyone has argued up.
+
+The settled-cash term is recorded here and enforced by the session's
+:class:`~copilot.risk.exposure.ExposureLedger`, because it is a pool the whole basket draws
+on rather than a number per position. What this module decides is how much of it one
+activation may spend: the settled cash the broker reported, and never more than the
+allocation. The paper account is margin with a million dollars in it, so the term is read
+and recorded there and cannot bind; what a cash account does with it is only answerable on
+one.
 
 [RISK.md]: ../docs/playbook/RISK.md
 
@@ -126,6 +132,21 @@ class Budget:
     ``allocation * max_total_risk_fraction``, floored to the cent.
 
     """
+    settled_cash: Decimal | None = None
+    """
+    What the broker reported as settled cash, before the allocation capped it.
+    """
+    spendable_cash: Decimal | None = None
+    """
+    Settled cash the session may spend on buys.
+
+    The lesser of the settled cash and the allocation, and never negative.
+
+    """
+    settled_cash_basis: str = ""
+    """
+    Where the settled figure came from, or why there is none - a margin account has no cap.
+    """
 
     @property
     def allocation_capped(self) -> bool:
@@ -150,6 +171,9 @@ class Budget:
             "max_total_risk_fraction": str(self.policy.max_total_risk_fraction),
             "max_total_risk": str(self.max_total_risk),
             "max_new_entries": str(self.policy.max_new_entries),
+            "settled_cash": str(self.settled_cash) if self.settled_cash is not None else "",
+            "spendable_cash": str(self.spendable_cash) if self.spendable_cash is not None else "",
+            "settled_cash_basis": self.settled_cash_basis,
         }
 
 
@@ -158,6 +182,8 @@ def budget_for(
     *,
     allocation: Decimal | None = None,
     policy: RiskPolicy | None = None,
+    settled_cash: Decimal | None = None,
+    settled_cash_basis: str = "",
 ) -> Budget:
     """
     Derive the session's sizing numbers from what the broker reports.
@@ -172,6 +198,11 @@ def budget_for(
     Floored to the cent in both outputs, for the same reason quantities floor to whole
     shares: rounding a budget up risks more than the fraction allows.
 
+    ``settled_cash`` is what the broker reports as settled. The session may spend no more of
+    it than the allocation - an activation run on a thousand dollars of a larger account buys
+    with a thousand dollars - and none of it when it is negative, which is what an account
+    that has spent unsettled proceeds reports.
+
     """
     if equity <= 0:
         raise ValueError(f"equity must be positive to size against, got {equity}")
@@ -179,6 +210,11 @@ def budget_for(
     if allocation is not None and allocation <= 0:
         raise ValueError(f"allocation must be positive, got {allocation}")
     capital = min(allocation, equity) if allocation is not None else equity
+    spendable = (
+        max(min(settled_cash, capital), Decimal(0)).quantize(CENT, rounding=ROUND_FLOOR)
+        if settled_cash is not None
+        else None
+    )
     return Budget(
         equity=equity,
         allocation=capital,
@@ -193,6 +229,9 @@ def budget_for(
             CENT,
             rounding=ROUND_FLOOR,
         ),
+        settled_cash=settled_cash,
+        spendable_cash=spendable,
+        settled_cash_basis=settled_cash_basis,
     )
 
 
