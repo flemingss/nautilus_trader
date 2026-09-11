@@ -26,12 +26,16 @@ from copilot.live.day import Connection
 from copilot.live.day import Step
 from copilot.live.day import _clock_line
 from copilot.live.day import closed_session
+from copilot.live.day import completed_record
 from copilot.live.day import evening_steps
+from copilot.live.day import main
+from copilot.live.day import monitoring_session
 from copilot.live.day import morning_steps
 from copilot.live.day import operator_zone
 from copilot.live.day import registered_symbols
 from copilot.live.day import required_environment
 from copilot.live.day import run_steps
+from copilot.live.day import scheduled_session
 from copilot.live.day import session_clock
 from copilot.live.day import summarise
 from copilot.live.day import sweep_steps
@@ -69,7 +73,11 @@ def test_the_verdicts_recompute_only_what_moved() -> None:
     assert "--write" in validate.argv
 
 
-def test_the_evening_is_preflight_then_warmup_then_basket_then_sweep() -> None:
+def test_the_evening_appends_and_scans_before_it_proves_the_broker_and_warms() -> None:
+    """
+    Changed 2026-09-10: the evening appends first, because the vendor publishes a session's
+    bar hours after the morning's append has already run, and the warm-up needs that bar.
+    """
     steps = evening_steps(
         "~/cat",
         session=date(2026, 9, 8),
@@ -77,7 +85,14 @@ def test_the_evening_is_preflight_then_warmup_then_basket_then_sweep() -> None:
         allocation=None,
         risk_fraction=None,
     )
-    assert [s.name for s in steps] == ["preflight", "warmup", "basket", "sweep"]
+    assert [s.name for s in steps] == [
+        "append",
+        "corporate actions",
+        "preflight",
+        "warmup",
+        "basket",
+        "sweep",
+    ]
 
 
 def test_every_evening_step_names_the_same_session_and_connection() -> None:
@@ -108,6 +123,8 @@ def test_the_sweep_runs_whatever_the_basket_did() -> None:
         risk_fraction=None,
     )
     by_name = {s.name: s for s in steps}
+    assert not by_name["append"].stops_on_failure, "the warm-up is the gate, not the append"
+    assert by_name["corporate actions"].stops_on_failure
     assert by_name["preflight"].stops_on_failure
     assert by_name["warmup"].stops_on_failure
     assert not by_name["basket"].stops_on_failure
@@ -155,11 +172,12 @@ def test_the_morning_needs_the_vendor_key() -> None:
     assert required_environment(MORNING, environ={MARKETSTACK_API_KEY_ENV: "k"}) == ()
 
 
-def test_the_evening_needs_the_alias_and_an_account() -> None:
+def test_the_evening_needs_the_alias_an_account_and_now_the_vendor_key() -> None:
     missing = required_environment(EVENING, environ={}, account="")
-    assert len(missing) == 2
+    assert len(missing) == 3
     assert any(TIMEZONE_ALIASES_ENV in m for m in missing)
-    complete = {TIMEZONE_ALIASES_ENV: REQUIRED_TIMEZONE_ALIAS}
+    assert any(MARKETSTACK_API_KEY_ENV in m for m in missing)
+    complete = {TIMEZONE_ALIASES_ENV: REQUIRED_TIMEZONE_ALIAS, MARKETSTACK_API_KEY_ENV: "k"}
     assert required_environment(EVENING, environ=complete, account="DUT067974") == ()
 
 
@@ -220,12 +238,10 @@ def test_monitoring_end_is_the_sweep_alone_over_the_registry() -> None:
     assert "DUT067974" in steps[0].argv
 
 
-def test_monitoring_end_needs_what_the_evening_needs() -> None:
-    assert required_environment(SWEEP, environ={}, account="") == required_environment(
-        EVENING,
-        environ={},
-        account="",
-    )
+def test_monitoring_end_needs_the_broker_but_not_the_vendor() -> None:
+    missing = required_environment(SWEEP, environ={}, account="")
+    assert len(missing) == 2
+    assert not any(MARKETSTACK_API_KEY_ENV in m for m in missing)
 
 
 # -------------------------------------------------------- the operator's own clock
@@ -315,3 +331,113 @@ def test_no_session_time_moves_with_the_operators_clock(monkeypatch) -> None:
         eastern.window_ends,
         eastern.closes,
     )
+
+
+# ---------------------------------------------------------------- fired by a timer
+
+ET = ZoneInfo("America/New_York")
+
+
+def eastern(*args: int) -> datetime:
+    return datetime(*args, tzinfo=ET)
+
+
+@pytest.mark.parametrize(
+    ("phase", "when", "session"),
+    [
+        (MORNING, eastern(2026, 9, 11, 17, 0), date(2026, 9, 11)),  # Friday after the close
+        (EVENING, eastern(2026, 9, 11, 8, 30), date(2026, 9, 11)),  # Friday before the open
+        (SWEEP, eastern(2026, 9, 11, 10, 30), date(2026, 9, 11)),  # Friday, monitoring end
+        (EVENING, eastern(2026, 11, 27, 8, 30), date(2026, 11, 27)),  # an early close still opens
+    ],
+)
+def test_a_scheduled_phase_acts_on_todays_session(
+    phase: str,
+    when: datetime,
+    session: date,
+) -> None:
+    assert scheduled_session(phase, when) == (session, "")
+
+
+@pytest.mark.parametrize(
+    ("phase", "when", "because"),
+    [
+        (EVENING, eastern(2026, 9, 12, 8, 30), "not a trading session"),  # Saturday
+        (MORNING, eastern(2026, 9, 13, 17, 0), "not a trading session"),  # Sunday
+        (EVENING, eastern(2026, 9, 7, 8, 30), "not a trading session"),  # Labor Day
+        (MORNING, eastern(2026, 11, 26, 17, 0), "not a trading session"),  # Thanksgiving
+        (MORNING, eastern(2026, 9, 11, 15, 0), "has not closed yet"),
+        (EVENING, eastern(2026, 9, 11, 9, 45), "already opened"),
+        (SWEEP, eastern(2026, 9, 11, 8, 0), "has not opened yet"),
+    ],
+)
+def test_a_scheduled_phase_with_no_session_today_has_nothing_to_do(
+    phase: str,
+    when: datetime,
+    because: str,
+) -> None:
+    session, reason = scheduled_session(phase, when)
+    assert session is None
+    assert because in reason
+
+
+def test_the_saturday_evening_that_would_have_prepared_monday_does_not() -> None:
+    """
+    The defect the guard exists for: unguarded, Saturday prepares Monday and Monday again.
+    """
+    assert scheduled_session(EVENING, eastern(2026, 9, 12, 8, 30))[0] is None
+    assert scheduled_session(EVENING, eastern(2026, 9, 14, 8, 30))[0] == date(2026, 9, 14)
+
+
+def test_a_passing_record_completes_its_session_and_a_failing_one_does_not(tmp_path) -> None:
+    def file(name: str, **record: object) -> None:
+        (tmp_path / name).write_text(__import__("json").dumps(record))
+
+    file("day_evening_20260911T123000Z.json", session="2026-09-11", exit_code=1, dry_run=False)
+    assert completed_record(EVENING, date(2026, 9, 11), tmp_path) is None
+
+    file("day_evening_20260911T124500Z.json", session="2026-09-11", exit_code=0, dry_run=True)
+    assert completed_record(EVENING, date(2026, 9, 11), tmp_path) is None, "a dry run did nothing"
+
+    file("day_evening_20260911T130000Z.json", session="2026-09-11", exit_code=0, dry_run=False)
+    found = completed_record(EVENING, date(2026, 9, 11), tmp_path)
+    assert found is not None
+    assert found.name == "day_evening_20260911T130000Z.json"
+    assert completed_record(MORNING, date(2026, 9, 11), tmp_path) is None, "phases are separate"
+    assert completed_record(EVENING, date(2026, 9, 14), tmp_path) is None
+
+
+def test_a_scheduled_run_on_a_weekend_exits_zero_without_needing_anything(
+    monkeypatch,
+    capsys,
+) -> None:
+    """
+    No environment, no broker: a timer on a Saturday must not fail for want of either.
+    """
+    saturday = eastern(2026, 9, 12, 8, 30)
+
+    class Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):  # noqa: ANN206 - matches datetime.now
+            return saturday.astimezone(tz)
+
+    monkeypatch.setattr("copilot.live.day.datetime", Frozen)
+    for name in (TIMEZONE_ALIASES_ENV, MARKETSTACK_API_KEY_ENV):
+        monkeypatch.delenv(name, raising=False)
+
+    assert main(["evening", "--scheduled"]) == 0
+    assert "nothing to do" in capsys.readouterr().out
+
+
+def test_scheduled_and_an_explicit_session_are_refused_together() -> None:
+    with pytest.raises(SystemExit):
+        main(["evening", "--scheduled", "--session", "2026-09-14"])
+
+
+def test_a_sweep_after_the_open_names_todays_session_not_tomorrows() -> None:
+    """
+    Found 2026-09-10: the sweep used the evening's rule and filed tomorrow's session.
+    """
+    assert monitoring_session(eastern(2026, 9, 11, 10, 30)) == date(2026, 9, 11)
+    assert monitoring_session(eastern(2026, 9, 11, 8, 0)) == date(2026, 9, 11)
+    assert monitoring_session(eastern(2026, 9, 12, 10, 30)) == date(2026, 9, 14)
