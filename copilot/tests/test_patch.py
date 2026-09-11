@@ -28,6 +28,7 @@ from copilot.data.patch import Fill
 from copilot.data.patch import PatchResult
 from copilot.data.patch import _bar_row
 from copilot.data.patch import _official_row
+from copilot.data.patch import classify_holes
 from copilot.data.patch import report
 
 
@@ -203,6 +204,12 @@ class TestPatchResult:
         """
         assert self.result(unsourced=(DAY,)).remaining == 1
 
+    def test_a_session_without_an_auction_remains(self) -> None:
+        """
+        No official close exists for it, and that must not read as handled.
+        """
+        assert self.result(no_auction=(DAY,)).remaining == 1
+
     def test_a_refused_hole_remains(self) -> None:
         """
         A refusal is an open hole, not a handled one.
@@ -238,3 +245,79 @@ class TestReport:
         A series with no holes is a success, not an empty failure.
         """
         assert report([PatchResult("SPY", "ARCX", 5283, (), (), (), ())], written=False) == 0
+
+    def test_a_session_without_an_auction_is_named_as_one(
+        self,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """
+        GLDM's shape: the old footer blamed Databento's start date for holes it already
+        held.
+        """
+        result = PatchResult("GLDM", "ARCX", 2048, (DAY,), (), (), (), no_auction=(DAY,))
+
+        assert report([result], written=False) == 1
+        out = capsys.readouterr().out
+        assert "no auction" in out
+        assert "without a closing auction" in out
+        assert "starts 2018-05-01" not in out
+
+
+VENUE_BAR = (
+    Decimal("24.10"),
+    Decimal("24.30"),
+    Decimal("24.00"),
+    Decimal("24.20"),
+    Decimal(92_029),
+)
+
+
+class TestClassifyHoles:
+    """
+    Sorting each hole by what the store holds for it.
+    """
+
+    def test_a_venue_bar_with_an_auction_print_is_filled(self) -> None:
+        result = classify_holes(
+            "GLDM",
+            "ARCX",
+            2048,
+            (DAY,),
+            closes={("GLDM", DAY): Decimal("24.25")},
+            bars={("GLDM", DAY): VENUE_BAR},
+        )
+        assert [f.close for f in result.fills] == [Decimal("24.25")]
+        assert result.remaining == 0
+
+    def test_a_venue_bar_without_an_auction_print_is_no_auction(self) -> None:
+        """
+        The venue traded, so the store is not missing the day; the auction did not run.
+        """
+        result = classify_holes(
+            "GLDM",
+            "ARCX",
+            2048,
+            (DAY,),
+            closes={},
+            bars={("GLDM", DAY): VENUE_BAR},
+        )
+        assert result.no_auction == (DAY,)
+        assert result.unsourced == ()
+        assert result.remaining == 1
+
+    def test_no_venue_bar_is_no_source(self) -> None:
+        result = classify_holes("EEM", "ARCX", 2400, (DAY,), closes={}, bars={})
+        assert result.unsourced == (DAY,)
+        assert result.no_auction == ()
+
+    def test_an_auction_print_outside_the_venue_range_is_refused(self) -> None:
+        result = classify_holes(
+            "GLDM",
+            "ARCX",
+            2048,
+            (DAY,),
+            closes={("GLDM", DAY): Decimal("30.00")},
+            bars={("GLDM", DAY): VENUE_BAR},
+        )
+        assert result.incoherent[0][0] == DAY
+        assert result.fills == ()
