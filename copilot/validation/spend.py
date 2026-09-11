@@ -27,6 +27,7 @@ from typing import TYPE_CHECKING
 
 from copilot.validation.evidence import Evidence
 from copilot.validation.evidence import assess
+from copilot.validation.evidence import require_describes
 from copilot.validation.insample import DEFAULT_CLIFF_DROP
 from copilot.validation.insample import DEFAULT_MIN_TRADES
 from copilot.validation.insample import expectancy
@@ -42,6 +43,20 @@ if TYPE_CHECKING:
     from copilot.validation.insample import ParameterGrid
     from copilot.validation.insample import Replay
     from copilot.validation.types import BacktestRunResult
+    from copilot.validation.types import ClosedTrade
+
+
+def uncosted(trade: ClosedTrade) -> Decimal:  # noqa: ARG001 - every trade costs nothing
+    """
+    Charge nothing, which is what the default ``expectancy`` objective charges.
+
+    The default pair is gross on both sides and so agrees with itself. A caller that
+    passes a net objective has to pass the matching cost function too, and
+    :func:`~copilot.validation.evidence.require_describes` refuses the result if it
+    does not.
+
+    """
+    return Decimal(0)
 
 
 @dataclass(frozen=True)
@@ -146,6 +161,7 @@ def spend_holdout(
     warmup_bars: int,
     replay: Replay,
     objective: Callable[[BacktestRunResult], Decimal] = expectancy,
+    cost_r: Callable[[ClosedTrade], Decimal] = uncosted,
     min_trades: int = DEFAULT_MIN_TRADES,
     cliff_drop: Decimal = DEFAULT_CLIFF_DROP,
     fold_min_trades: int = 1,
@@ -159,6 +175,10 @@ def spend_holdout(
     test slice is the holdout, and warm-up is drawn from the bars immediately preceding
     it. The holdout bars reach the replay exactly once, for scoring, after selection is
     complete.
+
+    ``cost_r`` is the per-trade charge ``objective`` subtracts, and the interval is drawn
+    from the series it leaves. The two arrive separately, so they are checked against each
+    other: the interval's series mean has to be the score.
 
     ``min_trades`` and ``cliff_drop`` are the activation's, unchanged: the training
     window is far longer than a fold's, so the eligibility floor is cleared by more
@@ -204,7 +224,10 @@ def spend_holdout(
         holdout_bars=len(holdout),
         purge_bars=purge_bars,
         warmup_bars=warmup_bars,
-        evidence=assess(result.test_trade_details),
+        evidence=require_describes(
+            assess(result.test_trade_details, cost_r=cost_r),
+            result.test_score,
+        ),
         threshold=threshold,
     )
 
@@ -212,4 +235,5 @@ def spend_holdout(
 __all__ = [
     "HoldoutResult",
     "spend_holdout",
+    "uncosted",
 ]

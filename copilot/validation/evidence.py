@@ -36,6 +36,12 @@ is the playbook's *dependence-aware resampling such as a block bootstrap*.
 
 What this deliberately is not
 -----------------------------
+**The series is net of costs.** The engine replays with no fees, so a trade's recorded
+P&L is gross, and the score every verdict reports is that minus the cost model's charge.
+An interval bootstrapped on the gross series brackets a number the verdict never scored,
+on the flattering side. So :func:`assess` takes the cost function as a required argument:
+every caller has to say what it charges, and charging nothing has to be said out loud.
+
 It is not a second gate that can be tuned until a favourite premise passes. There is one
 knob, the predeclared effect size, it lives in the activation's committed file, and it
 raises the bar rather than lowering it. The interval itself has no free parameters at
@@ -56,6 +62,8 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from copilot.validation.types import ClosedTrade
 
 
@@ -155,6 +163,16 @@ class Evidence:
 
     """
 
+    mean_r: Decimal
+    """
+    Exact mean of the net series the interval was drawn from.
+
+    Carried so the interval can be checked against the score it sits beside: if the two
+    differ, the interval describes some other series, and :func:`require_describes`
+    refuses to let it be reported as this one's.
+
+    """
+
     def clears(self, threshold: Decimal) -> bool:
         """
         Whether the whole interval sits above ``threshold``.
@@ -164,6 +182,61 @@ class Evidence:
 
         """
         return self.lower_r > threshold
+
+    def as_record(self) -> dict[str, object]:
+        """
+        Return the filed form, identical wherever an interval is written down.
+        """
+        return {
+            "series": "net R per trade, in signal order",
+            "trades": self.trades,
+            "mean_r": str(self.mean_r),
+            "effective_trades": str(self.effective_trades),
+            "concurrency": str(self.concurrency),
+            "block_trades": self.block_bars,
+            "replicates": self.replicates,
+            "confidence": str(self.confidence),
+            "lower_r": str(self.lower_r),
+            "upper_r": str(self.upper_r),
+            "standard_error_r": str(self.standard_error_r),
+        }
+
+
+class IncoherentEvidenceError(ValueError):
+    """
+    The interval was drawn from a different series than the score it would sit beside.
+    """
+
+
+MEAN_TOLERANCE_R = Decimal("0.000001")
+"""
+How far the series mean may sit from the score before they are different numbers.
+
+The score is exact ``Decimal``; this matches the six places every R figure is written to,
+so a rounding difference passes and a cost charged on one side only - tenths of an R at
+target size - cannot.
+
+"""
+
+
+def require_describes(evidence: Evidence, score: Decimal) -> Evidence:
+    """
+    Return ``evidence`` if its series mean is ``score``, or refuse.
+
+    For a caller holding the objective and the cost function as separate arguments,
+    where nothing else forces them to agree. A net objective with a gross cost function
+    is exactly the defect that shipped in the first version of this module, and it
+    produced a plausible interval rather than an error.
+
+    """
+    if abs(evidence.mean_r - score) > MEAN_TOLERANCE_R:
+        raise IncoherentEvidenceError(
+            f"the interval's series averages {evidence.mean_r} R and the score is "
+            f"{score.quantize(MEAN_TOLERANCE_R)} R. The objective and the cost function "
+            "disagree about what a trade costs, so the interval describes a different "
+            "series than the one scored.",
+        )
+    return evidence
 
 
 def concurrency(trades: Sequence[ClosedTrade]) -> Decimal:
@@ -268,25 +341,25 @@ def block_length(trades: int, overlap: Decimal, values: Sequence[float] = ()) ->
     return max(1, min(max(standard, math.ceil(overlap), horizon), max(1, trades // 4)))
 
 
-def r_multiples(trades: Sequence[ClosedTrade]) -> tuple[float, ...]:
+def net_r(
+    trades: Sequence[ClosedTrade],
+    cost_r: Callable[[ClosedTrade], Decimal],
+) -> tuple[Decimal, ...]:
     """
-    Each trade's realised return in units of the risk it actually took.
+    Each trade's return in units of the risk it took, less its round-trip cost.
 
-    Float, deliberately, and only here. Every monetary quantity upstream stays
-    ``Decimal``; this is the input to a random resample whose output is a percentile
-    estimate, where exactness has nothing to be exact about. The point estimate the
-    verdict compares against is *not* computed here - it comes from the same
-    ``expectancy`` the folds use.
+    Exact, and computed the way the cost model's objective computes it, so the mean of
+    this series is the score and not an approximation of it. Trades with no recorded risk
+    are dropped: their R is undefined, not zero.
 
     """
-    return tuple(
-        float(t.realized_pnl / t.risk_amount) for t in trades if t.risk_amount and t.risk_amount > 0
-    )
+    return tuple(t.r_multiple - cost_r(t) for t in trades if t.risk_amount and t.risk_amount > 0)
 
 
 def assess(
     trades: Sequence[ClosedTrade],
     *,
+    cost_r: Callable[[ClosedTrade], Decimal],
     replicates: int = DEFAULT_REPLICATES,
     confidence: Decimal = DEFAULT_CONFIDENCE,
     seed: int = DEFAULT_SEED,
@@ -300,8 +373,13 @@ def assess(
 
     """
     overlap = concurrency(trades)
-    values = r_multiples(trades)
+    exact = net_r(trades, cost_r)
+    # Float, deliberately, and only for the resample: its output is a percentile estimate,
+    # where exactness has nothing to be exact about. The mean it is checked against stays
+    # exact, because that one is compared to a score.
+    values = tuple(float(value) for value in exact)
     n = len(values)
+    mean = (sum(exact, Decimal(0)) / n).quantize(MEAN_TOLERANCE_R) if n else Decimal(0)
     length = block_length(n, overlap, values)
     # The larger of the two reasons the count overstates the evidence, not their
     # product: they are two views of the same dependence, and multiplying them would
@@ -323,6 +401,7 @@ def assess(
             lower_r=Decimal(0),
             upper_r=point,
             standard_error_r=Decimal(0),
+            mean_r=mean,
         )
 
     # The seed is fixed so `validate` can recompute this interval from a commit.
@@ -355,6 +434,7 @@ def assess(
         lower_r=_decimal(lower),
         upper_r=_decimal(upper),
         standard_error_r=_decimal(math.sqrt(variance)),
+        mean_r=mean,
     )
 
 
@@ -383,11 +463,14 @@ __all__ = [
     "DEFAULT_CONFIDENCE",
     "DEFAULT_REPLICATES",
     "DEFAULT_SEED",
+    "MEAN_TOLERANCE_R",
     "MIN_TRADES_FOR_AN_INTERVAL",
     "Evidence",
+    "IncoherentEvidenceError",
     "assess",
     "autocorrelation_time",
     "block_length",
     "concurrency",
-    "r_multiples",
+    "net_r",
+    "require_describes",
 ]

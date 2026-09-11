@@ -175,6 +175,24 @@ def calibrated_symbol(recorded: str) -> str:
     return recorded.split(".", 1)[0]
 
 
+def pooled_cost(
+    cost_r: Callable[[object, str], Decimal],
+) -> Callable[[object], Decimal]:
+    """
+    Charge each trade its **own** symbol's round-trip cost, read off the trade.
+
+    The one definition of what a pooled trade costs. The objective scores with it and
+    the evidence interval is drawn with it, and if those were two definitions they could
+    disagree about a trade without either one being visibly wrong.
+
+    """
+
+    def _cost(trade: object) -> Decimal:
+        return cost_r(trade, calibrated_symbol(trade.symbol))  # type: ignore[attr-defined]
+
+    return _cost
+
+
 def pooled_objective(
     cost_r: Callable[[object, str], Decimal],
 ) -> Callable[[BacktestRunResult], Decimal]:
@@ -191,15 +209,13 @@ def pooled_objective(
     the symbols would be a portfolio construction question, and this is not one.
 
     """
+    charge = pooled_cost(cost_r)
 
     def _net_expectancy(result: BacktestRunResult) -> Decimal:
         if not result.trades:
             return Decimal(0)
         total = sum(
-            (
-                trade.r_multiple - cost_r(trade, calibrated_symbol(trade.symbol))
-                for trade in result.trades
-            ),
+            (trade.r_multiple - charge(trade) for trade in result.trades),
             Decimal(0),
         )
         return total / Decimal(len(result.trades))
@@ -224,6 +240,7 @@ __all__ = [
     "PooledMember",
     "calibrated_symbol",
     "contribution",
+    "pooled_cost",
     "pooled_objective",
     "pooled_replay",
     "spine",

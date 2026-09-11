@@ -60,6 +60,9 @@ from copilot.strategies.fingerprint import filed_fingerprint
 from copilot.strategies.fingerprint import fingerprint_for
 from copilot.strategies.fingerprint import unchanged_since
 from copilot.strategies.spend_holdout import is_spent
+from copilot.validation.evidence import assess
+from copilot.validation.filed_trades import scored_trades
+from copilot.validation.filed_trades import to_rows
 from copilot.validation.holdout import EVALUATION_END
 from copilot.validation.holdout import HOLDOUT_START
 from copilot.validation.holdout import carve
@@ -94,6 +97,12 @@ class Verdict:
         """
         evaluated = self.report.evaluated
         scores = [f.test_score for f in evaluated]
+        symbol = self.activation.symbol
+
+        def cost_r(trade: Any) -> Decimal:
+            return self.cost_model.cost_r(trade, symbol)
+
+        evidence = assess([trade for _, trade in scored_trades(evaluated)], cost_r=cost_r)
         return {
             "activation": self.activation.name,
             "strategy": self.activation.strategy,
@@ -166,6 +175,16 @@ class Verdict:
                 }
                 for f in self.report.folds
             ],
+            # Context, not the gate. The walk-forward verdict is the fold majority above;
+            # ADR-0024's interval gate governs the holdout, which has no folds to count.
+            # Reported here because a majority of thin folds and a majority of decisive ones
+            # are different results, and the counts alone cannot say which this is. Its
+            # mean is per trade across every evaluated fold, which is not the mean of the
+            # fold scores above: a thirty-trade fold outweighs a three-trade one here.
+            "evidence": evidence.as_record(),
+            # The scored trades themselves, so the interval and attribution can be
+            # recomputed from this file without a replay.
+            "trade_rows": to_rows(evaluated, cost_r=cost_r),
         }
 
 

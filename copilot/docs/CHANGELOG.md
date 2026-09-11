@@ -2,6 +2,61 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the interval that was gross
+
+### Fixed
+
+- **Every evidence interval was drawn from the gross series while its score was net.**
+  `assess` bootstrapped `realized_pnl / risk_amount`, and the engine replays with no fees:
+  the cost model's charge is subtracted afterwards, in the objective. So each interval
+  bracketed a number the verdict never scored, higher by the cost. Proven by reproduction,
+  not inferred: the AAPL holdout recomputed from its own snapshot gives 111 trades at
+  +0.035130 R, and bootstrapping the gross series returns the filed [-0.125983, +0.208740]
+  to the sixth place. `Evidence.lower_r`'s own docstring said *net*.
+- **`assess` now takes the cost function as a required argument**, and `spend_holdout`,
+  which receives the objective and the cost separately, refuses an interval whose series
+  mean is not the score (`IncoherentEvidenceError`). The version that shipped produced a
+  plausible interval rather than an error, which is why it survived a day.
+- The pooled objective and the pooled interval now charge through one `pooled_cost`, so the
+  two cannot disagree about what a trade costs.
+
+### Added
+
+- **Verdicts file their trades.** `validate`, `pool` and `spend_holdout` records carry
+  `trade_rows`: every scored out-of-sample trade in signal order, every `ClosedTrade` field
+  exactly, and its round-trip cost to twelve places, so `filed_trades.from_rows` rebuilds the
+  trades that were scored and the net series averages to the score. Attribution and the
+  interval are now a read of a record, not a replay. A test recomputes an interval from JSON
+  rows alone and gets the original back.
+- **Every walk-forward verdict reports its interval** beside the fold majority, as context
+  rather than a second gate. Its mean is per trade across evaluated folds, which is not the
+  mean of fold scores: a thirty-trade fold outweighs a three-trade one.
+
+### Measured
+
+Recomputed and refiled the same evening: all twelve walk-forward verdicts, the pooled run
+(`strategies/out/pooled_next_close_20260911T002351Z.json`), and the AAPL reassessment.
+Peak resident memory 0.45 GiB; nothing needed more.
+
+| Result                          | Filed before                         | Now, net                                    | What changes                |
+| ------------------------------- | ------------------------------------ | ------------------------------------------- | --------------------------- |
+| AAPL next-close holdout         | [-0.126, +0.209], gross              | [-0.140, +0.195]                            | Nothing: still insufficient |
+| Pooled interval, nine symbols   | [+0.019, +0.116], gross, clears zero | [-0.018, +0.079]                            | **No longer clears zero**   |
+| Pooled expectancy               | +0.062, a mean of fold scores        | +0.030 per trade (+0.067 gross, 0.037 cost) | The headline halves         |
+| Walk-forwards clearing zero     | not reported                         | 1 of 12, AAPL next-close, [+0.009, +0.170]  | The spent one               |
+| Walk-forwards wholly below zero | not reported                         | EEM, HYG, TLT                               | Evidence of a loss          |
+
+- **No majority result changed**, in the twelve verdicts or the pool. The fold scores were
+  always net; only the intervals beside them were wrong.
+- **The pool's headline was a fold mean.** +0.062 R averaged fold scores, weighting thin
+  folds like thick ones. Per trade the pool nets +0.030 R, and the interval says that is not
+  distinguishable from zero. It moves the pool to where the AAPL holdout already was.
+- ADR-0024 is **not** edited. Its rule - a pass needs its interval to clear the bar - is the
+  rule this fix enforces; its worked example quotes the gross interval, and this entry is the
+  correction. `pool.py`'s docstring quotes the same example and is left as it is, because
+  editing a fingerprinted file after filing would mark every fresh verdict as stale.
+- Superseded verdicts pruned to the newest per activation plus the two holdout records cite.
+
 ## 2026-09-10, commission per plan
 
 ### Changed

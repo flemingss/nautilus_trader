@@ -58,9 +58,12 @@ from copilot.strategies.activations import Activation
 from copilot.strategies.activations import load_activations
 from copilot.strategies.validate import stored_bars
 from copilot.validation.evidence import assess
+from copilot.validation.filed_trades import scored_trades
+from copilot.validation.filed_trades import to_rows
 from copilot.validation.holdout import carve
 from copilot.validation.nautilus_replay import make_replay
 from copilot.validation.pooled import PooledMember
+from copilot.validation.pooled import pooled_cost
 from copilot.validation.pooled import pooled_objective
 from copilot.validation.pooled import pooled_replay
 from copilot.validation.pooled import spine
@@ -105,15 +108,14 @@ class PooledVerdict:
         """
         Every scored out-of-sample trade, in signal order across all folds.
         """
-        scored = [t for fold in self.report.folds for t in fold.test_trade_details]
-        scored.sort(key=lambda t: (t.signal_created_at, t.symbol))
-        return tuple(scored)
+        return tuple(trade for _, trade in scored_trades(self.report.folds))
 
     def as_record(self) -> dict[str, Any]:
         """
         Return the filed form, carrying enough to audit the pool as well as the verdict.
         """
-        evidence = assess(self.trades)
+        charge = pooled_cost(self.cost_model.cost_r)
+        evidence = assess(self.trades, cost_r=charge)
         by_symbol: dict[str, int] = {}
         for trade in self.trades:
             by_symbol[trade.symbol] = by_symbol.get(trade.symbol, 0) + 1
@@ -155,15 +157,12 @@ class PooledVerdict:
                 if fold.selected is not None
             ],
             "evidence": {
-                "effective_trades": str(evidence.effective_trades),
-                "concurrency": str(evidence.concurrency),
-                "block_trades": evidence.block_bars,
-                "confidence": str(evidence.confidence),
-                "lower_r": str(evidence.lower_r),
-                "upper_r": str(evidence.upper_r),
-                "standard_error_r": str(evidence.standard_error_r),
+                **evidence.as_record(),
                 "clears_zero": evidence.clears(Decimal(0)),
             },
+            # Every scored trade, each charged its own symbol's cost, so attribution and the
+            # interval can be recomputed from this file rather than from a ten-minute replay.
+            "trade_rows": to_rows(self.report.folds, cost_r=charge),
             "cost_model": {
                 "snapshot": self.cost_model.snapshot,
                 "percentile": self.cost_model.percentile,
