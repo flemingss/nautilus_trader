@@ -2,6 +2,34 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the breaker across a restart
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 5, required by
+[ADR-0006](decisions/0006-ops-progression.md) before any unattended run).
+
+### Fixed
+
+- **The protection breaker's evidence ended with the process.** It judged closed positions
+  from the node's cache, and every `day` step is a fresh process, so a restart ended a
+  cooldown early and reset the consecutive-stops count. A daily strategy with one process
+  per session could have lost every session and never tripped it. Closed trades are now
+  recorded to `OutcomeLedger`, append-only and one file per account
+  (`paths.risk_ledger_path`), and the guard evaluates **at start**. The cooldown already ran
+  from the breaching trade, so persisting the evidence is what makes it survive.
+- **The guard could release a halt it did not set.** On cooldown expiry it moved any
+  `HALTED` to `ACTIVE`; a breach that opened and expired inside the basket's orders-denied
+  run would have re-enabled orders. It now releases only a halt it moved the engine into.
+- **A breach restored at start halts and cancels but does not flatten.** Flattening on
+  startup before anyone has looked at why positions exist during a cooldown is the automatic
+  action the playbook forbids while broker truth is uncertain.
+- A torn or unreadable ledger line refuses the breaker rather than skipping, because a
+  skipped line is a loss not counted.
+
+### Found
+
+- **`ProtectionGuard` is not wired into any node.** No live run has had the account-wide
+  breaker. Inert while orders are denied; a roadmap row requires it before paper stage seven.
+
 ## 2026-09-10, the day on a timer
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 1 and 2).

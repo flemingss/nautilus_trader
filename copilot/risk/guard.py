@@ -33,8 +33,22 @@ beforehand keeps working.
     guard.configure(settings, risk_engine=node.risk_engine)
 
 The state is restored to ``ACTIVE`` when the breach expires, so a cooldown ends by
-itself. It is never set to ``ACTIVE`` on start: doing so would clear a halt someone
-else set for a reason this guard knows nothing about.
+itself - **but only a halt this guard set.** It is never set to ``ACTIVE`` on start, and a
+halt already in force when a breach opens (the basket's orders-denied run, an operator's
+kill) is left in force when the breach closes. The first version released any ``HALTED``
+it found on expiry, so a breach that opened and expired inside an orders-denied run would
+have re-enabled orders.
+
+Across a restart
+----------------
+The breaker's evidence is the closed trades, and the node's cache forgets them when the
+process ends - which in this overlay is every ``day`` step. With a ledger configured
+(:class:`~copilot.risk.outcome_ledger.OutcomeLedger`, one per account) each close is
+recorded as it happens and the guard evaluates **at start**, so a cooldown in force when a
+node stopped is in force when the next one starts, and a losing run keeps counting across
+sessions. A breach restored at start halts and cancels but does **not** flatten: flattening
+on startup, before anyone has looked at why positions exist during a cooldown, is the
+automatic action the playbook forbids while broker truth is uncertain.
 
 """
 
@@ -45,8 +59,11 @@ from datetime import UTC
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
+from pathlib import Path
 from typing import Any
 
+from copilot.risk.outcome_ledger import OutcomeLedger
+from copilot.risk.outcome_ledger import outcome_key
 from copilot.risk.protections import ProtectionBreach
 from copilot.risk.protections import ProtectionPolicy
 from copilot.risk.protections import TradeOutcome
@@ -96,6 +113,15 @@ class ProtectionGuardSettings:
     """
     evaluate_seconds: int = 60
     flatten_on_breach: bool = True
+    ledger_path: Path | None = None
+    """
+    Where closed trades are recorded so the breaker survives a restart.
+
+    ``None`` keeps the evidence in the cache alone, and the guard says at start that its
+    cooldowns and streaks end with the process. See
+    :func:`copilot.paths.risk_ledger_path`.
+
+    """
 
 
 class ProtectionGuard(Strategy):
@@ -123,6 +149,8 @@ class ProtectionGuard(Strategy):
         self._settings = settings
         self._risk_engine = risk_engine
         self._breach: ProtectionBreach | None = None
+        self._halted_by_guard = False
+        self._ledger = OutcomeLedger(settings.ledger_path) if settings.ledger_path else None
 
     @property
     def breach(self) -> ProtectionBreach | None:
@@ -141,6 +169,14 @@ class ProtectionGuard(Strategy):
         self.log.info(
             f"ProtectionGuard active: {self._settings.policy}",
         )
+        if self._ledger is None:
+            self.log.warning(
+                "ProtectionGuard has no ledger: cooldowns and stop streaks end when this "
+                "process does. Set ledger_path for a run that must survive a restart.",
+            )
+        # At start, not only on the timer: a cooldown in force when the last node stopped
+        # must bar the first order of this one, not the orders after the first interval.
+        self.evaluate(at_start=True)
         self.clock.set_timer(
             name="copilot-protection-eval",
             interval=timedelta(seconds=self._settings.evaluate_seconds),
@@ -161,7 +197,7 @@ class ProtectionGuard(Strategy):
         # interval of delay is exactly the window it is meant to remove.
         self.evaluate()
 
-    def evaluate(self) -> None:
+    def evaluate(self, *, at_start: bool = False) -> None:
         """
         Re-read closed trades, judge them, and act if the verdict changed.
         """
@@ -175,30 +211,38 @@ class ProtectionGuard(Strategy):
         )
 
         if breach is not None and self._breach is None:
-            self._on_breach_opened(breach)
+            self._on_breach_opened(breach, restored=at_start)
         elif breach is None and self._breach is not None:
             self._on_breach_closed()
         self._breach = breach
 
     def collect_outcomes(self) -> list[TradeOutcome]:
         """
-        Map this node's closed positions onto the breaker's input type.
+        Return every closed round trip the breaker knows of: the ledger's and this node's.
+
+        Each close in the cache that the ledger lacks is recorded first, so the next process
+        sees it - including closes reconciliation reports at start.
+
         """
-        outcomes: list[TradeOutcome] = []
+        known = self._ledger.read() if self._ledger is not None else {}
         for position in self.cache.positions_closed():
             ts_closed = position.ts_closed
             if ts_closed is None:
                 continue
-            outcomes.append(
-                TradeOutcome(
-                    closed_at=datetime.fromtimestamp(ts_closed / 1e9, tz=UTC),
-                    realized_pnl=Decimal(str(position.realized_pnl.as_double()))
-                    if position.realized_pnl is not None
-                    else Decimal(0),
-                    stopped_out=self._closed_by_stop(position),
-                ),
+            closed_at = datetime.fromtimestamp(ts_closed / 1e9, tz=UTC)
+            outcome = TradeOutcome(
+                closed_at=closed_at,
+                realized_pnl=Decimal(str(position.realized_pnl.as_double()))
+                if position.realized_pnl is not None
+                else Decimal(0),
+                stopped_out=self._closed_by_stop(position),
             )
-        return outcomes
+            key = outcome_key(str(position.id), closed_at)
+            if self._ledger is not None:
+                self._ledger.record(key, outcome, known=known)
+            else:
+                known[key] = outcome
+        return list(known.values())
 
     def _closed_by_stop(self, position) -> bool:  # noqa: ANN001 - Position
         """
@@ -229,8 +273,15 @@ class ProtectionGuard(Strategy):
         if self._risk_engine is None:
             self.log.info("Protection cooldown expired; trading may resume")
             return
+        if not self._halted_by_guard:
+            self.log.warning(
+                "Protection cooldown expired, but the halt in force was already there when "
+                "the breach opened. Leaving it - this guard did not set it.",
+            )
+            return
         if self._risk_engine.trading_state == TradingState.HALTED:
             self._risk_engine.set_trading_state(TradingState.ACTIVE)
+            self._halted_by_guard = False
             self.log.info("Protection cooldown expired; trading state restored to ACTIVE")
         else:
             self.log.warning(
@@ -253,14 +304,19 @@ class ProtectionGuard(Strategy):
         self._risk_engine.set_trading_state(state)
         return True
 
-    def _on_breach_opened(self, breach: ProtectionBreach) -> None:
+    def _on_breach_opened(self, breach: ProtectionBreach, *, restored: bool = False) -> None:
+        origin = " (in force from before this process started)" if restored else ""
         self.log.error(
             f"PROTECTION BREACH [{breach.trigger}] {breach.detail} "
-            f"- pausing until {breach.until.isoformat()}",
+            f"- pausing until {breach.until.isoformat()}{origin}",
+        )
+        already_halted = (
+            self._risk_engine is not None and self._risk_engine.trading_state == TradingState.HALTED
         )
         # Halt first. Cancelling and flattening take time and emit orders of their own;
         # anything submitted in between is denied only once the state is already set.
         if self._set_trading_state(TradingState.HALTED):
+            self._halted_by_guard = not already_halted
             self.log.error("Trading state HALTED - new orders will be denied by the risk engine")
         else:
             self.log.warning(
@@ -272,9 +328,14 @@ class ProtectionGuard(Strategy):
             # Account-wide: a breaker that only cancelled this component's own
             # orders would leave every real strategy running.
             self.cancel_all_orders(instrument_id, strategy_only=False)
-        if self._settings.flatten_on_breach:
+        if self._settings.flatten_on_breach and not restored:
             for instrument_id in self._settings.instrument_ids:
                 self.close_all_positions(instrument_id)
+        elif restored:
+            self.log.error(
+                "Breach restored at start: positions are not flattened automatically. Any "
+                "open during a cooldown needs the operator's recovery checklist.",
+            )
         self.publish_signal("copilot_protection_breach", str(breach.trigger))
 
 

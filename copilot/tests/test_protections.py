@@ -12,10 +12,12 @@ from datetime import UTC
 from datetime import datetime
 from datetime import timedelta
 from decimal import Decimal
+from types import SimpleNamespace
 
 import pytest
 
 from copilot.risk.guard import ProtectionGuard
+from copilot.risk.protections import ProtectionBreach
 from copilot.risk.protections import ProtectionPolicy
 from copilot.risk.protections import ProtectionTrigger
 from copilot.risk.protections import TradeOutcome
@@ -214,9 +216,24 @@ class _GuardStandIn:
 
     """
 
-    def __init__(self, risk_engine: object) -> None:
+    def __init__(self, risk_engine: object, *, halted_by_guard: bool = True) -> None:
         self._risk_engine = risk_engine
+        self._halted_by_guard = halted_by_guard
+        self._settings = SimpleNamespace(instrument_ids=("SPY=STK.SMART",), flatten_on_breach=True)
         self.log = _SilentLog()
+        self.actions: list[str] = []
+
+    def cancel_all_orders(self, instrument_id: object, **_kwargs: object) -> None:
+        self.actions.append(f"cancel {instrument_id}")
+
+    def close_all_positions(self, instrument_id: object) -> None:
+        self.actions.append(f"flatten {instrument_id}")
+
+    def publish_signal(self, *_args: object) -> None:
+        self.actions.append("signal")
+
+    def _set_trading_state(self, state) -> bool:
+        return ProtectionGuard._set_trading_state(self, state)
 
 
 def _set_state(risk_engine, state) -> bool:
@@ -225,6 +242,16 @@ def _set_state(risk_engine, state) -> bool:
 
 def _close_breach(risk_engine) -> None:
     ProtectionGuard._on_breach_closed(_GuardStandIn(risk_engine))
+
+
+def _breach() -> ProtectionBreach:
+    now = datetime(2026, 9, 10, 20, 0, tzinfo=UTC)
+    return ProtectionBreach(
+        trigger=ProtectionTrigger.CONSECUTIVE_STOPS,
+        detail="4 consecutive stop-outs",
+        triggered_at=now,
+        until=now + timedelta(days=3),
+    )
 
 
 def test_a_breach_halts_the_engine():
@@ -272,3 +299,53 @@ def test_a_state_the_guard_did_not_set_is_left_alone():
 
     assert engine.trading_state == TradingState.REDUCING
     assert engine.calls == []
+
+
+def test_a_halt_the_guard_set_is_released_when_its_cooldown_expires():
+    engine = _FakeRiskEngine(TradingState.ACTIVE)
+    guard = _GuardStandIn(engine, halted_by_guard=False)
+
+    ProtectionGuard._on_breach_opened(guard, _breach())
+    assert guard._halted_by_guard is True
+    ProtectionGuard._on_breach_closed(guard)
+
+    assert engine.trading_state == TradingState.ACTIVE
+
+
+def test_a_halt_already_in_force_when_the_breach_opened_is_never_released():
+    """
+    The defect: the basket runs with the engine halted so every order is denied.
+
+    A breach that opened and expired inside that run released the halt on expiry, because
+    the guard checked only that the state was HALTED, not who had set it - and so would
+    have re-enabled orders in a run whose whole purpose was that none could be placed.
+
+    """
+    engine = _FakeRiskEngine(TradingState.HALTED)
+    guard = _GuardStandIn(engine, halted_by_guard=False)
+
+    ProtectionGuard._on_breach_opened(guard, _breach())
+    assert guard._halted_by_guard is False
+    ProtectionGuard._on_breach_closed(guard)
+
+    assert engine.trading_state == TradingState.HALTED
+    assert TradingState.ACTIVE not in engine.calls
+
+
+def test_a_breach_found_at_start_cancels_but_does_not_flatten():
+    """
+    Flattening on startup, before anyone has asked why positions exist during a
+    cooldown, is the automatic action the playbook forbids while broker truth is
+    uncertain.
+    """
+    engine = _FakeRiskEngine(TradingState.ACTIVE)
+    restored = _GuardStandIn(engine, halted_by_guard=False)
+    live = _GuardStandIn(_FakeRiskEngine(TradingState.ACTIVE), halted_by_guard=False)
+
+    ProtectionGuard._on_breach_opened(restored, _breach(), restored=True)
+    ProtectionGuard._on_breach_opened(live, _breach())
+
+    assert engine.trading_state == TradingState.HALTED
+    assert "cancel SPY=STK.SMART" in restored.actions
+    assert not any(a.startswith("flatten") for a in restored.actions)
+    assert "flatten SPY=STK.SMART" in live.actions
