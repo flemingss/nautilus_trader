@@ -1,0 +1,12 @@
+# copilot shakedown midday, 11:35 New York, weekdays
+
+[Unit]
+Description=copilot shakedown midday, 11:35 New York, weekdays
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 11:35:00 America/New_York
+Persistent=false
+Unit=copilot-shakedown@midday.service
+
+[Install]
+WantedBy=timers.target

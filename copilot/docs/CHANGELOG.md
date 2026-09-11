@@ -2,6 +2,46 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-10, the paper VM package
+
+Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 6 and 7). With this,
+**all nine prep items are done**; everything left needs the VM.
+
+### Added
+
+- **`copilot/ops/`**, the VM's configuration as code
+  ([ADR-0006](decisions/0006-ops-progression.md): roles in the repository, instances outside):
+  - `systemd/`: user services for `day` and the shakedown, and eight timers anchored to
+    `America/New_York`. Every service runs `--scheduled`, is capped at `MemoryMax=6G`, and
+    reads `~/.config/copilot/*.env`. Verified with `systemd-analyze verify` and each
+    calendar expression with `systemd-analyze calendar`.
+  - `install-units.sh`: renders the units with the clone's path into the user unit
+    directory; `--enable` starts the timers.
+  - `gateway/compose.yaml`: IB Gateway under IBC, paper, `READ_ONLY_API=no`, Eastern,
+    nightly restart, the password as a compose secret, API and VNC on localhost only. The
+    image carries a **digest placeholder**: [ADR-0007](decisions/0007-self-sourced-images.md)
+    pins third-party images by digest, resolved at stand-up. Variables checked against the
+    image's README.
+  - `env/*.example`: every variable the services read; secrets named, never valued.
+  - `README.md`: the seven stand-up stages as commands, each ending in its check.
+- **`python -m copilot.live.host_check`**: one line per condition, required or advised -
+  environment, secret file modes, the image pin, the broker port, clock sync, linger, timers,
+  Docker, memory, disk, the fork's risk-engine binding (ADR-0007's startup assertion), the
+  catalog, the upstream push guard, the halt latch. Non-zero on any required failure. Tests
+  also hold the package to the code: every timer fires a real phase, every service runs
+  `--scheduled` and is memory-capped, and the host check knows every timer shipped.
+- **`shakedown --phase <p> --scheduled`**: nothing to do on a day without a session, after an
+  early close ends the session before the phase opens, outside the window, or for a phase that
+  places orders while the halt latch is engaged; a failed scheduled phase raises a `WARNING`.
+
+### Measured
+
+- On the dev box, which is not the VM and is not meant to pass: the host check reports seven
+  required failures - the environment a scheduled run needs, the two Gateway secret files, the
+  image pin, the broker port, linger and timers - and passes the build's risk-engine binding,
+  the catalog, disk and the upstream guard. WSL's clock sync read `no` on one run and `yes` on
+  the next, which is the kind of flap the check exists to surface.
+
 ## 2026-09-10, the kill switch
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), item 9).

@@ -31,18 +31,21 @@ its own exit code and its own session check.
 
 | Eastern      | What runs                        | Produces                                                           |
 | ------------ | -------------------------------- | ------------------------------------------------------------------ |
-| 07:30        | `shakedown --phase pre-open`     | Connection, account and quote freshness before the bell            |
+| 07:35        | `shakedown --phase pre-open`     | Connection, account and quote freshness before the bell            |
 | 08:30        | `day evening`                    | Preflight, warm-up, the basket with orders denied, decision record |
-| 09:30        | `shakedown --phase open`         | Fifty minutes of live quotes in the execution window               |
+| 09:31        | `shakedown --phase open`         | Fifty minutes of live quotes in the execution window               |
 | 10:30        | `day sweep`                      | Monitoring-end cancel, confirmed against the broker                |
 | 10:45        | `shakedown --phase order-window` | A rested and cancelled minimum-size order: lifecycle events        |
-| 11:30        | `shakedown --phase midday`       | Failure injection: the denial, reject and reconciliation cases     |
-| 15:15        | `shakedown --phase close`        | The closing contrast against the measured spread                   |
+| 11:35        | `shakedown --phase midday`       | Failure injection: the denial, reject and reconciliation cases     |
+| 15:20        | `shakedown --phase close`        | The closing contrast against the measured spread                   |
 | 17:00        | `day morning`                    | Append, corporate actions, verdicts, live-versus-replay comparison |
 | 17:15        | heartbeat                        | One `INFO` summary; an external check alerts if it does not arrive |
 | Gateway sets | IB Gateway restart               | The daily recovery drill, whether we want one or not               |
 
-The order-window phase moves to 10:45 because it would otherwise open at 10:30 with the sweep,
+**Built 2026-09-10** as `copilot/ops/systemd/` - every service runs with `--scheduled`, and the
+commands for each stand-up stage are [`copilot/ops/README.md`](../ops/README.md). Shakedown phases
+fire a few minutes into their windows. The order-window phase moves to 10:45 because it would
+otherwise open at 10:30 with the sweep,
 and the sweep cancels working orders - including the probe's. Early closes move everything
 after 13:00; `day` knows the calendar and the timers must defer to it rather than to the
 clock.
@@ -64,17 +67,17 @@ clock.
 In order. Each is code or configuration that can be written and tested without the VM; the
 last column is what makes it done.
 
-| #   | Item                                                      | Done when                                                                                                                            |
-| --- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| 1   | **Make `day` safe to fire from a timer** (done)           | On a weekend, a holiday or a second run for the same session, each phase exits 0 saying there is nothing to do, and a test proves it |
-| 2   | **Fix the evening's ordering** (done)                     | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
-| 3   | **Wire alerting into its callers** (done)                 | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
-| 4   | **The heartbeat's summary** (done)                        | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
-| 5   | **Review the guard's cooldown across a restart** (done)   | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
-| 6   | **`copilot/ops/`: runbook, units, compose, env template** | The stand-up below is written as commands; systemd units and timers, the Gateway compose file and an environment template exist      |
-| 7   | **A host check**                                          | One command reports what a fresh VM is missing: variables, secrets file mode, Docker, Gateway port, clock sync, catalog, disk        |
-| 8   | **Confirm the sweep against the broker** (done)           | *Clear* means the broker's own open orders are empty, not that no rejection arrived; testable against TWS on the dev box             |
-| 9   | **The operator kill command** (done)                      | One command halts, cancels per policy, alerts and prints the recovery checklist; testable against TWS                                |
+| #   | Item                                                             | Done when                                                                                                                            |
+| --- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| 1   | **Make `day` safe to fire from a timer** (done)                  | On a weekend, a holiday or a second run for the same session, each phase exits 0 saying there is nothing to do, and a test proves it |
+| 2   | **Fix the evening's ordering** (done)                            | `day evening` at 08:30 passes on a normal day; the vendor's bar lag no longer skips the basket and the sweep                         |
+| 3   | **Wire alerting into its callers** (done)                        | The sweep's unconfirmed order, safe mode and `day`'s stopping failures each call the alerter; unconfigured, each prints to stderr    |
+| 4   | **The heartbeat's summary** (done)                               | `day morning` ends with one `INFO` summary of what ran and what passed                                                               |
+| 5   | **Review the guard's cooldown across a restart** (done)          | A decision on persisting breach state, and a test that a restart cannot end a cooldown early                                         |
+| 6   | **`copilot/ops/`: runbook, units, compose, env template** (done) | The stand-up below is written as commands; systemd units and timers, the Gateway compose file and an environment template exist      |
+| 7   | **A host check** (done)                                          | One command reports what a fresh VM is missing: variables, secrets file mode, Docker, Gateway port, clock sync, catalog, disk        |
+| 8   | **Confirm the sweep against the broker** (done)                  | *Clear* means the broker's own open orders are empty, not that no rejection arrived; testable against TWS on the dev box             |
+| 9   | **The operator kill command** (done)                             | One command halts, cancels per policy, alerts and prints the recovery checklist; testable against TWS                                |
 
 Items 1 to 7 are what the stand-up needs. Items 8 and 9 are what unattended running needs, and
 can land in the VM's first week if time runs out. The next premise (a separate roadmap row)

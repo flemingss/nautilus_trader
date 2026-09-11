@@ -1,0 +1,12 @@
+# copilot shakedown order-window, 10:45 New York, weekdays (after the sweep, which would cancel its probe)
+
+[Unit]
+Description=copilot shakedown order-window, 10:45 New York, weekdays (after the sweep, which would cancel its probe)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 10:45:00 America/New_York
+Persistent=false
+Unit=copilot-shakedown@order-window.service
+
+[Install]
+WantedBy=timers.target

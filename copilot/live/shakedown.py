@@ -78,11 +78,17 @@ from typing import TYPE_CHECKING
 
 from copilot.data.calendar import EASTERN
 from copilot.data.calendar import is_trading_day
+from copilot.data.calendar import session_close
 from copilot.data.catalog import read_series
+from copilot.live.alerting import Alert
+from copilot.live.alerting import Severity
+from copilot.live.alerting import alerter_from_environment
 from copilot.live.day import OUT_DIR
 from copilot.live.day import Connection
 from copilot.live.day import StepResult
 from copilot.live.day import summarise
+from copilot.live.halt import Latch
+from copilot.live.halt import read_latch
 from copilot.paths import add_catalog_argument
 from copilot.paths import catalog_path
 
@@ -445,6 +451,31 @@ def run_step(step: ShakedownStep) -> int:
     return completed.returncode
 
 
+def scheduled_skip(phase: Phase, now: datetime, latch: Latch | None) -> str:
+    """
+    Return why a timer-fired phase should not run, or "" when it should.
+
+    A timer knows neither the exchange calendar nor the halt. So: not on a day without a
+    session; not when an early close ends the session before the phase opens - the 15:15
+    closing contrast means nothing after a 13:00 close; not outside the window, if the timer
+    fired late; and not a phase that places orders while the halt latch is engaged, where
+    every order would be denied by design and read as a failure.
+
+    """
+    eastern = now.astimezone(EASTERN)
+    today = eastern.date()
+    if not is_trading_day(today):
+        return f"{today.isoformat()} is not a trading session"
+    closes = session_close(today).astimezone(EASTERN)
+    if closes.timetz().replace(tzinfo=None) <= phase.opens:
+        return f"the session closes at {closes:%H:%M %Z}, before {phase.name} opens"
+    if not phase.covers(now):
+        return f"it is {eastern:%H:%M %Z}, outside {phase.name}'s {phase.window} window"
+    if latch is not None and any(step.places_orders for step in phase.steps):
+        return f"halt latch {latch.latch_id} is engaged and {phase.name} places orders"
+    return ""
+
+
 def run_phase(phase: Phase, *, runner=run_step) -> tuple[StepResult, ...]:  # noqa: ANN001
     """
     Run a phase's steps in order, recording each, stopping only where a step says to.
@@ -533,6 +564,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="run the phase outside its window, knowing the reading means something else",
     )
+    parser.add_argument(
+        "--scheduled",
+        action="store_true",
+        help="fired by a timer: exit 0 with nothing to do when the phase should not run",
+    )
     add_catalog_argument(parser)
     args = parser.parse_args(argv)
 
@@ -549,6 +585,12 @@ def main(argv: list[str] | None = None) -> int:
     phase = phase_named(args.phase, available)
     now = datetime.now(UTC)
     session = now.astimezone(EASTERN).date()
+    if args.scheduled and args.force:
+        parser.error("--scheduled and --force contradict each other")
+    skip = scheduled_skip(phase, now, read_latch()) if args.scheduled else ""
+    if skip:
+        print(f"nothing to do: {skip}")
+        return 0
 
     missing = missing_environment(os.environ, args.account)
     if missing:
@@ -589,7 +631,25 @@ def main(argv: list[str] | None = None) -> int:
     path = OUT_DIR / f"shakedown_{phase.name}_{now:%Y%m%dT%H%M%SZ}.json"
     path.write_text(json.dumps(asdict(record), indent=2) + "\n")
     print(f"\nWrote {path}")
+    if args.scheduled and code != 0:
+        _warn(phase, results, path.name)
     return code
+
+
+def _warn(phase: Phase, results: tuple[StepResult, ...], record: str) -> None:
+    """
+    Tell the operator a scheduled phase failed, naming the steps that did.
+    """
+    failed = [f"{r.name}: exit {r.exit_code}" for r in results if not r.skipped and not r.passed]
+    delivery = alerter_from_environment().send(
+        Alert(
+            severity=Severity.WARNING,
+            title=f"shakedown {phase.name} failed",
+            body="\n".join(failed) or "the phase exited non-zero",
+            context={"record": record},
+        ),
+    )
+    print(f"alert WARNING 'shakedown {phase.name} failed': {delivery.outcome}")
 
 
 __all__ = [
@@ -608,6 +668,7 @@ __all__ = [
     "reference_price",
     "run_phase",
     "run_step",
+    "scheduled_skip",
 ]
 
 

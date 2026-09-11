@@ -1,0 +1,19 @@
+# One shakedown phase, fired by its timer: the broker path proven every session, and the
+# order-lifecycle events the paper campaign's system clock counts. `--scheduled` skips
+# weekends, early closes, late timers, and order-placing phases under the halt latch.
+
+[Unit]
+Description=copilot shakedown %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+EnvironmentFile=%h/.config/copilot/copilot.env
+EnvironmentFile=%h/.config/copilot/secrets.env
+Environment=PYTHONPATH=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m copilot.live.shakedown --phase %i --scheduled
+TimeoutStartSec=90min
+MemoryMax=6G
+Nice=5

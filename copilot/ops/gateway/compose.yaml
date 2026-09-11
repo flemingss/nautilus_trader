@@ -1,0 +1,57 @@
+# IB Gateway for the paper VM, headless under IBC.
+#
+#   docker compose -f copilot/ops/gateway/compose.yaml up -d
+#
+# ADR-0006 names the image; ADR-0007 pins third-party images by digest, not tag, because a
+# moving `stable` under an unattended system is not a risk worth the convenience. Resolve the
+# digest at stand-up (`docker pull ghcr.io/gnzsnz/ib-gateway:stable`, then
+# `docker inspect --format '{{index .RepoDigests 0}}' ghcr.io/gnzsnz/ib-gateway:stable`) and
+# replace the placeholder. The host check refuses a reference without a digest.
+#
+# Variables verified against the image's README on 2026-09-10; see
+# copilot/docs/DRAFT_PAPER_VM.md for what is still to be confirmed on the VM.
+name: copilot-gateway
+
+services:
+  ib-gateway:
+    image: ghcr.io/gnzsnz/ib-gateway@sha256:PIN-AT-STAND-UP
+    restart: always
+    env_file:
+      # TWS_USERID, and VNC_SERVER_PASSWORD if the screen is wanted. Mode 600, never committed.
+      - ${HOME}/.config/copilot/gateway.env
+    environment:
+      TRADING_MODE: paper
+      TWS_PASSWORD_FILE: /run/secrets/tws_password
+      # Read-only blocks the execution client with IB 321, and its symptom is a missing
+      # account rather than an error.
+      READ_ONLY_API: "no"
+      # Eastern, so the Gateway reports the exchange's zone and the JST alias workaround for a
+      # Tokyo-configured TWS can be measured as no longer needed.
+      TIME_ZONE: America/New_York
+      # IB resets its servers nightly; restart ahead of it. Confirm against IB's current
+      # schedule at stand-up rather than trusting this.
+      AUTO_RESTART_TIME: "11:50 PM"
+      TWOFA_TIMEOUT_ACTION: restart
+      RELOGIN_AFTER_TWOFA_TIMEOUT: "yes"
+      # The Gateway takes the session, which displaces TWS on the dev box: one session per login.
+      EXISTING_SESSION_DETECTED_ACTION: primary
+      # Accept the local API connections without a click nobody is there to make.
+      TWS_ACCEPT_INCOMING: accept
+      TWS_SETTINGS_PATH: /home/ibgateway/tws_settings
+    secrets:
+      - tws_password
+    ports:
+      # Paper API: socat serves it on 4004 inside, mapped to the Gateway paper port 4002.
+      - 127.0.0.1:4002:4004
+      # VNC, localhost only; reach it through an SSH tunnel.
+      - 127.0.0.1:5900:5900
+    volumes:
+      # Keeps API settings, including bypassing order precautions for API orders, set once.
+      - tws_settings:/home/ibgateway/tws_settings
+
+secrets:
+  tws_password:
+    file: ${HOME}/.config/copilot/tws_password
+
+volumes:
+  tws_settings:
