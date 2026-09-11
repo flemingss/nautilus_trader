@@ -18,6 +18,7 @@ that make it trustworthy rather than merely plausible:
 
 from __future__ import annotations
 
+import json
 import math
 import random
 from datetime import UTC
@@ -420,16 +421,170 @@ def test_the_newest_record_per_activation_and_the_newest_pool_are_read(tmp_path)
         "spy-gap-fade-long-next-close_20260911T002703Z.json",
     ):
         (verdicts / name).write_text("{}")
-    for name in (
-        "pooled_next_close_20260910T183037Z.json",
-        "pooled_next_close_20260911T002351Z.json",
+    for name, membership in (
+        ("pooled_next_close_20260910T183037Z.json", "constant"),
+        ("pooled_next_close_20260911T002351Z.json", "constant"),
+        ("pooled_next_close_shifting_20260911T160500Z.json", "shifting"),
+        ("pooled_next_close_20260911T000000Z.json", None),
     ):
-        (out / name).write_text("{}")
+        (out / name).write_text(json.dumps({"membership": membership} if membership else {}))
+    holdouts = tmp_path / "holdouts"
+    holdouts.mkdir()
+    (holdouts / "spent-without-rows.json").write_text("{}")
+    (holdouts / "reassessed.json").write_text(json.dumps({"reassessment": {"trade_rows": []}}))
 
-    names = [p.name for p in newest_records(verdicts, out)]
+    names = [p.name for p in newest_records(verdicts, out, holdouts)]
 
     assert names == [
         "spy-gap-fade-long-next-close_20260911T002703Z.json",
         "spy-gap-fade-long_20260911T002723Z.json",
         "pooled_next_close_20260911T002351Z.json",
-    ]
+        "reassessed.json",
+    ], "the newest constant-membership pool, and only holdouts with generated rows"
+
+
+# ------------------------------------------------------------- audit batch C (F18-F31)
+
+
+@pytest.mark.parametrize("count", [181, 187, 193])
+def test_the_constant_regression_matches_the_interval_on_a_count_blocks_do_not_divide(
+    monkeypatch,
+    count: int,
+) -> None:
+    """
+    Audit F31: both truncations were only ever compared on counts the block length divides.
+    """
+    monkeypatch.setitem(MODELS, "constant", ())
+    factors = factor_table()
+    trades = built(factors, alpha=0.03, betas={}, noise=0.8, count=count)
+
+    result = attribute(trades, factors, model="constant")
+    evidence = assess([t.trade for t in trades], cost_r=lambda _: Decimal(0))
+
+    assert count % result.block_trades != 0, "the case this test exists for"
+    assert (result.alpha_lower_r, result.alpha_upper_r) == (evidence.lower_r, evidence.upper_r)
+
+
+def test_the_exposure_weighted_fit_recovers_a_known_alpha_and_keeps_the_decomposition() -> None:
+    factors = factor_table()
+    betas = {"market_excess": 0.9, "value": 0.3}
+    trades = built(factors, alpha=0.04, betas=betas, count=240)
+
+    weighted = attribute(trades, factors, replicates=0, weighting="exposure")
+
+    assert weighted.weighting == "exposure"
+    assert abs(weighted.alpha_r - Decimal("0.04")) <= Decimal("0.00001")
+    parts = weighted.risk_free_r + weighted.explained_r + weighted.alpha_r
+    assert abs(weighted.mean_r - parts) <= Decimal("0.000003")
+
+
+def test_an_unknown_weighting_is_refused() -> None:
+    factors = factor_table()
+
+    with pytest.raises(ValueError, match="weighting"):
+        attribute(built(factors, alpha=0.0, betas={}), factors, replicates=0, weighting="median")
+
+
+def test_exposures_reads_the_factors_the_model_names(monkeypatch) -> None:
+    """
+    Audit F29: exposures summed the four-factor set whatever model was asked for.
+    """
+    monkeypatch.setitem(MODELS, "size_only", ("size",))
+    factors = factor_table()
+
+    (exposure,) = exposures(
+        [filed_trade(10, 13, 0.0)],
+        factors,
+        exit_session=True,
+        model="size_only",
+    )
+
+    assert set(exposure.factor_sums) == {"size"}
+
+
+def test_a_same_session_round_trip_is_refused_for_what_it_is() -> None:
+    factors = factor_table()
+
+    with pytest.raises(UncoveredTradeError, match="opened and closed on"):
+        exposures([filed_trade(10, 10, 0.0)], factors, exit_session=True)
+
+
+def test_a_session_missing_from_the_factor_files_inside_a_window_is_refused() -> None:
+    """
+    Audit F29: an interior session one vintage lacks was dropped silently.
+    """
+    from copilot.data.calendar import is_trading_day
+
+    factors = factor_table()
+    held = next(i for i in range(20, 40) if is_trading_day(SESSIONS[i]))
+    holed = {d: f for d, f in factors.items() if d != SESSIONS[held]}
+
+    with pytest.raises(UncoveredTradeError, match="carry no return"):
+        exposures([filed_trade(held - 2, held + 2, 0.0)], holed, exit_session=True)
+
+
+def test_at_the_floor_a_singular_resample_is_skipped_not_fatal() -> None:
+    """
+    Audit F25: a singular block resample raised from inside the loop and aborted the whole fit.
+
+    Thirty trades, one of them exposed to the market: every resample that misses it has a zero
+    column. Too many skipped draws withhold the interval rather than report one from the rest.
+    """
+    factors = factor_table()
+    trades = [filed_trade(2 * i + 2, 2 * i + 3, 0.02 * (i % 4), leverage=0) for i in range(30)]
+    trades[14] = filed_trade(30, 33, 0.4, leverage=50)
+
+    result = attribute(trades, factors, model="market", replicates=400)
+
+    assert result.skipped_replicates > 20
+    assert result.alpha_lower_r is None
+    assert result.verdict == "no_interval"
+
+
+def test_the_bracket_is_filed_as_an_agreement_test() -> None:
+    from copilot.validation import attribution
+
+    assert "not a bound" in attribution.bracketed_verdict.__doc__
+    assert "Neither side is a bound" in attribution.__doc__
+
+
+def test_a_premise_whose_trades_all_exit_the_next_session_is_filed_unattributable(tmp_path) -> None:
+    """
+    Audit F29: with every regressor zero when the exit session is excluded, attribute traced back.
+    """
+    import json
+
+    from copilot.strategies.attribute import attribute_record
+    from copilot.validation.filed_trades import to_rows
+    from copilot.validation.walkforward import FoldResult
+
+    factors = factor_table()
+    trades = [filed_trade(i + 2, i + 3, 0.01 * (i % 5)) for i in range(60)]
+    fold = FoldResult(
+        index=0,
+        windows=None,
+        train_from=stamp(SESSIONS[0]),
+        test_from=stamp(SESSIONS[2]),
+        test_to=stamp(SESSIONS[70]),
+        in_sample=None,
+        selected=object(),
+        test_trades=len(trades),
+        test_score=Decimal(0),
+        passed=False,
+        reason="test",
+        test_trade_details=tuple(t.trade for t in trades),
+    )
+    path = tmp_path / "next-session-exits_20260911T000000Z.json"
+    path.write_text(
+        json.dumps(
+            {
+                "activation": "next-session-exits",
+                "trade_rows": to_rows([fold], cost_r=lambda _: Decimal(0)),
+            },
+        ),
+    )
+
+    result = attribute_record(path, factors)
+
+    assert "four_factor_net_exit_excluded" in result["unattributable"]
+    assert result["verdict"] == "unattributable"

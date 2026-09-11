@@ -46,3 +46,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0028](0028-an-undelivered-critical-halts-the-host.md)          | An undelivered critical alert halts the host, and the heartbeat carries it                      | Accepted   |
 | [0029](0029-the-sweep-cancels-with-the-global-cancel.md)        | The sweep cancels with IB's global cancel, because a client can cancel only its own orders      | Accepted   |
 | [0030](0030-the-host-runs-one-broker-session-at-a-time.md)      | The paper host runs one broker session at a time, and tells someone when a unit dies            | Accepted   |
+| [0031](0031-evidence-and-attribution-after-the-audit.md)        | Evidence and attribution, as corrected by the audit                                             | Accepted   |

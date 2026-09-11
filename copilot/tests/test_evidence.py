@@ -30,6 +30,7 @@ from copilot.validation.evidence import IncoherentEvidenceError
 from copilot.validation.evidence import assess
 from copilot.validation.evidence import autocorrelation_time
 from copilot.validation.evidence import block_length
+from copilot.validation.evidence import calendar_design_effect
 from copilot.validation.evidence import concurrency
 from copilot.validation.evidence import net_r
 from copilot.validation.evidence import require_describes
@@ -320,3 +321,89 @@ def test_identical_trades_give_a_zero_width_interval() -> None:
 
     assert result.lower_r == result.upper_r == Decimal("0.5")
     assert result.clears(Decimal(0)) is True
+
+
+# ------------------------------------------------------------- audit batch C (F17, F29)
+
+
+def _trade_in_year(year: int, index: int, r: str) -> ClosedTrade:
+    opened = datetime(year, 1, 2, tzinfo=UTC) + timedelta(days=3 * index)
+    return ClosedTrade(
+        symbol="SPY.ARCX",
+        direction=Direction.LONG,
+        quantity=10,
+        entry_price=Decimal(100),
+        exit_price=Decimal(100),
+        exit_reason="CLOSED",
+        signal_created_at=opened,
+        opened_at=opened,
+        closed_at=opened + timedelta(days=1),
+        realized_pnl=Decimal(r) * 100,
+        risk_amount=Decimal(100),
+    )
+
+
+def test_returns_that_cluster_by_calendar_year_discount_the_effective_count() -> None:
+    """
+    Audit F17: the trade-order autocorrelation read one on a series clustered by year.
+    """
+    rng = random.Random(11)  # noqa: S311 - deterministic fixture
+    year_means = [0.6, -0.5, 0.4, -0.6, 0.5, -0.4, 0.6, -0.5, 0.3, -0.3]
+    trades = [
+        _trade_in_year(year, i, str(round(year_mean + rng.gauss(0, 0.2), 6)))
+        for year, year_mean in zip(range(2005, 2015), year_means, strict=True)
+        for i in range(40)
+    ]
+
+    clustered = assess(sorted(trades, key=lambda t: t.opened_at), cost_r=lambda _: Decimal(0))
+
+    assert clustered.calendar_design_effect > Decimal(10)
+    assert clustered.effective_trades < Decimal(40)
+
+
+def test_returns_that_do_not_cluster_by_year_are_not_discounted_for_it() -> None:
+    rng = random.Random(12)  # noqa: S311 - deterministic fixture
+    trades = [
+        _trade_in_year(year, i, str(round(rng.gauss(0.05, 0.5), 6)))
+        for year in range(2005, 2015)
+        for i in range(40)
+    ]
+
+    evidence = assess(trades, cost_r=lambda _: Decimal(0))
+
+    assert evidence.calendar_design_effect < Decimal("2.5")
+
+
+def test_the_design_effect_is_one_without_two_years_to_compare() -> None:
+    assert calendar_design_effect([0.1, 0.2, 0.3], [2020, 2020, 2020]) == Decimal(1)
+
+
+def test_a_single_trade_files_no_interval_that_could_clear_a_bar() -> None:
+    """
+    Audit F29: one losing trade filed a lower bound above its upper, and cleared any negative bar.
+    """
+    evidence = assess([_trade_in_year(2020, 0, "-1.5")], cost_r=lambda _: Decimal(0))
+
+    assert evidence.lower_r == evidence.upper_r == Decimal("-1.500000")
+    assert evidence.replicates == 0
+    assert evidence.clears(Decimal(-10)) is False
+
+
+def test_a_trade_without_a_recorded_risk_is_left_out_of_every_measure() -> None:
+    """
+    Audit F29: dropped from the mean, and still counted in the overlap.
+    """
+    kept = [_trade_in_year(2020, i, "0.1") for i in range(10)]
+    riskless = ClosedTrade(
+        **{
+            **kept[0].__dict__,
+            "risk_amount": Decimal(0),
+            "closed_at": kept[0].opened_at + timedelta(days=400),
+        },
+    )
+
+    with_riskless = assess([*kept, riskless], cost_r=lambda _: Decimal(0))
+    without = assess(kept, cost_r=lambda _: Decimal(0))
+
+    assert with_riskless.trades == without.trades == 10
+    assert with_riskless.concurrency == without.concurrency

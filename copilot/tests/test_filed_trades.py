@@ -164,3 +164,15 @@ def test_the_display_column_is_net_of_the_filed_cost() -> None:
 
     gross = Decimal(row["realized_pnl"]) / Decimal(row["risk_amount"])
     assert Decimal(row["net_r"]) == (gross - Decimal(row["cost_r"])).quantize(Decimal("0.000001"))
+
+
+def test_identical_trades_are_filed_and_read_back_as_two() -> None:
+    """
+    Audit F31: nothing tested a duplicate row, and a mapping keyed by trade would collapse it.
+    """
+    twin = trade("SPY.ARCX", 3, "50")
+
+    rows = to_rows([fold(0, (twin, twin))], cost_r=lambda _: Decimal("0.01"))
+
+    assert len(rows) == 2
+    assert [f.trade for f in from_rows(rows)] == [twin, twin]

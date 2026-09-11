@@ -2,6 +2,60 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, audit batch C: the evidence and the attribution say what they measure
+
+The fifteen research rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before the next
+premise's holdout. [ADR-0031](decisions/0031-evidence-and-attribution-after-the-audit.md) records
+the decisions; ADR-0024 and ADR-0026 stand.
+
+### Fixed
+
+- **A holdout cannot be spent without a predeclared effect size** (F16), filed with the newest
+  walk-forward verdict under the same value.
+- **Effective trades count calendar clustering** (F17): the calendar-year design effect joins
+  concurrency and the trade-order autocorrelation time, and the largest divides.
+- **A position open when a replay window ends is marked to its last close** (F27), `WINDOW_END`,
+  instead of falling out of both folds; one opened on the last bar is counted, not scored.
+- **Money is read through `as_decimal`** in the replay and the guard (F26), and
+  `signal_created_at` is documented as the entry fill it holds (F28).
+- **Attribution**: an exposure-weighted fit is filed beside the verdict as a sensitivity (F18);
+  the bracket is stated as an agreement test (F19); the records say the results are one body of
+  evidence with no multiplicity adjustment (F24); a singular resample is skipped and counted, and
+  the floor is documented (F25); exposures follow the model asked for, a same-session trade and a
+  session missing inside a window are refused for what they are, and a premise with no full session
+  to regress is filed unattributable rather than stopping the run (F29).
+- **Evidence**: one filter for scoreable trades across every measure, and a single trade files no
+  interval that could clear a bar (F29).
+- **The pool holds its membership constant by default** (F23) and labels its fold mean and its
+  per-trade mean (F22); the verdict records carry the per-trade mean too.
+- **The AAPL holdout's reassessment is generated** by `spend_holdout --reassess`, with its trades
+  (F20), and attribution reads it. ADR-0024's gross worked example is corrected in ADR-0031 and in
+  `pool.py` (F21).
+- **Tests the real runs needed** (F31): non-divisible block counts, duplicate rows, the floor, a
+  next-session-exit premise, calendar clustering.
+
+### Refiled, and what moved
+
+All twelve walk-forwards, both pools, the holdout reassessment and the attribution, peak 0.43 GiB.
+
+| Result                           | Before                                          | After                                                                                                             |
+| -------------------------------- | ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Walk-forward fold majorities     | 8 of 12 pass                                    | 8 of 12 pass, every fold count identical                                                                          |
+| Trades per verdict               | 94 to 490                                       | 98 to 501: 3 to 17 per verdict were positions a fold's end dropped                                                |
+| AAPL next-close interval         | [+0.009, +0.170]                                | [+0.010, +0.167], still the one clearing zero                                                                     |
+| Wholly below zero                | EEM, HYG, TLT                                   | EEM, HYG, TLT                                                                                                     |
+| Effective trades, SPY next-close | 439 of 439                                      | 366 of 448, calendar design effect 1.22                                                                           |
+| AAPL holdout                     | +0.035 over 111, [-0.140, +0.195], by hand      | +0.034 over 112, [-0.135, +0.198], by code                                                                        |
+| Pool                             | 20/38 folds, +0.030, [-0.018, +0.079], shifting | Constant: 1 fold, 137 trades, +0.026, [-0.160, +0.172]. Shifting, for comparison: 20/38, +0.031, [-0.017, +0.079] |
+| Positive alpha                   | none                                            | none, under either treatment or the weighted sensitivity                                                          |
+
+- **The gap-fade family's rejection stands under every correction.** The shifting pool now reads
+  `negative_alpha` under both treatments; SPY next-close and TLT next-close are
+  `bracket_disagrees`; gross +0.068 R per trade in the shifting pool is +0.017 cash, +0.053 factor
+  exposure and -0.002 alpha.
+- Superseded verdicts and an uncited pooled run are pruned under the retention rule; the
+  2026-09-10 pooled and attribution records stay because the changelog names them.
+
 ## 2026-09-11, audit batch B: the host runs one broker session at a time
 
 The rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before unattended running.

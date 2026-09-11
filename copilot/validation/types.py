@@ -69,8 +69,15 @@ class ClosedTrade:
     exit_reason: str
     signal_created_at: datetime
     """
-    Bar that produced the signal, kept so an entry can be audited against its own origin
-    rather than against whatever else happened on the same day.
+    When the trade is attributed to a window: **the entry fill, not the signal bar.**
+
+    Named for the signal, and it was documented as the bar that produced one, but the Nautilus
+    replay sees only positions, and a position knows its fill: for a ``next_close`` rule the
+    decision is a session earlier than this timestamp (``docs/AUDIT_2026-09-11.md``, F28). Every
+    reader treats it as the entry - the walk-forward's window filter, the filed trades' order,
+    attribution's windows - so the name stays, filed rows keep reading back, and this says what
+    it holds. An audit of an entry against its origin reads the decision from the session
+    record, not from here.
     """
     opened_at: datetime
     closed_at: datetime

@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "EEM.ARCX",
-  "run_at": "2026-09-11T01:32:02.901481+00:00",
-  "runtime_seconds": 8.5,
+  "run_at": "2026-09-11T15:58:44.913027+00:00",
+  "runtime_seconds": 8.4,
   "bars": 1883,
   "bar_range": [
     "2017-01-03",
@@ -64,16 +64,17 @@
     "data": "024556e0acad4fdd6c2f13d619493d21ba3daf4b1243a06067d367c34df3201f",
     "identity": "4ef4e1fa96182c31671cce692f9aab705b78af5e3ba1e06403f04e4797640133",
     "cost": "470e79a8f7f4b8e012678951d8e36fdce6872c58ac9300953db61a7f3a5d9bcd",
-    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
-    "combined": "972900657d2191a840aa601823435564c2e5569a2cf672aaf4ae713b7f13fe76"
+    "code": "f73ab16b116edd39b01e2a6683823f8c313e410f4d37f1f78811485e73cc28e5",
+    "combined": "f3f14a48ee2a8d6bc710026a340c2711c5a7bfe573e70bf9cbd12071c9274271"
   },
   "holdout_spent": false,
   "folds": 12,
   "folds_evaluated": 12,
   "folds_passed": 4,
   "majority_passed": false,
-  "mean_oos_net_expectancy_r": "-0.111429",
-  "total_test_trades": 206,
+  "mean_oos_net_expectancy_r": "-0.103469",
+  "mean_per_trade_net_r": "-0.106417",
+  "total_test_trades": 209,
   "fold_detail": [
     {
       "index": 0,
@@ -90,10 +91,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 16,
-      "net_score_r": "-0.436493",
+      "trades": 17,
+      "net_score_r": "-0.376485",
       "passed": false,
-      "reason": "score -0.4364931159217102156644151391 not above 0"
+      "reason": "score -0.3764852198331512323742829796 not above 0"
     },
     {
       "index": 1,
@@ -130,10 +131,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 15,
-      "net_score_r": "0.036823",
+      "trades": 16,
+      "net_score_r": "0.039439",
       "passed": true,
-      "reason": "score 0.03682285862120023340827453518 above 0"
+      "reason": "score 0.03943914088789941494832901866 above 0"
     },
     {
       "index": 3,
@@ -210,10 +211,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.5"
       },
-      "trades": 17,
-      "net_score_r": "-0.268715",
+      "trades": 18,
+      "net_score_r": "-0.235813",
       "passed": false,
-      "reason": "score -0.2687154889729217022795004414 not above 0"
+      "reason": "score -0.2358133056115861139063479064 not above 0"
     },
     {
       "index": 7,
@@ -318,16 +319,17 @@
   ],
   "evidence": {
     "series": "net R per trade, in signal order",
-    "trades": 206,
-    "mean_r": "-0.112753",
-    "effective_trades": "206.0",
+    "trades": 209,
+    "mean_r": "-0.106417",
+    "effective_trades": "209.0",
     "concurrency": "1.000000",
+    "calendar_design_effect": "1",
     "block_trades": 6,
     "replicates": 2000,
     "confidence": "0.90",
-    "lower_r": "-0.223903",
-    "upper_r": "-0.013877",
-    "standard_error_r": "0.063736"
+    "lower_r": "-0.213768",
+    "upper_r": "-0.005612",
+    "standard_error_r": "0.063477"
   },
   "trade_rows": [
     {
@@ -501,7 +503,7 @@
       "signal_created_at": "2018-05-30T00:00:00+00:00",
       "opened_at": "2018-05-30T00:00:00+00:00",
       "closed_at": "2018-06-04T00:00:00+00:00",
-      "realized_pnl": "999.7",
+      "realized_pnl": "999.70",
       "risk_amount": "999.65250000000134400",
       "cost_r": "0.024383756988",
       "net_r": "0.975664"
@@ -585,6 +587,22 @@
       "risk_amount": "999.81000000000101430",
       "cost_r": "0.023240663188",
       "net_r": "0.976759"
+    },
+    {
+      "fold": 0,
+      "symbol": "EEM.ARCX",
+      "direction": "LONG",
+      "quantity": 1031,
+      "entry_price": "43.23",
+      "exit_price": "43.8200",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2018-07-11T00:00:00+00:00",
+      "opened_at": "2018-07-11T00:00:00+00:00",
+      "closed_at": "2018-07-12T00:00:00+00:00",
+      "realized_pnl": "608.2900",
+      "risk_amount": "999.70178571428783520",
+      "cost_r": "0.024830337297",
+      "net_r": "0.583641"
     },
     {
       "fold": 1,
@@ -677,7 +695,7 @@
       "signal_created_at": "2018-09-06T00:00:00+00:00",
       "opened_at": "2018-09-06T00:00:00+00:00",
       "closed_at": "2018-09-11T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.07499999999934900",
       "cost_r": "0.023153955201",
       "net_r": "-1.023679"
@@ -693,7 +711,7 @@
       "signal_created_at": "2018-09-12T00:00:00+00:00",
       "opened_at": "2018-09-12T00:00:00+00:00",
       "closed_at": "2018-09-19T00:00:00+00:00",
-      "realized_pnl": "999.4",
+      "realized_pnl": "999.40",
       "risk_amount": "999.35132142857023350",
       "cost_r": "0.023846392810",
       "net_r": "0.976202"
@@ -965,7 +983,7 @@
       "signal_created_at": "2019-04-09T00:00:00+00:00",
       "opened_at": "2019-04-09T00:00:00+00:00",
       "closed_at": "2019-04-25T00:00:00+00:00",
-      "realized_pnl": "-999.7",
+      "realized_pnl": "-999.70",
       "risk_amount": "999.74785714285598220",
       "cost_r": "0.030072643237",
       "net_r": "-1.030025"
@@ -1013,7 +1031,7 @@
       "signal_created_at": "2019-05-10T00:00:00+00:00",
       "opened_at": "2019-05-10T00:00:00+00:00",
       "closed_at": "2019-05-13T00:00:00+00:00",
-      "realized_pnl": "-1381.9",
+      "realized_pnl": "-1381.90",
       "risk_amount": "999.97928571428421090",
       "cost_r": "0.025167321853",
       "net_r": "-1.407096"
@@ -1065,6 +1083,22 @@
       "risk_amount": "999.528085714286986350",
       "cost_r": "0.031417749967",
       "net_r": "0.635227"
+    },
+    {
+      "fold": 2,
+      "symbol": "EEM.ARCX",
+      "direction": "LONG",
+      "quantity": 1404,
+      "entry_price": "42.93",
+      "exit_price": "43.0100",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-07-05T00:00:00+00:00",
+      "opened_at": "2019-07-05T00:00:00+00:00",
+      "closed_at": "2019-07-15T00:00:00+00:00",
+      "realized_pnl": "112.3200",
+      "risk_amount": "999.597857142858674220",
+      "cost_r": "0.033681811969",
+      "net_r": "0.078683"
     },
     {
       "fold": 3,
@@ -1333,7 +1367,7 @@
       "signal_created_at": "2019-11-27T00:00:00+00:00",
       "opened_at": "2019-11-27T00:00:00+00:00",
       "closed_at": "2019-11-29T00:00:00+00:00",
-      "realized_pnl": "-1000.5",
+      "realized_pnl": "-1000.50",
       "risk_amount": "999.88392857142798000",
       "cost_r": "0.041531347283",
       "net_r": "-1.042147"
@@ -1493,7 +1527,7 @@
       "signal_created_at": "2020-02-14T00:00:00+00:00",
       "opened_at": "2020-02-14T00:00:00+00:00",
       "closed_at": "2020-02-24T00:00:00+00:00",
-      "realized_pnl": "-2192.0",
+      "realized_pnl": "-2192.00",
       "risk_amount": "999.12857142857088000",
       "cost_r": "0.019527391127",
       "net_r": "-2.213439"
@@ -1509,7 +1543,7 @@
       "signal_created_at": "2020-02-25T00:00:00+00:00",
       "opened_at": "2020-02-25T00:00:00+00:00",
       "closed_at": "2020-02-26T00:00:00+00:00",
-      "realized_pnl": "666.6",
+      "realized_pnl": "666.60",
       "risk_amount": "999.84366428571454590",
       "cost_r": "0.021924214760",
       "net_r": "0.644780"
@@ -1621,7 +1655,7 @@
       "signal_created_at": "2020-03-30T00:00:00+00:00",
       "opened_at": "2020-03-30T00:00:00+00:00",
       "closed_at": "2020-04-14T00:00:00+00:00",
-      "realized_pnl": "665.6",
+      "realized_pnl": "665.60",
       "risk_amount": "998.3871428571433320",
       "cost_r": "0.005848941419",
       "net_r": "0.660826"
@@ -1749,7 +1783,7 @@
       "signal_created_at": "2020-07-31T00:00:00+00:00",
       "opened_at": "2020-07-31T00:00:00+00:00",
       "closed_at": "2020-08-05T00:00:00+00:00",
-      "realized_pnl": "999.9",
+      "realized_pnl": "999.90",
       "risk_amount": "999.90000000000106050",
       "cost_r": "0.024339213737",
       "net_r": "0.975661"
@@ -1893,7 +1927,7 @@
       "signal_created_at": "2020-10-29T00:00:00+00:00",
       "opened_at": "2020-10-29T00:00:00+00:00",
       "closed_at": "2020-11-04T00:00:00+00:00",
-      "realized_pnl": "999.5",
+      "realized_pnl": "999.50",
       "risk_amount": "999.55078928571390225",
       "cost_r": "0.029498757716",
       "net_r": "0.970450"
@@ -2165,7 +2199,7 @@
       "signal_created_at": "2021-05-05T00:00:00+00:00",
       "opened_at": "2021-05-05T00:00:00+00:00",
       "closed_at": "2021-05-07T00:00:00+00:00",
-      "realized_pnl": "999.2",
+      "realized_pnl": "999.20",
       "risk_amount": "999.2185714285711950",
       "cost_r": "0.029902626399",
       "net_r": "0.970079"
@@ -2267,6 +2301,22 @@
       "net_r": "-1.336091"
     },
     {
+      "fold": 6,
+      "symbol": "EEM.ARCX",
+      "direction": "LONG",
+      "quantity": 1069,
+      "entry_price": "53.55",
+      "exit_price": "53.8800",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2021-07-09T00:00:00+00:00",
+      "opened_at": "2021-07-09T00:00:00+00:00",
+      "closed_at": "2021-07-14T00:00:00+00:00",
+      "realized_pnl": "352.7700",
+      "risk_amount": "999.89678571428527905",
+      "cost_r": "0.029282603131",
+      "net_r": "0.323524"
+    },
+    {
       "fold": 7,
       "symbol": "EEM.ARCX",
       "direction": "LONG",
@@ -2277,7 +2327,7 @@
       "signal_created_at": "2021-07-20T00:00:00+00:00",
       "opened_at": "2021-07-20T00:00:00+00:00",
       "closed_at": "2021-07-26T00:00:00+00:00",
-      "realized_pnl": "-1421.0",
+      "realized_pnl": "-1421.00",
       "risk_amount": "999.59999999999955900",
       "cost_r": "0.026635465098",
       "net_r": "-1.448204"
@@ -2341,7 +2391,7 @@
       "signal_created_at": "2021-08-20T00:00:00+00:00",
       "opened_at": "2021-08-20T00:00:00+00:00",
       "closed_at": "2021-08-24T00:00:00+00:00",
-      "realized_pnl": "999.1",
+      "realized_pnl": "999.10",
       "risk_amount": "999.12857142857213700",
       "cost_r": "0.029767947840",
       "net_r": "0.970203"
@@ -2421,7 +2471,7 @@
       "signal_created_at": "2021-09-27T00:00:00+00:00",
       "opened_at": "2021-09-27T00:00:00+00:00",
       "closed_at": "2021-09-29T00:00:00+00:00",
-      "realized_pnl": "-999.5",
+      "realized_pnl": "-999.50",
       "risk_amount": "999.49499999999954910",
       "cost_r": "0.026673036992",
       "net_r": "-1.026678"
@@ -2533,7 +2583,7 @@
       "signal_created_at": "2021-12-21T00:00:00+00:00",
       "opened_at": "2021-12-21T00:00:00+00:00",
       "closed_at": "2021-12-31T00:00:00+00:00",
-      "realized_pnl": "999.0",
+      "realized_pnl": "999.00",
       "risk_amount": "998.99999999999784000",
       "cost_r": "0.023139612252",
       "net_r": "0.976860"
@@ -2933,7 +2983,7 @@
       "signal_created_at": "2022-09-26T00:00:00+00:00",
       "opened_at": "2022-09-26T00:00:00+00:00",
       "closed_at": "2022-10-04T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.81583928571319650",
       "cost_r": "0.023880974505",
       "net_r": "0.976103"
@@ -2949,7 +2999,7 @@
       "signal_created_at": "2022-10-10T00:00:00+00:00",
       "opened_at": "2022-10-10T00:00:00+00:00",
       "closed_at": "2022-10-13T00:00:00+00:00",
-      "realized_pnl": "-1379.0",
+      "realized_pnl": "-1379.00",
       "risk_amount": "999.95089285713992325",
       "cost_r": "0.021161356834",
       "net_r": "-1.400229"
@@ -3253,7 +3303,7 @@
       "signal_created_at": "2023-05-02T00:00:00+00:00",
       "opened_at": "2023-05-02T00:00:00+00:00",
       "closed_at": "2023-05-05T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.74785714285613580",
       "cost_r": "0.034265031920",
       "net_r": "0.965787"
@@ -3333,7 +3383,7 @@
       "signal_created_at": "2023-06-21T00:00:00+00:00",
       "opened_at": "2023-06-21T00:00:00+00:00",
       "closed_at": "2023-06-23T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.605892857142792510",
       "cost_r": "0.031551310154",
       "net_r": "-1.031545"
@@ -3413,7 +3463,7 @@
       "signal_created_at": "2023-08-09T00:00:00+00:00",
       "opened_at": "2023-08-09T00:00:00+00:00",
       "closed_at": "2023-08-14T00:00:00+00:00",
-      "realized_pnl": "-1082.9",
+      "realized_pnl": "-1082.90",
       "risk_amount": "999.61275000000168300",
       "cost_r": "0.027462142099",
       "net_r": "-1.110782"
@@ -3429,7 +3479,7 @@
       "signal_created_at": "2023-08-15T00:00:00+00:00",
       "opened_at": "2023-08-15T00:00:00+00:00",
       "closed_at": "2023-08-29T00:00:00+00:00",
-      "realized_pnl": "999.4",
+      "realized_pnl": "999.40",
       "risk_amount": "999.39375000000046455",
       "cost_r": "0.025908279323",
       "net_r": "0.974098"
@@ -3445,7 +3495,7 @@
       "signal_created_at": "2023-08-31T00:00:00+00:00",
       "opened_at": "2023-08-31T00:00:00+00:00",
       "closed_at": "2023-09-21T00:00:00+00:00",
-      "realized_pnl": "-1605.0",
+      "realized_pnl": "-1605.00",
       "risk_amount": "999.64285714285920000",
       "cost_r": "0.034171909453",
       "net_r": "-1.639745"
@@ -3525,7 +3575,7 @@
       "signal_created_at": "2023-10-19T00:00:00+00:00",
       "opened_at": "2023-10-19T00:00:00+00:00",
       "closed_at": "2023-10-23T00:00:00+00:00",
-      "realized_pnl": "-1022.4",
+      "realized_pnl": "-1022.40",
       "risk_amount": "999.57857142856932900",
       "cost_r": "0.031471274926",
       "net_r": "-1.054302"
@@ -3605,7 +3655,7 @@
       "signal_created_at": "2023-12-21T00:00:00+00:00",
       "opened_at": "2023-12-21T00:00:00+00:00",
       "closed_at": "2023-12-28T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.585428571427953600",
       "cost_r": "0.031159029451",
       "net_r": "0.968856"

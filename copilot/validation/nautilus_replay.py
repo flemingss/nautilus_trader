@@ -22,6 +22,17 @@ This builds and runs the engine and maps its positions onto ``ClosedTrade``. It 
 search is exactly what varies per gate candidate. Provide a ``StrategyFactory`` that
 turns one parameter set into a configured Nautilus ``Strategy``.
 
+A position still open when the window ends
+------------------------------------------
+The replay stops at the window's last bar, and ``positions_closed`` holds only what closed.
+Until 2026-09-11 a position still open then was scored by no fold: its signal precedes the next
+fold's window, and this fold never saw it close - about one trade a fold, and the losing trade
+a boundary cuts is exactly the kind an interval should see (``docs/AUDIT_2026-09-11.md``, F27).
+So a position open at the end is **marked to the last bar's close**, filed with
+``exit_reason="WINDOW_END"``, and charged like any other round trip. One opened on that same
+last bar has held nothing and has no outcome to mark; it is left out and counted in the
+diagnostics.
+
 Risk amount
 -----------
 R requires the currency at risk when the position opened, which Nautilus does not
@@ -59,6 +70,12 @@ from nautilus_trader.model import OmsType
 from nautilus_trader.model import OrderSide
 from nautilus_trader.model import TraderId
 from nautilus_trader.model import Venue
+
+
+WINDOW_END = "WINDOW_END"
+"""
+The exit reason of a position marked to the window's last close rather than closed.
+"""
 
 
 class RiskAmountRegistry:
@@ -270,9 +287,21 @@ def run_nautilus_replay(
     try:
         engine.run()
         trades = _closed_trades(engine, registry, require_risk_amounts=require_risk_amounts)
+        last = max(daily_bars, key=lambda b: b.closed_at)
+        marked, unmarkable = _marked_at_window_end(
+            engine,
+            registry,
+            (last.closed_at, Decimal(str(instrument.make_price(last.close)))),
+            require_risk_amounts=require_risk_amounts,
+        )
         return BacktestRunResult(
-            trades=tuple(trades),
-            diagnostics={"positions": len(trades), "risk_records": len(registry)},
+            trades=tuple(sorted((*trades, *marked), key=lambda t: t.opened_at)),
+            diagnostics={
+                "positions": len(trades) + len(marked),
+                "risk_records": len(registry),
+                "marked_at_window_end": len(marked),
+                "opened_on_final_bar": unmarkable,
+            },
         )
     finally:
         engine.reset()
@@ -361,28 +390,85 @@ def _closed_trades(
                 # `entry` records the side the position was opened on and stays
                 # valid afterwards.
                 direction=Direction.LONG if position.entry == OrderSide.BUY else Direction.SHORT,
-                quantity=int(position.peak_qty.as_double()),
+                # Through ``str``, never ``as_double``: a quantity or an amount of money read
+                # through a float can come back a hair off, which an exact R then inherits.
+                quantity=int(Decimal(str(position.peak_qty))),
                 entry_price=Decimal(str(position.avg_px_open)),
                 exit_price=Decimal(str(position.avg_px_close)),
                 exit_reason="CLOSED",
                 signal_created_at=opened_at,
                 opened_at=opened_at,
                 closed_at=closed_at,
-                realized_pnl=Decimal(str(position.realized_pnl.as_double()))
+                realized_pnl=position.realized_pnl.as_decimal()
                 if position.realized_pnl is not None
                 else Decimal(0),
                 risk_amount=risk_amount,
             ),
         )
 
-    if missing and require_risk_amounts:
+    _require_risk_amounts(missing, required=require_risk_amounts)
+    return trades
+
+
+def _marked_at_window_end(
+    engine: BacktestEngine,
+    registry: RiskAmountRegistry,
+    last: tuple[datetime, Decimal],
+    *,
+    require_risk_amounts: bool,
+) -> tuple[list[ClosedTrade], int]:
+    """
+    Mark each position still open to the window's last close, and count the unmarkable.
+
+    ``last`` is that bar's timestamp and its close at the instrument's own precision, the
+    price every fill in the window was made at.
+
+    """
+    last_at, last_close = last
+    trades: list[ClosedTrade] = []
+    missing: list[str] = []
+    unmarkable = 0
+    for position in engine.cache.positions_open():
+        opened_at = _ns_to_dt(position.ts_opened)
+        if opened_at >= last_at:
+            unmarkable += 1
+            continue
+        risk_amount = registry.get(str(position.id))
+        if risk_amount is None:
+            missing.append(str(position.id))
+            continue
+        long = position.entry == OrderSide.BUY
+        quantity = Decimal(str(position.quantity))
+        entry = Decimal(str(position.avg_px_open))
+        realized = position.realized_pnl.as_decimal() if position.realized_pnl is not None else 0
+        move = (last_close - entry) if long else (entry - last_close)
+        trades.append(
+            ClosedTrade(
+                symbol=str(position.instrument_id),
+                direction=Direction.LONG if long else Direction.SHORT,
+                quantity=int(Decimal(str(position.peak_qty))),
+                entry_price=entry,
+                exit_price=last_close,
+                exit_reason=WINDOW_END,
+                signal_created_at=opened_at,
+                opened_at=opened_at,
+                closed_at=last_at,
+                realized_pnl=Decimal(realized) + quantity * move,
+                risk_amount=risk_amount,
+            ),
+        )
+    _require_risk_amounts(missing, required=require_risk_amounts)
+    return trades, unmarkable
+
+
+def _require_risk_amounts(missing: list[str], *, required: bool) -> None:
+    if missing and required:
         raise ValueError(
             f"{len(missing)} closed position(s) have no recorded risk amount "
             f"(e.g. {missing[0]}). Every trade would score r_multiple == 0 and the "
             "gate would see no edge anywhere. The strategy must call "
             "RiskAmountRegistry.record() when it opens a position.",
         )
-    return trades
 
 
 def _ns_to_dt(ts_ns: int | None) -> datetime:
@@ -420,6 +506,7 @@ def make_replay(
 
 
 __all__ = [
+    "WINDOW_END",
     "ReplayVenue",
     "RiskAmountRegistry",
     "StrategyFactory",

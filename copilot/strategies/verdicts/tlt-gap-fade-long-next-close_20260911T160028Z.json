@@ -3,7 +3,7 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "TLT.XNAS",
-  "run_at": "2026-09-11T01:33:47.920013+00:00",
+  "run_at": "2026-09-11T16:00:28.747420+00:00",
   "runtime_seconds": 8.0,
   "bars": 1884,
   "bar_range": [
@@ -64,16 +64,17 @@
     "data": "bf1434f9556c6cb0f38578589dab41cfe118b7a0fca41e4f61dd9293dc246835",
     "identity": "6a546acc05e73f6ad6dbec7b26a706a37d52c9cc2d771d0630506851028e657b",
     "cost": "e9d57155a29b5846c220775a17b1e96cb402f6e6bd74a5584b64cc2e4b58f2fe",
-    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
-    "combined": "e88b516cde1d9974a49664fd3b2b7531d72ec7b09e07f5bc011e1686bbb0fe00"
+    "code": "f73ab16b116edd39b01e2a6683823f8c313e410f4d37f1f78811485e73cc28e5",
+    "combined": "cfede9859d7922248eb986d51e352eb4d9c3479cf592e603f4f8e94c1b6b90a6"
   },
   "holdout_spent": false,
   "folds": 12,
   "folds_evaluated": 11,
   "folds_passed": 2,
   "majority_passed": false,
-  "mean_oos_net_expectancy_r": "-0.050358",
-  "total_test_trades": 170,
+  "mean_oos_net_expectancy_r": "-0.070720",
+  "mean_per_trade_net_r": "-0.140613",
+  "total_test_trades": 178,
   "fold_detail": [
     {
       "index": 0,
@@ -90,10 +91,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 12,
-      "net_score_r": "-0.028745",
-      "passed": false,
-      "reason": "score -0.02874546765340667989441965668 not above 0"
+      "trades": 13,
+      "net_score_r": "0.004420",
+      "passed": true,
+      "reason": "score 0.004419958620151283422097379785 above 0"
     },
     {
       "index": 1,
@@ -110,10 +111,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 16,
-      "net_score_r": "-0.115581",
+      "trades": 17,
+      "net_score_r": "-0.152643",
       "passed": false,
-      "reason": "score -0.1155810829162107036505296366 not above 0"
+      "reason": "score -0.1526430267947595662679373325 not above 0"
     },
     {
       "index": 2,
@@ -150,10 +151,10 @@
         "min_gap_atr": "0.15",
         "target_1_atr": "1.5"
       },
-      "trades": 19,
-      "net_score_r": "-0.082260",
+      "trades": 20,
+      "net_score_r": "-0.035407",
       "passed": false,
-      "reason": "score -0.08225969030891416521640009937 not above 0"
+      "reason": "score -0.03540741738459236145519714994 not above 0"
     },
     {
       "index": 4,
@@ -170,10 +171,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.5"
       },
-      "trades": 2,
-      "net_score_r": "0.977834",
+      "trades": 3,
+      "net_score_r": "0.744666",
       "passed": false,
-      "reason": "insufficient_test_trades: 2 < 5"
+      "reason": "insufficient_test_trades: 3 < 5"
     },
     {
       "index": 5,
@@ -190,10 +191,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 14,
-      "net_score_r": "-0.145940",
+      "trades": 15,
+      "net_score_r": "-0.159442",
       "passed": false,
-      "reason": "score -0.1459400819523173889315356406 not above 0"
+      "reason": "score -0.1594424727379877747614510873 not above 0"
     },
     {
       "index": 6,
@@ -220,10 +221,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "0.009280",
-      "passed": true,
-      "reason": "score 0.009279659633849685826217512615 above 0"
+      "trades": 14,
+      "net_score_r": "-0.023165",
+      "passed": false,
+      "reason": "score -0.0231646926386361161629899851 not above 0"
     },
     {
       "index": 8,
@@ -260,10 +261,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 21,
-      "net_score_r": "-0.181191",
+      "trades": 22,
+      "net_score_r": "-0.164694",
       "passed": false,
-      "reason": "score -0.1811914239426833183253913382 not above 0"
+      "reason": "score -0.1646939038640134602094143209 not above 0"
     },
     {
       "index": 10,
@@ -300,24 +301,25 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 19,
-      "net_score_r": "-0.353307",
+      "trades": 20,
+      "net_score_r": "-0.357621",
       "passed": false,
-      "reason": "score -0.3533065376337749010711488499 not above 0"
+      "reason": "score -0.3576208383972239546718937542 not above 0"
     }
   ],
   "evidence": {
     "series": "net R per trade, in signal order",
-    "trades": 170,
-    "mean_r": "-0.145693",
-    "effective_trades": "147.4",
+    "trades": 178,
+    "mean_r": "-0.140613",
+    "effective_trades": "154.4",
     "concurrency": "1.000000",
+    "calendar_design_effect": "1",
     "block_trades": 6,
     "replicates": 2000,
     "confidence": "0.90",
-    "lower_r": "-0.290123",
-    "upper_r": "-0.017335",
-    "standard_error_r": "0.083114"
+    "lower_r": "-0.273339",
+    "upper_r": "-0.006731",
+    "standard_error_r": "0.081473"
   },
   "trade_rows": [
     {
@@ -411,7 +413,7 @@
       "signal_created_at": "2018-04-03T00:00:00+00:00",
       "opened_at": "2018-04-03T00:00:00+00:00",
       "closed_at": "2018-04-19T00:00:00+00:00",
-      "realized_pnl": "-1026.0",
+      "realized_pnl": "-1026.00",
       "risk_amount": "998.75892857142985875",
       "cost_r": "0.027541971634",
       "net_r": "-1.054817"
@@ -507,10 +509,26 @@
       "signal_created_at": "2018-06-07T00:00:00+00:00",
       "opened_at": "2018-06-07T00:00:00+00:00",
       "closed_at": "2018-06-27T00:00:00+00:00",
-      "realized_pnl": "998.9",
+      "realized_pnl": "998.90",
       "risk_amount": "998.87357142856992930",
       "cost_r": "0.024238534719",
       "net_r": "0.975788"
+    },
+    {
+      "fold": 0,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 938,
+      "entry_price": "121.95",
+      "exit_price": "122.4200",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2018-07-10T00:00:00+00:00",
+      "opened_at": "2018-07-10T00:00:00+00:00",
+      "closed_at": "2018-07-11T00:00:00+00:00",
+      "realized_pnl": "440.8600",
+      "risk_amount": "999.9750000000018090",
+      "cost_r": "0.038465947873",
+      "net_r": "0.402405"
     },
     {
       "fold": 1,
@@ -571,7 +589,7 @@
       "signal_created_at": "2018-08-02T00:00:00+00:00",
       "opened_at": "2018-08-02T00:00:00+00:00",
       "closed_at": "2018-08-06T00:00:00+00:00",
-      "realized_pnl": "666.0",
+      "realized_pnl": "666.00",
       "risk_amount": "998.97428571428673525",
       "cost_r": "0.029473876562",
       "net_r": "0.637210"
@@ -587,7 +605,7 @@
       "signal_created_at": "2018-08-14T00:00:00+00:00",
       "opened_at": "2018-08-14T00:00:00+00:00",
       "closed_at": "2018-08-15T00:00:00+00:00",
-      "realized_pnl": "666.3",
+      "realized_pnl": "666.30",
       "risk_amount": "999.4339285714307700",
       "cost_r": "0.034690032044",
       "net_r": "0.631987"
@@ -635,7 +653,7 @@
       "signal_created_at": "2018-09-05T00:00:00+00:00",
       "opened_at": "2018-09-05T00:00:00+00:00",
       "closed_at": "2018-09-14T00:00:00+00:00",
-      "realized_pnl": "-1131.0",
+      "realized_pnl": "-1131.00",
       "risk_amount": "999.25714285714414350",
       "cost_r": "0.035210291144",
       "net_r": "-1.167051"
@@ -767,6 +785,22 @@
       "risk_amount": "999.06964285714260240",
       "cost_r": "0.029923853599",
       "net_r": "0.636726"
+    },
+    {
+      "fold": 1,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 560,
+      "entry_price": "121.75",
+      "exit_price": "120.4600",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2019-01-07T00:00:00+00:00",
+      "opened_at": "2019-01-07T00:00:00+00:00",
+      "closed_at": "2019-01-10T00:00:00+00:00",
+      "realized_pnl": "-722.4000",
+      "risk_amount": "999.59999999999899200",
+      "cost_r": "0.022945053221",
+      "net_r": "-0.745634"
     },
     {
       "fold": 2,
@@ -987,7 +1021,7 @@
       "signal_created_at": "2019-05-03T00:00:00+00:00",
       "opened_at": "2019-05-03T00:00:00+00:00",
       "closed_at": "2019-05-06T00:00:00+00:00",
-      "realized_pnl": "666.0",
+      "realized_pnl": "666.00",
       "risk_amount": "999.00000000000124875",
       "cost_r": "0.038369872593",
       "net_r": "0.628297"
@@ -1019,7 +1053,7 @@
       "signal_created_at": "2019-06-05T00:00:00+00:00",
       "opened_at": "2019-06-05T00:00:00+00:00",
       "closed_at": "2019-06-06T00:00:00+00:00",
-      "realized_pnl": "665.9",
+      "realized_pnl": "665.90",
       "risk_amount": "998.89392857142977640",
       "cost_r": "0.027564488115",
       "net_r": "0.639073"
@@ -1163,7 +1197,7 @@
       "signal_created_at": "2019-09-06T00:00:00+00:00",
       "opened_at": "2019-09-06T00:00:00+00:00",
       "closed_at": "2019-09-10T00:00:00+00:00",
-      "realized_pnl": "-1038.4",
+      "realized_pnl": "-1038.40",
       "risk_amount": "997.26000000000089760",
       "cost_r": "0.016600180225",
       "net_r": "-1.057853"
@@ -1179,7 +1213,7 @@
       "signal_created_at": "2019-09-11T00:00:00+00:00",
       "opened_at": "2019-09-11T00:00:00+00:00",
       "closed_at": "2019-09-13T00:00:00+00:00",
-      "realized_pnl": "-999.4",
+      "realized_pnl": "-999.40",
       "risk_amount": "999.38839285714307775",
       "cost_r": "0.016225884235",
       "net_r": "-1.016237"
@@ -1243,7 +1277,7 @@
       "signal_created_at": "2019-10-11T00:00:00+00:00",
       "opened_at": "2019-10-11T00:00:00+00:00",
       "closed_at": "2019-10-28T00:00:00+00:00",
-      "realized_pnl": "-1158.3",
+      "realized_pnl": "-1158.30",
       "risk_amount": "999.12053571428593125",
       "cost_r": "0.018516182769",
       "net_r": "-1.177836"
@@ -1377,6 +1411,22 @@
       "net_r": "0.982706"
     },
     {
+      "fold": 3,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 516,
+      "entry_price": "136.74",
+      "exit_price": "138.4400",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2020-01-08T00:00:00+00:00",
+      "opened_at": "2020-01-08T00:00:00+00:00",
+      "closed_at": "2020-01-10T00:00:00+00:00",
+      "realized_pnl": "877.2000",
+      "risk_amount": "999.21188571429045780",
+      "cost_r": "0.023106110954",
+      "net_r": "0.854786"
+    },
+    {
       "fold": 4,
       "symbol": "TLT.XNAS",
       "direction": "LONG",
@@ -1409,6 +1459,22 @@
       "net_r": "0.977669"
     },
     {
+      "fold": 4,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 65,
+      "entry_price": "162.54",
+      "exit_price": "166.8800",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2020-03-25T00:00:00+00:00",
+      "opened_at": "2020-03-25T00:00:00+00:00",
+      "closed_at": "2020-07-13T00:00:00+00:00",
+      "realized_pnl": "282.1000",
+      "risk_amount": "996.7250892857141325",
+      "cost_r": "0.004697420497",
+      "net_r": "0.278329"
+    },
+    {
       "fold": 5,
       "symbol": "TLT.XNAS",
       "direction": "LONG",
@@ -1419,7 +1485,7 @@
       "signal_created_at": "2020-07-14T00:00:00+00:00",
       "opened_at": "2020-07-14T00:00:00+00:00",
       "closed_at": "2020-07-23T00:00:00+00:00",
-      "realized_pnl": "998.3",
+      "realized_pnl": "998.30",
       "risk_amount": "998.31428571428615400",
       "cost_r": "0.019952929723",
       "net_r": "0.980033"
@@ -1483,7 +1549,7 @@
       "signal_created_at": "2020-08-26T00:00:00+00:00",
       "opened_at": "2020-08-26T00:00:00+00:00",
       "closed_at": "2020-08-27T00:00:00+00:00",
-      "realized_pnl": "-997.8",
+      "realized_pnl": "-997.80",
       "risk_amount": "997.7851821428572215",
       "cost_r": "0.018993410832",
       "net_r": "-1.019008"
@@ -1633,6 +1699,22 @@
       "net_r": "-1.576113"
     },
     {
+      "fold": 5,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 441,
+      "entry_price": "151.81",
+      "exit_price": "151.0700",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2021-01-07T00:00:00+00:00",
+      "opened_at": "2021-01-07T00:00:00+00:00",
+      "closed_at": "2021-01-11T00:00:00+00:00",
+      "realized_pnl": "-326.3400",
+      "risk_amount": "997.9200000000016065",
+      "cost_r": "0.021455741717",
+      "net_r": "-0.348476"
+    },
+    {
       "fold": 7,
       "symbol": "TLT.XNAS",
       "direction": "LONG",
@@ -1643,7 +1725,7 @@
       "signal_created_at": "2021-07-19T00:00:00+00:00",
       "opened_at": "2021-07-19T00:00:00+00:00",
       "closed_at": "2021-07-21T00:00:00+00:00",
-      "realized_pnl": "-1443.2",
+      "realized_pnl": "-1443.20",
       "risk_amount": "999.60299999999986800",
       "cost_r": "0.021332124790",
       "net_r": "-1.465105"
@@ -1707,7 +1789,7 @@
       "signal_created_at": "2021-09-13T00:00:00+00:00",
       "opened_at": "2021-09-13T00:00:00+00:00",
       "closed_at": "2021-09-14T00:00:00+00:00",
-      "realized_pnl": "998.4",
+      "realized_pnl": "998.40",
       "risk_amount": "998.39999999999773800",
       "cost_r": "0.024956850000",
       "net_r": "0.975043"
@@ -1723,7 +1805,7 @@
       "signal_created_at": "2021-09-17T00:00:00+00:00",
       "opened_at": "2021-09-17T00:00:00+00:00",
       "closed_at": "2021-09-20T00:00:00+00:00",
-      "realized_pnl": "999.6",
+      "realized_pnl": "999.60",
       "risk_amount": "999.59999999999808900",
       "cost_r": "0.023472700392",
       "net_r": "0.976527"
@@ -1739,7 +1821,7 @@
       "signal_created_at": "2021-09-24T00:00:00+00:00",
       "opened_at": "2021-09-24T00:00:00+00:00",
       "closed_at": "2021-09-28T00:00:00+00:00",
-      "realized_pnl": "-1057.8",
+      "realized_pnl": "-1057.80",
       "risk_amount": "998.8434642857141100",
       "cost_r": "0.019420931385",
       "net_r": "-1.078446"
@@ -1819,7 +1901,7 @@
       "signal_created_at": "2021-11-30T00:00:00+00:00",
       "opened_at": "2021-11-30T00:00:00+00:00",
       "closed_at": "2021-12-03T00:00:00+00:00",
-      "realized_pnl": "999.8",
+      "realized_pnl": "999.80",
       "risk_amount": "999.80100000000176880",
       "cost_r": "0.014939647851",
       "net_r": "0.985059"
@@ -1841,6 +1923,22 @@
       "net_r": "-1.013528"
     },
     {
+      "fold": 7,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 391,
+      "entry_price": "143.7",
+      "exit_price": "142.6100",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2022-01-04T00:00:00+00:00",
+      "opened_at": "2022-01-04T00:00:00+00:00",
+      "closed_at": "2022-01-10T00:00:00+00:00",
+      "realized_pnl": "-426.1900",
+      "risk_amount": "998.721525",
+      "cost_r": "0.018205701422",
+      "net_r": "-0.444941"
+    },
+    {
       "fold": 8,
       "symbol": "TLT.XNAS",
       "direction": "LONG",
@@ -1851,7 +1949,7 @@
       "signal_created_at": "2022-01-11T00:00:00+00:00",
       "opened_at": "2022-01-11T00:00:00+00:00",
       "closed_at": "2022-01-18T00:00:00+00:00",
-      "realized_pnl": "-1037.4",
+      "realized_pnl": "-1037.40",
       "risk_amount": "997.9944749999987175",
       "cost_r": "0.018577590183",
       "net_r": "-1.058062"
@@ -1867,7 +1965,7 @@
       "signal_created_at": "2022-01-19T00:00:00+00:00",
       "opened_at": "2022-01-19T00:00:00+00:00",
       "closed_at": "2022-01-21T00:00:00+00:00",
-      "realized_pnl": "999.5",
+      "realized_pnl": "999.50",
       "risk_amount": "999.4833749999971950",
       "cost_r": "0.017656722952",
       "net_r": "0.982360"
@@ -1963,7 +2061,7 @@
       "signal_created_at": "2022-03-03T00:00:00+00:00",
       "opened_at": "2022-03-03T00:00:00+00:00",
       "closed_at": "2022-03-10T00:00:00+00:00",
-      "realized_pnl": "-997.0",
+      "realized_pnl": "-997.00",
       "risk_amount": "996.9942857142857760",
       "cost_r": "0.013006856610",
       "net_r": "-1.013013"
@@ -1979,7 +2077,7 @@
       "signal_created_at": "2022-03-11T00:00:00+00:00",
       "opened_at": "2022-03-11T00:00:00+00:00",
       "closed_at": "2022-03-15T00:00:00+00:00",
-      "realized_pnl": "-997.3",
+      "realized_pnl": "-997.30",
       "risk_amount": "997.29642857142756375",
       "cost_r": "0.012654486091",
       "net_r": "-1.012658"
@@ -1995,7 +2093,7 @@
       "signal_created_at": "2022-03-22T00:00:00+00:00",
       "opened_at": "2022-03-22T00:00:00+00:00",
       "closed_at": "2022-03-31T00:00:00+00:00",
-      "realized_pnl": "999.2",
+      "realized_pnl": "999.20",
       "risk_amount": "999.20714999999839260",
       "cost_r": "0.011369266366",
       "net_r": "0.988624"
@@ -2011,7 +2109,7 @@
       "signal_created_at": "2022-04-04T00:00:00+00:00",
       "opened_at": "2022-04-04T00:00:00+00:00",
       "closed_at": "2022-04-06T00:00:00+00:00",
-      "realized_pnl": "-1458.7",
+      "realized_pnl": "-1458.70",
       "risk_amount": "996.9267857142842850",
       "cost_r": "0.012627723476",
       "net_r": "-1.475824"
@@ -2075,7 +2173,7 @@
       "signal_created_at": "2022-05-03T00:00:00+00:00",
       "opened_at": "2022-05-03T00:00:00+00:00",
       "closed_at": "2022-05-05T00:00:00+00:00",
-      "realized_pnl": "-997.5",
+      "realized_pnl": "-997.50",
       "risk_amount": "997.49999999999926500",
       "cost_r": "0.014035768702",
       "net_r": "-1.014036"
@@ -2187,7 +2285,7 @@
       "signal_created_at": "2022-07-26T00:00:00+00:00",
       "opened_at": "2022-07-26T00:00:00+00:00",
       "closed_at": "2022-08-02T00:00:00+00:00",
-      "realized_pnl": "999.9",
+      "realized_pnl": "999.90",
       "risk_amount": "999.90176785714340370",
       "cost_r": "0.013041435223",
       "net_r": "0.986957"
@@ -2219,7 +2317,7 @@
       "signal_created_at": "2022-08-18T00:00:00+00:00",
       "opened_at": "2022-08-18T00:00:00+00:00",
       "closed_at": "2022-08-24T00:00:00+00:00",
-      "realized_pnl": "-1067.6",
+      "realized_pnl": "-1067.60",
       "risk_amount": "998.73531428571355230",
       "cost_r": "0.012331872157",
       "net_r": "-1.081284"
@@ -2235,7 +2333,7 @@
       "signal_created_at": "2022-08-25T00:00:00+00:00",
       "opened_at": "2022-08-25T00:00:00+00:00",
       "closed_at": "2022-09-01T00:00:00+00:00",
-      "realized_pnl": "-1102.0",
+      "realized_pnl": "-1102.00",
       "risk_amount": "997.5000000000011400",
       "cost_r": "0.014738366781",
       "net_r": "-1.119500"
@@ -2251,7 +2349,7 @@
       "signal_created_at": "2022-09-02T00:00:00+00:00",
       "opened_at": "2022-09-02T00:00:00+00:00",
       "closed_at": "2022-09-06T00:00:00+00:00",
-      "realized_pnl": "-998.8",
+      "realized_pnl": "-998.80",
       "risk_amount": "998.78571428571636000",
       "cost_r": "0.015236093290",
       "net_r": "-1.015250"
@@ -2497,6 +2595,22 @@
       "net_r": "0.986875"
     },
     {
+      "fold": 9,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 392,
+      "entry_price": "105.18",
+      "exit_price": "105.6800",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2023-01-06T00:00:00+00:00",
+      "opened_at": "2023-01-06T00:00:00+00:00",
+      "closed_at": "2023-01-11T00:00:00+00:00",
+      "realized_pnl": "196.0000",
+      "risk_amount": "999.07500000000214200",
+      "cost_r": "0.014427450070",
+      "net_r": "0.181754"
+    },
+    {
       "fold": 10,
       "symbol": "TLT.XNAS",
       "direction": "LONG",
@@ -2539,7 +2653,7 @@
       "signal_created_at": "2023-02-06T00:00:00+00:00",
       "opened_at": "2023-02-06T00:00:00+00:00",
       "closed_at": "2023-02-10T00:00:00+00:00",
-      "realized_pnl": "-999.2",
+      "realized_pnl": "-999.20",
       "risk_amount": "999.1998214285718100",
       "cost_r": "0.016458190059",
       "net_r": "-1.016458"
@@ -2603,7 +2717,7 @@
       "signal_created_at": "2023-04-28T00:00:00+00:00",
       "opened_at": "2023-04-28T00:00:00+00:00",
       "closed_at": "2023-05-01T00:00:00+00:00",
-      "realized_pnl": "-999.8",
+      "realized_pnl": "-999.80",
       "risk_amount": "999.77475000000031980",
       "cost_r": "0.019775585446",
       "net_r": "-1.019801"
@@ -2731,7 +2845,7 @@
       "signal_created_at": "2023-07-07T00:00:00+00:00",
       "opened_at": "2023-07-07T00:00:00+00:00",
       "closed_at": "2023-07-12T00:00:00+00:00",
-      "realized_pnl": "666.1",
+      "realized_pnl": "666.10",
       "risk_amount": "999.1692857142861480",
       "cost_r": "0.017840983787",
       "net_r": "0.648813"
@@ -2747,7 +2861,7 @@
       "signal_created_at": "2023-07-21T00:00:00+00:00",
       "opened_at": "2023-07-21T00:00:00+00:00",
       "closed_at": "2023-07-27T00:00:00+00:00",
-      "realized_pnl": "-998.5",
+      "realized_pnl": "-998.50",
       "risk_amount": "998.5114285714302930",
       "cost_r": "0.022218697648",
       "net_r": "-1.022207"
@@ -2779,7 +2893,7 @@
       "signal_created_at": "2023-08-02T00:00:00+00:00",
       "opened_at": "2023-08-02T00:00:00+00:00",
       "closed_at": "2023-08-03T00:00:00+00:00",
-      "realized_pnl": "-1179.9",
+      "realized_pnl": "-1179.90",
       "risk_amount": "999.0337499999981370",
       "cost_r": "0.021586211406",
       "net_r": "-1.202627"
@@ -3039,6 +3153,22 @@
       "risk_amount": "999.74160000000025740",
       "cost_r": "0.019212722155",
       "net_r": "-1.319029"
+    },
+    {
+      "fold": 11,
+      "symbol": "TLT.XNAS",
+      "direction": "LONG",
+      "quantity": 582,
+      "entry_price": "97.24",
+      "exit_price": "96.5200",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2024-01-08T00:00:00+00:00",
+      "opened_at": "2024-01-08T00:00:00+00:00",
+      "closed_at": "2024-01-12T00:00:00+00:00",
+      "realized_pnl": "-419.0400",
+      "risk_amount": "999.27321428571459750",
+      "cost_r": "0.020247779112",
+      "net_r": "-0.439593"
     }
   ]
 }

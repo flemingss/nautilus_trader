@@ -255,7 +255,7 @@ class ProtectionGuard(Strategy):
             closed_at = datetime.fromtimestamp(ts_closed / 1e9, tz=UTC)
             outcome = TradeOutcome(
                 closed_at=closed_at,
-                realized_pnl=Decimal(str(position.realized_pnl.as_double()))
+                realized_pnl=position.realized_pnl.as_decimal()
                 if position.realized_pnl is not None
                 else Decimal(0),
                 stopped_out=self._closed_by_stop(position),

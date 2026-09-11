@@ -227,6 +227,17 @@ for longer, simplify the claim, or reject.
 straddles the bar returns **`insufficient_evidence`** - neither a pass nor a failure, and
 the verdict that points at the remedies in the paragraph above.
 
+**Declare the bar with the hypothesis.** Set `minimum_effect_r` in the activation - zero is a
+declaration, empty is not - before the first walk-forward is filed. `spend_holdout` refuses an
+activation without one, and refuses one whose newest verdict was filed under a different value,
+because a bar moved after reading the verdict is not predeclared
+([ADR-0031](../decisions/0031-evidence-and-attribution-after-the-audit.md)).
+
+The effective sample divides by the largest of three dependences: overlapping positions, the
+trade-order autocorrelation time, and clustering within calendar years. Read it before the raw
+count, and read attribution's results as one body of evidence - a pool and the walk-forwards of
+its members share trades, so they are not independent tests.
+
 ### Cost-at-size gate
 
 See [`RISK.md`](RISK.md). A premise only counts if it survives at the account that would

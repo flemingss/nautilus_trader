@@ -16,9 +16,25 @@ What it refuses, before touching a bar
   future decision, and there is no partial reopening.
 - **A dirty working tree.** The record names the commit it was made from, and a number
   that cannot be tied to a commit cannot be tied to an experiment.
+- **An undeclared effect size, or one declared after the walk-forward was filed.** ADR-0024's
+  one knob is the bar the holdout's interval must clear, and it only guards against tuning
+  if it is set before any result is known. It had never been set on any activation
+  (``docs/AUDIT_2026-09-11.md``, F16). So it must be non-empty, and the newest walk-forward
+  verdict for the activation must have been filed with the same value - a bar raised or
+  lowered after reading the verdict is refused.
 - **A missing or mismatched ``--confirm``.** Retyping the activation's name is the cost
   of making an irreversible measurement, and it is cheap on purpose - the point is that
   it cannot happen by tab-completing the wrong name.
+
+Re-scoring a holdout already spent
+----------------------------------
+``--reassess <activation>`` re-scores a **spent** holdout from the catalog under the current
+commit and writes the result into its record as ``reassessment``, with the trades filed. It
+decides nothing and consumes nothing: once viewed, the holdout is development data. It exists
+because the AAPL record's reassessment of 2026-09-10 was written by hand, in a shape the code
+never produced and with no trades to recompute it from (``docs/AUDIT_2026-09-11.md``, F20). A
+reassessment that replaces one written by hand keeps the old block under
+``reassessment_history``.
 
 What it does not decide
 -----------------------
@@ -98,11 +114,15 @@ def is_spent(activation_name: str, spent_dir: Path = SPENT_DIR) -> bool:
     return (spent_dir / f"{activation_name}.json").exists()
 
 
-def refusal(activation: Activation, spent_dir: Path = SPENT_DIR) -> str | None:
+def refusal(
+    activation: Activation,
+    spent_dir: Path = SPENT_DIR,
+    verdicts_dir: Path = VERDICTS_DIR,
+) -> str | None:
     """
     Return why this activation may not spend its holdout, or None if it may.
 
-    Pure, so the rules are testable without a catalog or a git checkout.
+    Reads only files, so the rules are testable without a catalog or a git checkout.
 
     """
     timing = str(activation.parameters.get("entry_timing", "signal_close"))
@@ -118,6 +138,34 @@ def refusal(activation: Activation, spent_dir: Path = SPENT_DIR) -> str | None:
             f"activation {activation.name!r} has already spent its holdout: "
             f"{spent_dir / (activation.name + '.json')} exists. Once viewed, the holdout "
             f"is development data; there is no second spend and no partial reopening."
+        )
+    return _effect_size_refusal(activation, verdicts_dir)
+
+
+def _effect_size_refusal(activation: Activation, verdicts_dir: Path) -> str | None:
+    """
+    Return why the predeclared effect size is not predeclared, or None when it is.
+    """
+    declared = activation.validation.minimum_effect_r
+    if not declared:
+        return (
+            f"activation {activation.name!r} declares no minimum_effect_r. The holdout's "
+            "interval must clear a bar set before any result is known (ADR-0024); declare it "
+            "in the activation, re-run its walk-forward so the verdict carries it, then spend."
+        )
+    newest = latest_verdict_for(activation.name, verdicts_dir)
+    if newest is None:
+        return (
+            f"activation {activation.name!r} has no walk-forward verdict filed. The effect size "
+            "is predeclared only if a verdict was filed under it before the spend."
+        )
+    filed = json.loads((verdicts_dir / newest).read_text()).get("validation", {})
+    if filed.get("minimum_effect_r", "") != declared:
+        return (
+            f"activation {activation.name!r} declares minimum_effect_r={declared!r}, and its "
+            f"newest verdict {newest} was filed under {filed.get('minimum_effect_r', '')!r}. A "
+            "bar changed after reading the verdict is not predeclared; re-run the walk-forward "
+            "under the bar you mean, and spend on that."
         )
     return None
 
@@ -315,6 +363,97 @@ def run(
     )
 
 
+def reassess(
+    activation: Activation,
+    record: dict[str, Any],
+    catalog_path: str = DEFAULT_CATALOG,
+    cost_model: CostModel | None = None,
+) -> dict[str, Any]:
+    """
+    Re-score a spent holdout under this commit and return its record, reassessed.
+
+    Runs the spend's own scorer without the thin-window projection, which guards a first
+    spend and has nothing left to protect.
+
+    """
+    if cost_model is None:
+        cost_model = CostModel.from_snapshot()
+    catalog = open_catalog(catalog_path)
+    instrument = equity_for(activation.symbol, activation.venue)
+    bar_type = bar_type_for(instrument.id)
+    carved = carve(
+        read_daily_bars(catalog, bar_type),
+        holdout_start=activation.validation.holdout_boundary,
+    )
+    settings = activation.validation
+    result = spend_holdout(
+        carved,
+        activation.grid(),
+        purge_bars=settings.purge_bars,
+        warmup_bars=activation.setup.warmup_bars,
+        replay=make_replay(
+            instrument=instrument,
+            bar_type=bar_type,
+            strategy_factory=activation.setup.factory,
+        ),
+        objective=cost_model.net_expectancy_for(activation.symbol),
+        cost_r=lambda trade: cost_model.cost_r(trade, activation.symbol),
+        min_trades=settings.min_trades,
+        fold_min_trades=settings.fold_min_trades,
+        threshold=settings.minimum_effect,
+    )
+    return with_reassessment(
+        record,
+        result,
+        cost_model=cost_model,
+        symbol=activation.symbol,
+        code_commit=_git("rev-parse", "HEAD"),
+    )
+
+
+def with_reassessment(
+    record: dict[str, Any],
+    result: HoldoutResult,
+    *,
+    cost_model: CostModel,
+    symbol: str,
+    code_commit: str,
+) -> dict[str, Any]:
+    """
+    Return ``record`` with a generated reassessment, keeping earlier ones.
+    """
+    frozen = {k: str(v) for k, v in (result.frozen_parameters or {}).items()}
+    updated = dict(record)
+    earlier = updated.pop("reassessment", None)
+    if earlier is not None:
+        updated["reassessment_history"] = [*record.get("reassessment_history", []), earlier]
+    updated["reassessment"] = {
+        "generated_by": "python -m copilot.strategies.spend_holdout --reassess",
+        "computed_at": datetime.now(tz=UTC).isoformat(),
+        "code_commit": code_commit,
+        "note": (
+            "Re-scored from the catalog under this commit. The holdout was already spent, so "
+            "this reads development data and decides nothing; the holdout block above remains "
+            "the record of what was measured and decided."
+        ),
+        "frozen_parameters": frozen or None,
+        "frozen_parameters_match_the_spend": frozen == (record.get("frozen_parameters") or {}),
+        "trades": result.trades,
+        "net_expectancy_r": str(result.score.quantize(_SIX)),
+        "verdict": result.verdict,
+        "evidence": {
+            **result.evidence.as_record(),
+            "threshold_r": str(result.threshold),
+            "clears_threshold": result.evidence.clears(result.threshold),
+        },
+        "trade_rows": to_rows(
+            [result.fold],
+            cost_r=lambda trade: cost_model.cost_r(trade, symbol),
+        ),
+    }
+    return updated
+
+
 def holdout_record(
     activation: Activation,
     result: HoldoutResult,
@@ -419,11 +558,20 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("activation", help="Activation name")
     parser.add_argument(
         "--confirm",
-        required=True,
         help="The activation name again, retyped. Irreversible measurements are not tab-completed.",
+    )
+    parser.add_argument(
+        "--reassess",
+        action="store_true",
+        help="Re-score an already spent holdout under this commit and file it; spends nothing",
     )
     add_catalog_argument(parser)
     args = parser.parse_args(argv)
+
+    if args.reassess:
+        return _reassess(args.activation, args.catalog)
+    if args.confirm is None:
+        parser.error("--confirm is required to spend a holdout")
 
     if args.confirm != args.activation:
         print(f"refused: --confirm {args.confirm!r} does not match {args.activation!r}")
@@ -486,6 +634,26 @@ def main(argv: list[str] | None = None) -> int:
         "Record the owner's decision (reject, revise, freeze) in that file in a follow-up "
         "commit.",
     )
+    return 0
+
+
+def _reassess(name: str, catalog_path: str) -> int:
+    activation = find_activation(name)
+    path = SPENT_DIR / f"{activation.name}.json"
+    if not path.exists():
+        print(f"refused: {activation.name} has not spent its holdout; there is nothing to reassess")
+        return 2
+    record = reassess(activation, json.loads(path.read_text()), catalog_path)
+    block = record["reassessment"]
+    evidence = block["evidence"]
+    print(
+        f"{activation.name}: {block['trades']} trades  net {block['net_expectancy_r']} R  "
+        f"{block['verdict']}  interval [{evidence['lower_r']}, {evidence['upper_r']}] R  "
+        f"effective {evidence['effective_trades']}  "
+        f"parameters match the spend: {block['frozen_parameters_match_the_spend']}",
+    )
+    path.write_text(json.dumps(record, indent=2) + "\n")
+    print(f"Wrote {path}")
     return 0
 
 

@@ -3,8 +3,8 @@
   "strategy": "gap_reversal",
   "lifecycle": "RESEARCH",
   "instrument": "XLF.ARCX",
-  "run_at": "2026-09-11T01:33:52.247752+00:00",
-  "runtime_seconds": 4.3,
+  "run_at": "2026-09-11T16:00:33.023488+00:00",
+  "runtime_seconds": 4.2,
   "bars": 1154,
   "bar_range": [
     "2020-06-02",
@@ -64,16 +64,17 @@
     "data": "845c7d662ad41b519ebd839ac734e57076202ce0011183fe9f22f2fd25bbb642",
     "identity": "60e5a3025e716ec1db8540ee4cd649100928065962b4cfa38e2dbe5d43f7c091",
     "cost": "cf5bd8b489ae950934f283b136ea556c0773962458fdc95d9dfb08be0c8d3c93",
-    "code": "2f1b1342890e45f520a7cf01b693cac7aec4439f44b5f7b465ca2028f7fa7b5f",
-    "combined": "bec193d5b480dd4ee1261a9e466a14b3c9831c48aa80a850c8cd4438d1e8caaa"
+    "code": "f73ab16b116edd39b01e2a6683823f8c313e410f4d37f1f78811485e73cc28e5",
+    "combined": "bf85b277f1bc27052c6f6ec945b766969c1dc57f63c0b60533bf51d3d90bf502"
   },
   "holdout_spent": false,
   "folds": 7,
   "folds_evaluated": 7,
   "folds_passed": 3,
   "majority_passed": false,
-  "mean_oos_net_expectancy_r": "0.022186",
-  "total_test_trades": 94,
+  "mean_oos_net_expectancy_r": "0.019912",
+  "mean_per_trade_net_r": "-0.010658",
+  "total_test_trades": 98,
   "fold_detail": [
     {
       "index": 0,
@@ -110,10 +111,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.5"
       },
-      "trades": 13,
-      "net_score_r": "-0.324085",
+      "trades": 14,
+      "net_score_r": "-0.283744",
       "passed": false,
-      "reason": "score -0.3240851385493265866462237148 not above 0"
+      "reason": "score -0.2837439812066803153671174719 not above 0"
     },
     {
       "index": 2,
@@ -130,10 +131,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.0"
       },
-      "trades": 14,
-      "net_score_r": "0.163743",
+      "trades": 15,
+      "net_score_r": "0.123856",
       "passed": true,
-      "reason": "score 0.1637430802183978027556138093 above 0"
+      "reason": "score 0.1238564667470139357508697747 above 0"
     },
     {
       "index": 3,
@@ -170,10 +171,10 @@
         "min_gap_atr": "0.40",
         "target_1_atr": "1.5"
       },
-      "trades": 8,
-      "net_score_r": "-0.048139",
+      "trades": 9,
+      "net_score_r": "-0.051830",
       "passed": false,
-      "reason": "score -0.04813920384977669651468148945 not above 0"
+      "reason": "score -0.0518298355870746888098887363 not above 0"
     },
     {
       "index": 5,
@@ -190,10 +191,10 @@
         "min_gap_atr": "0.25",
         "target_1_atr": "1.0"
       },
-      "trades": 15,
-      "net_score_r": "0.171611",
+      "trades": 16,
+      "net_score_r": "0.158928",
       "passed": true,
-      "reason": "score 0.1716106901335689532809201739 above 0"
+      "reason": "score 0.1589275649769822942861228642 above 0"
     },
     {
       "index": 6,
@@ -218,16 +219,17 @@
   ],
   "evidence": {
     "series": "net R per trade, in signal order",
-    "trades": 94,
-    "mean_r": "-0.007851",
-    "effective_trades": "94.0",
+    "trades": 98,
+    "mean_r": "-0.010658",
+    "effective_trades": "98.0",
     "concurrency": "1.000000",
+    "calendar_design_effect": "1",
     "block_trades": 5,
     "replicates": 2000,
     "confidence": "0.90",
-    "lower_r": "-0.149737",
-    "upper_r": "0.142819",
-    "standard_error_r": "0.087440"
+    "lower_r": "-0.142832",
+    "upper_r": "0.124561",
+    "standard_error_r": "0.080825"
   },
   "trade_rows": [
     {
@@ -305,7 +307,7 @@
       "signal_created_at": "2021-07-08T00:00:00+00:00",
       "opened_at": "2021-07-08T00:00:00+00:00",
       "closed_at": "2021-07-09T00:00:00+00:00",
-      "realized_pnl": "999.2",
+      "realized_pnl": "999.20",
       "risk_amount": "999.23014285714339740",
       "cost_r": "0.033055742574",
       "net_r": "0.966914"
@@ -561,7 +563,7 @@
       "signal_created_at": "2022-02-17T00:00:00+00:00",
       "opened_at": "2022-02-17T00:00:00+00:00",
       "closed_at": "2022-02-24T00:00:00+00:00",
-      "realized_pnl": "-1846.8",
+      "realized_pnl": "-1846.80",
       "risk_amount": "999.43392857142897450",
       "cost_r": "0.026242215435",
       "net_r": "-1.874088"
@@ -625,7 +627,7 @@
       "signal_created_at": "2022-03-11T00:00:00+00:00",
       "opened_at": "2022-03-11T00:00:00+00:00",
       "closed_at": "2022-03-16T00:00:00+00:00",
-      "realized_pnl": "998.3",
+      "realized_pnl": "998.30",
       "risk_amount": "998.3129464285719300",
       "cost_r": "0.017109737163",
       "net_r": "0.982877"
@@ -709,6 +711,22 @@
       "risk_amount": "998.6924357142855705",
       "cost_r": "0.018611028003",
       "net_r": "0.981417"
+    },
+    {
+      "fold": 1,
+      "symbol": "XLF.ARCX",
+      "direction": "LONG",
+      "quantity": 772,
+      "entry_price": "34.9",
+      "exit_price": "35.2400",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2022-06-01T00:00:00+00:00",
+      "opened_at": "2022-06-01T00:00:00+00:00",
+      "closed_at": "2022-06-07T00:00:00+00:00",
+      "realized_pnl": "262.4800",
+      "risk_amount": "999.38708571428568120",
+      "cost_r": "0.021949912159",
+      "net_r": "0.240691"
     },
     {
       "fold": 2,
@@ -935,6 +953,22 @@
       "net_r": "0.632721"
     },
     {
+      "fold": 2,
+      "symbol": "XLF.ARCX",
+      "direction": "LONG",
+      "quantity": 1283,
+      "entry_price": "35.04",
+      "exit_price": "34.7300",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2022-12-05T00:00:00+00:00",
+      "opened_at": "2022-12-05T00:00:00+00:00",
+      "closed_at": "2022-12-06T00:00:00+00:00",
+      "realized_pnl": "-397.7300",
+      "risk_amount": "999.36535714285967220",
+      "cost_r": "0.036573545053",
+      "net_r": "-0.434556"
+    },
+    {
       "fold": 3,
       "symbol": "XLF.ARCX",
       "direction": "LONG",
@@ -977,7 +1011,7 @@
       "signal_created_at": "2023-01-17T00:00:00+00:00",
       "opened_at": "2023-01-17T00:00:00+00:00",
       "closed_at": "2023-01-19T00:00:00+00:00",
-      "realized_pnl": "-1392.6",
+      "realized_pnl": "-1392.60",
       "risk_amount": "999.68785714285670880",
       "cost_r": "0.036632563872",
       "net_r": "-1.429667"
@@ -1025,7 +1059,7 @@
       "signal_created_at": "2023-02-02T00:00:00+00:00",
       "opened_at": "2023-02-02T00:00:00+00:00",
       "closed_at": "2023-02-21T00:00:00+00:00",
-      "realized_pnl": "-999.5",
+      "realized_pnl": "-999.50",
       "risk_amount": "999.48416785714377765",
       "cost_r": "0.034074102992",
       "net_r": "-1.034090"
@@ -1345,10 +1379,26 @@
       "signal_created_at": "2023-11-28T00:00:00+00:00",
       "opened_at": "2023-11-28T00:00:00+00:00",
       "closed_at": "2023-11-29T00:00:00+00:00",
-      "realized_pnl": "1000.0",
+      "realized_pnl": "1000.00",
       "risk_amount": "999.8999999999980200",
       "cost_r": "0.066067513201",
       "net_r": "0.934032"
+    },
+    {
+      "fold": 4,
+      "symbol": "XLF.ARCX",
+      "direction": "LONG",
+      "quantity": 2087,
+      "entry_price": "35.95",
+      "exit_price": "35.9400",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2023-12-05T00:00:00+00:00",
+      "opened_at": "2023-12-05T00:00:00+00:00",
+      "closed_at": "2023-12-07T00:00:00+00:00",
+      "realized_pnl": "-20.8700",
+      "risk_amount": "999.523928571428397015",
+      "cost_r": "0.060474949142",
+      "net_r": "-0.081355"
     },
     {
       "fold": 5,
@@ -1441,7 +1491,7 @@
       "signal_created_at": "2024-02-05T00:00:00+00:00",
       "opened_at": "2024-02-05T00:00:00+00:00",
       "closed_at": "2024-02-12T00:00:00+00:00",
-      "realized_pnl": "666.4",
+      "realized_pnl": "666.40",
       "risk_amount": "999.52167857142717270",
       "cost_r": "0.046206834269",
       "net_r": "0.620512"
@@ -1489,7 +1539,7 @@
       "signal_created_at": "2024-03-06T00:00:00+00:00",
       "opened_at": "2024-03-06T00:00:00+00:00",
       "closed_at": "2024-03-13T00:00:00+00:00",
-      "realized_pnl": "666.2",
+      "realized_pnl": "666.20",
       "risk_amount": "999.423749999998859250",
       "cost_r": "0.053089169816",
       "net_r": "0.613495"
@@ -1521,7 +1571,7 @@
       "signal_created_at": "2024-04-03T00:00:00+00:00",
       "opened_at": "2024-04-03T00:00:00+00:00",
       "closed_at": "2024-04-04T00:00:00+00:00",
-      "realized_pnl": "666.5",
+      "realized_pnl": "666.50",
       "risk_amount": "999.64799999999961390",
       "cost_r": "0.052333630384",
       "net_r": "0.614401"
@@ -1589,6 +1639,22 @@
       "risk_amount": "999.858214285716240270",
       "cost_r": "0.053318979681",
       "net_r": "0.613416"
+    },
+    {
+      "fold": 5,
+      "symbol": "XLF.ARCX",
+      "direction": "LONG",
+      "quantity": 1439,
+      "entry_price": "41.31",
+      "exit_price": "41.3200",
+      "exit_reason": "WINDOW_END",
+      "signal_created_at": "2024-06-05T00:00:00+00:00",
+      "opened_at": "2024-06-05T00:00:00+00:00",
+      "closed_at": "2024-06-10T00:00:00+00:00",
+      "realized_pnl": "14.3900",
+      "risk_amount": "999.83261785714338135",
+      "cost_r": "0.045711721404",
+      "net_r": "-0.031319"
     },
     {
       "fold": 6,
@@ -1713,7 +1779,7 @@
       "signal_created_at": "2024-10-23T00:00:00+00:00",
       "opened_at": "2024-10-23T00:00:00+00:00",
       "closed_at": "2024-11-04T00:00:00+00:00",
-      "realized_pnl": "-999.6",
+      "realized_pnl": "-999.60",
       "risk_amount": "999.62655000000201630",
       "cost_r": "0.042527401730",
       "net_r": "-1.042501"
