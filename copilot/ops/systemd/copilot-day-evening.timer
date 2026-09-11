@@ -1,0 +1,12 @@
+# copilot day evening, 08:30 New York, weekdays
+
+[Unit]
+Description=copilot day evening, 08:30 New York, weekdays
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 08:30:00 America/New_York
+Persistent=false
+Unit=copilot-day@evening.service
+
+[Install]
+WantedBy=timers.target

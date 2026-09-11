@@ -1,0 +1,12 @@
+# copilot shakedown pre-open, 07:35 New York, weekdays
+
+[Unit]
+Description=copilot shakedown pre-open, 07:35 New York, weekdays
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 07:35:00 America/New_York
+Persistent=false
+Unit=copilot-shakedown@pre-open.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+# copilot day sweep, 10:30 New York, weekdays (a late sweep still runs)
+
+[Unit]
+Description=copilot day sweep, 10:30 New York, weekdays (a late sweep still runs)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 10:30:00 America/New_York
+Persistent=true
+Unit=copilot-day@sweep.service
+
+[Install]
+WantedBy=timers.target

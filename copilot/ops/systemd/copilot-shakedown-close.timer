@@ -1,0 +1,12 @@
+# copilot shakedown close, 15:20 New York, weekdays (skipped after an early close)
+
+[Unit]
+Description=copilot shakedown close, 15:20 New York, weekdays (skipped after an early close)
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 15:20:00 America/New_York
+Persistent=false
+Unit=copilot-shakedown@close.service
+
+[Install]
+WantedBy=timers.target

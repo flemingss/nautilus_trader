@@ -1,0 +1,21 @@
+# One phase of the operator's day, fired by its timer. `--scheduled` makes the phase decide
+# for itself whether today's session needs it, and refuse without alerting credentials.
+# Rendered by copilot/ops/install-units.sh, which replaces @REPO@ with the clone's path.
+
+[Unit]
+Description=copilot day %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=@REPO@
+EnvironmentFile=%h/.config/copilot/copilot.env
+EnvironmentFile=%h/.config/copilot/secrets.env
+Environment=PYTHONPATH=@REPO@
+ExecStart=@REPO@/.venv/bin/python -m copilot.live.day %i --scheduled
+# The evening's sweep can retry its broker census for about ten minutes.
+TimeoutStartSec=45min
+# The whole day peaked under 0.5 GiB on 2026-09-10. A runaway is killed, not the host.
+MemoryMax=6G
+Nice=5

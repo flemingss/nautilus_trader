@@ -39,6 +39,7 @@ from copilot.live.shakedown import phase_named
 from copilot.live.shakedown import phases
 from copilot.live.shakedown import reference_price
 from copilot.live.shakedown import run_phase
+from copilot.live.shakedown import scheduled_skip
 
 
 OVERLAY = Path(__file__).resolve().parents[1]
@@ -385,3 +386,54 @@ class _FrozenAt:
 
     def now(self, tz=None):
         return self._moment
+
+
+# ---------------------------------------------------------------- fired by a timer
+
+
+def _phase(name: str, opens: tuple[int, int], closes: tuple[int, int], *, orders: bool) -> Phase:
+    return Phase(
+        name=name,
+        opens=clock_time(*opens),
+        closes=clock_time(*closes),
+        why="test",
+        steps=(ShakedownStep("s", "m", places_orders=orders),),
+    )
+
+
+def _at(*args: int) -> datetime:
+    return datetime(*args, tzinfo=EASTERN)
+
+
+ORDER_WINDOW = _phase("order-window", (10, 30), (11, 30), orders=True)
+CLOSE = _phase("close", (15, 15), (16, 30), orders=False)
+
+
+def test_a_scheduled_phase_in_its_window_on_a_session_runs() -> None:
+    assert scheduled_skip(ORDER_WINDOW, _at(2026, 9, 16, 10, 45), None) == ""
+
+
+def test_a_scheduled_phase_on_a_weekend_has_nothing_to_do() -> None:
+    assert "not a trading session" in scheduled_skip(ORDER_WINDOW, _at(2026, 9, 19, 10, 45), None)
+
+
+def test_the_closing_contrast_is_skipped_after_an_early_close() -> None:
+    """
+    2026-11-27 closes at 13:00; a 15:15 closing contrast would measure a shut market.
+    """
+    assert "before close opens" in scheduled_skip(CLOSE, _at(2026, 11, 27, 15, 15), None)
+    assert scheduled_skip(CLOSE, _at(2026, 11, 25, 15, 15), None) == ""
+
+
+def test_a_late_timer_is_outside_the_window_and_does_nothing() -> None:
+    assert "outside order-window" in scheduled_skip(ORDER_WINDOW, _at(2026, 9, 16, 12, 5), None)
+
+
+def test_a_phase_that_places_orders_does_not_run_under_the_halt() -> None:
+    from copilot.live.halt import OPERATOR
+    from copilot.live.halt import Latch
+
+    latch = Latch("cb59138d", "t", OPERATOR, "drill", "vm")
+
+    assert "halt latch cb59138d" in scheduled_skip(ORDER_WINDOW, _at(2026, 9, 16, 10, 45), latch)
+    assert scheduled_skip(CLOSE, _at(2026, 9, 16, 15, 20), latch) == "", "quotes are safe to read"

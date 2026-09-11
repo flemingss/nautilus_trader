@@ -1,0 +1,12 @@
+# copilot day morning, 17:00 New York, every day (a weekend morning still beats)
+
+[Unit]
+Description=copilot day morning, 17:00 New York, every day (a weekend morning still beats)
+
+[Timer]
+OnCalendar=*-*-* 17:00:00 America/New_York
+Persistent=true
+Unit=copilot-day@morning.service
+
+[Install]
+WantedBy=timers.target

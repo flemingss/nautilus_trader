@@ -68,6 +68,15 @@ def risk_ledger_path(account_id: str, directory: str = RISK_LEDGER_DIR) -> Path:
     return Path(directory).expanduser() / f"outcomes_{safe}.jsonl"
 
 
+OPS_CONFIG_DIR = "~/.config/copilot"
+"""
+The paper VM's configuration, outside the tree: ``copilot.env``, ``secrets.env``,
+``gateway.env`` and ``tws_password``.
+
+Templates live in ``copilot/ops/env/``.
+
+"""
+
 HALT_LATCH_PATH = "~/.nautilus_copilot/HALT.json"
 """
 The operator kill switch's latch. Present means every order-capable node on this host
@@ -142,6 +151,7 @@ __all__ = [
     "HEARTBEAT_URL_ENV",
     "MARKETSTACK_API_KEY_ENV",
     "OPERATOR_TZ_ENV",
+    "OPS_CONFIG_DIR",
     "PUSHOVER_TOKEN_ENV",
     "PUSHOVER_USER_KEY_ENV",
     "RISK_LEDGER_DIR",
