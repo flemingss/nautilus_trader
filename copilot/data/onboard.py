@@ -2,8 +2,9 @@
 Bring a new symbol from "we would like to trade this" to a filed verdict.
 
     python -m copilot.data.onboard --symbols SCHX.ARCX,TLT.XNAS
-    python -m copilot.data.onboard --symbols SCHX.ARCX --apply
-    python -m copilot.data.onboard --symbols SCHX.ARCX --apply --spend --budget 5
+    python -m copilot.data.onboard --symbols SCHX.ARCX --survey --apply
+    python -m copilot.data.onboard --symbols IJH.ARCX --survey --apply \
+        --like spy-gap-fade-long-next-close --minimum-effect-r 0
 
 Why a command and not a checklist in a document
 -----------------------------------------------
@@ -19,31 +20,53 @@ symbol stands and what the next step is; run it with ``--apply`` and it takes th
 steps it can. Re-running is the point: the report is the same either way, so the command
 is also the record of how far the process got.
 
+What ``--apply`` takes
+----------------------
+The status is recomputed after every step, and the first stage not done is taken **only if
+it is free**: the backfill from the recommended start, the patch when the Databento store
+can fill at least one hole, the registry file when ``--like`` names an activation to copy,
+and the validate. Each runs as its own process, the way the operator day runs its steps. It
+stops at the first stage that is a deliberate act, at a step that fails, and at a step that
+ran and is still not done, which means the step is not recording its own completion.
+
+It needs ``--survey``, because the corporate-actions scan is a stage it may not skip: the
+drill that motivated this module passed a symbol over a fake gap for want of it.
+
 What it will not do for you
 ---------------------------
-**Spend money silently.** Metered pulls need ``--spend`` and an explicit ``--budget``,
-priced first, exactly as [ADR-0015] requires.
+**Spend money.** The metered pull is named and priced by its own command, never run from
+here, exactly as [ADR-0015] requires.
 
 **Recalibrate the cost model.** That rebuilds the snapshot every activation is charged
 against and repinning it is a deliberate act with its own verification - the incumbents
 must come back bit-identical. The report says when a symbol is missing from the pinned
 snapshot and what to run; it does not run it.
 
+**Change code.** A corporate action sitting in the prices is registered by hand.
+
 **Choose the holdout boundary.** It computes the candidates and names the one it would
-pick ([ADR-0020]), and writing it into a registry file is a diff someone reads.
+pick ([ADR-0020]). With ``--like`` it writes the registry file at that boundary, and the file
+is still a diff someone reads before it is committed.
+
+**Declare the effect size.** ``--like`` refuses without ``--minimum-effect-r``: zero is a
+declaration and empty is not ([ADR-0031]).
 
 **Decide whether a verdict is good.** It reports that one exists.
 
 [ADR-0015]: ../docs/decisions/0015-databento-is-the-intraday-source-only.md
 [ADR-0020]: ../docs/decisions/0020-the-holdout-boundary-is-per-activation.md
+[ADR-0031]: ../docs/decisions/0031-evidence-and-attribution-after-the-audit.md
 
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
+import subprocess
 import sys
+import tomllib
 from dataclasses import dataclass
 from dataclasses import field
 from datetime import UTC
@@ -51,7 +74,9 @@ from datetime import date
 from datetime import datetime
 from decimal import Decimal
 from decimal import InvalidOperation
+from pathlib import Path
 from typing import TYPE_CHECKING
+from typing import Any
 
 from copilot.calibration.cost_model import CostModel
 from copilot.data.append import due_sessions
@@ -61,11 +86,15 @@ from copilot.data.catalog import equity_for
 from copilot.data.catalog import open_catalog
 from copilot.data.catalog import read_daily_bars
 from copilot.data.corporate_actions import scan
+from copilot.data.databento import DEFAULT_STORE
 from copilot.data.marketstack import MarketstackClient
+from copilot.data.patch import plan
 from copilot.paths import MARKETSTACK_API_KEY_ENV
 from copilot.paths import add_catalog_argument
 from copilot.strategies.activations import REGISTRY_DIR
+from copilot.strategies.activations import Lifecycle
 from copilot.strategies.activations import find_activation
+from copilot.strategies.activations import parse_activation
 from copilot.strategies.fingerprint import fingerprint_for
 from copilot.strategies.fingerprint import unchanged_since
 from copilot.validation.holdout import EVALUATION_END
@@ -74,6 +103,8 @@ from copilot.validation.holdout import MIN_HOLDOUT_SHARE
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+    from collections.abc import Mapping
     from collections.abc import Sequence
 
 
@@ -170,6 +201,44 @@ class Step:
     """
     What to run next, when this step is not done and the operator must act.
     """
+    action: tuple[str, ...] = ()
+    """
+    The free command that takes this step, as a module and its arguments.
+
+    Empty when the step is a deliberate act - money, a code change, or a judgement - which
+    is where ``--apply`` stops.
+
+    """
+
+
+@dataclass(frozen=True)
+class StepOptions:
+    """
+    What the status may consult beyond the catalog, and what ``--apply`` may write.
+    """
+
+    client: object | None = None
+    """
+    The daily vendor's client; the corporate-actions scan needs it.
+    """
+    store: Path | None = None
+    """
+    The Databento store, so the holes stage can say how many the patch could fill.
+    """
+    like: str = ""
+    """
+    An activation to register a new symbol like.
+    """
+    minimum_effect_r: str | None = None
+    """
+    The effect size a registration declares; required with ``like``.
+    """
+
+
+MAX_ACTIONS = 8
+"""
+More actions than there are stages means a stage is not recording its own completion.
+"""
 
 
 def survey(client: MarketstackClient, symbol: str, venue: str) -> Coverage:
@@ -259,8 +328,7 @@ def steps_for(
     symbol: str,
     venue: str,
     coverage: Coverage | None,
-    *,
-    client: object | None = None,
+    options: StepOptions | None = None,
 ) -> list[Step]:
     """
     Return the ordered stages for one symbol, each answering whether it is done.
@@ -271,6 +339,8 @@ def steps_for(
     point the operator is debugging the wrong thing.
 
     """
+    options = options or StepOptions()
+    client = options.client
     steps: list[Step] = []
     pair = f"{symbol}.{venue}"
 
@@ -335,25 +405,26 @@ def steps_for(
                 else f"python -m copilot.data.backfill --symbols {symbol} "
                 f"--from {start_hint or EARLIEST_START}"
             ),
+            action=(
+                (
+                    "copilot.data.backfill",
+                    "--symbols",
+                    symbol,
+                    "--from",
+                    str(coverage.recommended_start),
+                    "--catalog",
+                    catalog_path,
+                )
+                if not bars and coverage is not None and coverage.recommended_start
+                else ()
+            ),
         ),
     )
 
     if bars:
         held = {bar.closed_at.date() for bar in bars}
         holes = [d for d in trading_days(min(held), max(held)) if d not in held]
-        steps.append(
-            Step(
-                "holes filled",
-                done=not holes,
-                detail="contiguous" if not holes else f"{len(holes)} sessions missing",
-                command=(
-                    ""
-                    if not holes
-                    else f"python -m copilot.data.patch --symbols {pair} --write  "
-                    f"(needs the Databento pull below first)"
-                ),
-            ),
-        )
+        steps.append(_holes_step(catalog_path, symbol, venue, len(holes), options.store))
 
     if bars and client is not None:
         findings = scan(
@@ -430,6 +501,7 @@ def steps_for(
             "registered",
             done=bool(names),
             detail=", ".join(names) if names else "no activation names this instrument",
+            action=() if names else _registration_action(pair, boundary, options),
             command=(
                 ""
                 if names
@@ -469,9 +541,270 @@ def steps_for(
                 if not names or not stale
                 else "python -m copilot.strategies.validate --changed --write"
             ),
+            action=(
+                ("copilot.strategies.validate", "--changed", "--write", "--catalog", catalog_path)
+                if names and stale
+                else ()
+            ),
         ),
     )
     return steps
+
+
+def fillable_holes(catalog_path: str, symbol: str, venue: str, store: Path | None) -> int | None:
+    """
+    Return how many holes the Databento store can fill, or None without a store.
+    """
+    if store is None or not store.is_dir():
+        return None
+    try:
+        return len(plan(catalog_path, symbol, venue, store).fills)
+    except (KeyError, FileNotFoundError):
+        # No listing dataset for the venue, or nothing pulled for it: the store prices none.
+        return 0
+
+
+def _holes_step(
+    catalog_path: str,
+    symbol: str,
+    venue: str,
+    missing: int,
+    store: Path | None,
+) -> Step:
+    """
+    Return the holes stage, saying how many of them the store could fill.
+
+    Counted because the answer decides what ``--apply`` may do. A hole the store can price
+    is a free step. One it cannot is a refusal to look at, and running the patch again would
+    not change it: GLDM's thirteen 2018-2019 holes are sessions with no closing auction on
+    the listing venue, so no official close exists to fill them with.
+
+    """
+    pair = f"{symbol}.{venue}"
+    if not missing:
+        return Step("holes filled", done=True, detail="contiguous")
+    fillable = fillable_holes(catalog_path, symbol, venue, store)
+    if fillable is None:
+        return Step(
+            "holes filled",
+            done=False,
+            detail=f"{missing} sessions missing",
+            command=f"python -m copilot.data.patch --symbols {pair} --write  "
+            f"(needs the Databento pull below first)",
+        )
+    if fillable == 0:
+        return Step(
+            "holes filled",
+            done=False,
+            detail=f"{missing} sessions missing, none fillable from the store",
+            command=f"python -m copilot.data.patch --symbols {pair} says why; a hole no "
+            f"source can price is looked at, not forced",
+        )
+    return Step(
+        "holes filled",
+        done=False,
+        detail=f"{missing} sessions missing, {fillable} fillable from the store",
+        command=f"python -m copilot.data.patch --symbols {pair} --write",
+        action=(
+            "copilot.data.patch",
+            "--symbols",
+            pair,
+            "--store",
+            str(store),
+            "--write",
+            "--catalog",
+            catalog_path,
+        ),
+    )
+
+
+def _registration_action(
+    pair: str,
+    boundary: tuple[date, Decimal] | None,
+    options: StepOptions,
+) -> tuple[str, ...]:
+    """
+    Return the command that registers ``pair`` like another activation, or nothing.
+    """
+    if not options.like or options.minimum_effect_r is None or boundary is None:
+        return ()
+    return (
+        "copilot.data.onboard",
+        "--register",
+        pair,
+        "--like",
+        options.like,
+        "--holdout-start",
+        boundary[0].isoformat(),
+        "--minimum-effect-r",
+        options.minimum_effect_r,
+    )
+
+
+def apply_steps(
+    pair: str,
+    compute: Callable[[], list[Step]],
+    runner: Callable[[tuple[str, ...]], int],
+) -> int:
+    """
+    Take the free stages in order, recomputing the status after each one.
+
+    Returns an exit code, zero only when every stage is done. It stops at a stage that is a
+    deliberate act, at a stage whose command fails, and at a stage that ran and is still not
+    done - repeating that one would loop on a step that does not record its own completion.
+
+    """
+    last = ""
+    for _ in range(MAX_ACTIONS):
+        pending = next((step for step in compute() if not step.done), None)
+        if pending is None:
+            print(f"  {pair}: every stage is done")
+            return 0
+        if not pending.action:
+            print(
+                f"  {pair}: stopped at {pending.name!r}, a deliberate act: "
+                f"{pending.command or pending.detail}",
+            )
+            return 1
+        if pending.name == last:
+            print(
+                f"  {pair}: {pending.name!r} ran and is still not done ({pending.detail}); "
+                f"stopping rather than repeating it",
+            )
+            return 1
+        print(f"  {pair}: taking {pending.name!r}: python -m {' '.join(pending.action)}")
+        code = runner(pending.action)
+        if code != 0:
+            print(f"  {pair}: {pending.name!r} exited {code}; stopping")
+            return code
+        last = pending.name
+    print(f"  {pair}: took {MAX_ACTIONS} actions without finishing; stopping")
+    return 1
+
+
+def run_module(action: tuple[str, ...]) -> int:
+    """
+    Run one stage's command as its own process, and return its exit code.
+    """
+    sys.stdout.flush()
+    return subprocess.run(  # noqa: S603 - fixed argv, no shell
+        [sys.executable, "-m", *action],
+        check=False,
+    ).returncode
+
+
+def registration_name(like: str, like_symbol: str, symbol: str) -> str:
+    """
+    Return the new activation's name: the template's, with its symbol swapped.
+    """
+    prefix = f"{like_symbol.lower()}-"
+    if not like.startswith(prefix):
+        raise ValueError(
+            f"cannot name a registration like {like!r}: the name does not start with its own "
+            f"symbol, {prefix!r}, so there is nothing to swap",
+        )
+    return f"{symbol.lower()}-{like[len(prefix) :]}"
+
+
+def render_registration(
+    template: Mapping[str, Any],
+    *,
+    pair: str,
+    like: str,
+    holdout_start: str,
+    minimum_effect_r: str,
+) -> str:
+    """
+    Return a registry file for a new instrument, with the template's strategy and knobs.
+
+    Always ``RESEARCH``: a registration copies a premise onto an instrument that has no
+    verdict yet, and promotion is a diff someone makes after one exists.
+
+    """
+    symbol, _, venue = pair.upper().partition(".")
+    note = (
+        f"Registered by copilot.data.onboard like {like}: the same strategy and knobs on a new "
+        f"instrument. The holdout starts at the quarter nearest the middle of the charter's "
+        f"band (ADR-0020), and the effect size was declared at registration (ADR-0031)."
+    )
+    try:
+        Decimal(minimum_effect_r)
+    except (InvalidOperation, ValueError) as e:
+        raise ValueError(
+            f"minimum_effect_r {minimum_effect_r!r} is not a declaration: zero is, empty is not "
+            f"(ADR-0031)",
+        ) from e
+    validation = {
+        **template.get("validation", {}),
+        "holdout_start": holdout_start,
+        "minimum_effect_r": minimum_effect_r,
+    }
+    lines = [
+        f"strategy = {_toml_value(template['strategy'])}",
+        f"lifecycle = {_toml_value(str(Lifecycle.RESEARCH))}",
+        f"note = {_toml_value(note)}",
+        "",
+        "[instrument]",
+        f"symbol = {_toml_value(symbol)}",
+        f"venue = {_toml_value(venue)}",
+        "",
+        "[parameters]",
+        *(f"{k} = {_toml_value(v)}" for k, v in template.get("parameters", {}).items()),
+        "",
+        "[validation]",
+        *(f"{k} = {_toml_value(v)}" for k, v in validation.items()),
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def register(
+    pair: str,
+    *,
+    like: str,
+    holdout_start: str,
+    minimum_effect_r: str,
+    directory: Path = REGISTRY_DIR,
+) -> Path:
+    """
+    Write a registry file for ``pair`` like the activation named, and return its path.
+
+    Refuses to overwrite, and parses what it wrote before writing it, so a file this
+    puts in the registry is one the registry can load.
+
+    """
+    symbol = pair.partition(".")[0]
+    template = tomllib.loads((directory / f"{like}.toml").read_text())
+    name = registration_name(like, str(template["instrument"]["symbol"]), symbol)
+    path = directory / f"{name}.toml"
+    if path.exists():
+        raise FileExistsError(f"{path} already exists; a registration is written once")
+    text = render_registration(
+        template,
+        pair=pair,
+        like=like,
+        holdout_start=holdout_start,
+        minimum_effect_r=minimum_effect_r,
+    )
+    parse_activation(name, tomllib.loads(text))
+    path.write_text(text)
+    return path
+
+
+def _toml_value(value: object) -> str:
+    """
+    Return a registry value in TOML: strings quoted, integers and booleans bare.
+
+    A float is refused. The registry writes numbers as strings because a TOML float is a
+    binary float, and these values place stops.
+
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        return json.dumps(value)
+    raise ValueError(f"cannot write {value!r} into a registry file; numbers are strings there")
 
 
 def report(results: Sequence[tuple[str, list[Step]]]) -> int:
@@ -507,14 +840,38 @@ def main(argv: list[str] | None = None) -> int:
         prog="python -m copilot.data.onboard",
         description="Report and advance a symbol's path to a filed verdict.",
     )
-    parser.add_argument("--symbols", required=True, help="Comma-separated SYMBOL.VENUE pairs")
+    parser.add_argument("--symbols", help="Comma-separated SYMBOL.VENUE pairs")
     add_catalog_argument(parser)
     parser.add_argument(
         "--survey",
         action="store_true",
         help="Ask the vendor what it holds (costs request quota; needs the API key)",
     )
+    parser.add_argument(
+        "--apply",
+        action="store_true",
+        help="Take the free stages in order, stopping at the first deliberate act",
+    )
+    parser.add_argument("--store", default=DEFAULT_STORE, help="The Databento store")
+    parser.add_argument("--like", help="Register a new symbol like this activation")
+    parser.add_argument("--minimum-effect-r", help="The effect size a registration declares")
+    parser.add_argument("--register", metavar="SYMBOL.VENUE", help="Write one registry file")
+    parser.add_argument("--holdout-start", help="The boundary a --register file carries")
     args = parser.parse_args(argv)
+
+    problem = _refusal(args)
+    if problem:
+        print(f"error: {problem}", file=sys.stderr)
+        return 2
+    if args.register:
+        path = register(
+            args.register,
+            like=args.like,
+            holdout_start=args.holdout_start,
+            minimum_effect_r=args.minimum_effect_r,
+        )
+        print(f"wrote {path}")
+        return 0
 
     pairs = []
     for token in args.symbols.split(","):
@@ -532,14 +889,49 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         client = MarketstackClient(access_key)
 
+    options = StepOptions(
+        client=client,
+        store=Path(args.store).expanduser(),
+        like=args.like or "",
+        minimum_effect_r=args.minimum_effect_r,
+    )
     print(f"Onboarding status at {datetime.now(tz=UTC).isoformat(timespec='seconds')}")
     results = []
     for symbol, venue in pairs:
         coverage = survey(client, symbol, venue) if client else None
-        results.append(
-            (f"{symbol}.{venue}", steps_for(args.catalog, symbol, venue, coverage, client=client)),
-        )
+        pair = f"{symbol}.{venue}"
+
+        def status(
+            symbol: str = symbol,
+            venue: str = venue,
+            coverage: Coverage | None = coverage,
+        ) -> list[Step]:
+            return steps_for(args.catalog, symbol, venue, coverage, options)
+
+        if args.apply:
+            apply_steps(pair, status, run_module)
+        results.append((pair, status()))
     return report(results)
+
+
+def _refusal(args: argparse.Namespace) -> str:
+    """
+    Return why this combination of flags must not run, or an empty string if it may.
+
+    Each refusal guards a stage or a declaration the flags would otherwise skip.
+
+    """
+    if args.register:
+        if not (args.like and args.holdout_start and args.minimum_effect_r is not None):
+            return "--register needs --like, --holdout-start and --minimum-effect-r"
+        return ""
+    if not args.symbols:
+        return "--symbols is required"
+    if args.apply and not args.survey:
+        return "--apply needs --survey; the corporate-actions scan is a stage it may not skip"
+    if bool(args.like) != (args.minimum_effect_r is not None):
+        return "--like and --minimum-effect-r go together; zero is a declaration, empty is not"
+    return ""
 
 
 def _readable(close: object) -> bool:
@@ -605,12 +997,20 @@ def _unusable_tail(by_year: dict[int, tuple[int, int]]) -> tuple[int, ...]:
 
 
 __all__ = [
+    "MAX_ACTIONS",
     "TARGET_REJECTION_RATIO",
     "Coverage",
     "Step",
+    "StepOptions",
+    "apply_steps",
+    "fillable_holes",
     "holdout_candidates",
     "preferred_boundary",
+    "register",
+    "registration_name",
+    "render_registration",
     "report",
+    "run_module",
     "steps_for",
     "survey",
 ]

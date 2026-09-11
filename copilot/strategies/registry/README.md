@@ -40,7 +40,9 @@ in 2017 puts that date at 44% of its history and `carve` refuses it.
 [ADR-0020](../../docs/decisions/0020-the-holdout-boundary-is-per-activation.md) moves the
 pin here. Choose the calendar quarter start whose share sits nearest the middle of the
 charter's 15-20% band - `python -m copilot.data.onboard --symbols SYM.VENUE` names it -
-and expect the spend to refuse a window too short to score.
+and expect the spend to refuse a window too short to score. With `--survey --apply --like
+ACTIVATION --minimum-effect-r R` it writes the file itself, at that boundary, as `RESEARCH`,
+and refuses without the effect size.
 
 ## Lifecycle
 

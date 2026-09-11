@@ -2,6 +2,35 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, onboarding takes the steps it reports
+
+### Added
+
+- **`onboard --survey --apply`.** The status is recomputed after every stage, and the first
+  stage not done is taken only if it is free: the backfill from the recommended start, the
+  patch when the Databento store can fill at least one hole, a registry file, and the
+  validate. Each runs as its own process. It stops at a deliberate act (the metered pull, the
+  repin, a corporate action to register by hand), at a stage that fails, and at a stage that
+  ran and is still not done. It refuses without `--survey`, because the corporate-actions scan
+  is a stage it may not skip.
+- **`--like ACTIVATION --minimum-effect-r R`** registers a new symbol with the template's
+  strategy and knobs, always `RESEARCH`, at the preferred holdout boundary. The file is parsed
+  by the registry before it is written and is never overwritten. The effect size is required:
+  zero is a declaration and empty is not (ADR-0031).
+
+### Changed
+
+- **The holes stage says how many the store can fill.** GLDM now reads *13 sessions missing,
+  none fillable from the store*. It previously named the patch as the next command, which could
+  never fill them.
+- **The module docstring advertised `--apply --spend --budget`,** which never existed. It now
+  documents what `--apply` takes, and says the metered pull is never run from here.
+
+### Regrouped
+
+- Open work is twenty-two items: seven ready to build, five waiting on the VM, two on the
+  account, two on a decision, one charter conflict, one on spend, five deferred.
+
 ## 2026-09-11, settled-cash sizing
 
 ### Added
