@@ -597,6 +597,46 @@ def test_a_granted_reservation_is_released_when_the_position_closes():
     assert trade.risk_amount > 0
 
 
+def test_a_buy_sizes_down_to_the_settled_cash_left():
+    """
+    The playbook's ``floor(C_settled_net / P)`` reaches the order.
+
+    A USD 1,000 risk budget on a ~3-wide stop sizes to hundreds of shares near 98, tens
+    of thousands of dollars. With USD 1,000 settled the buy fits ten shares and their
+    commission, and the cash stays committed after the position closes.
+
+    """
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    unbounded = run(specs, min_gap_atr="0.25", stop_atr="1.5", risk_budget="1000")
+    ledger = ExposureLedger(
+        max_total_risk=Decimal(10_000),
+        max_new_entries=5,
+        settled_cash=Decimal(1000),
+    )
+    result = _run_with_ledger(specs, ledger, min_gap_atr="0.25", stop_atr="1.5")
+
+    (free,) = unbounded.trades
+    (fitted,) = result.trades
+    assert Decimal(fitted.quantity) < Decimal(free.quantity)
+    assert Decimal(900) < ledger.cash_committed <= Decimal(1000)
+    assert ledger.total == Decimal(0)
+    assert fitted.risk_amount < free.risk_amount
+
+
+def test_a_buy_that_cannot_fit_one_share_is_refused_and_recorded():
+    specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
+    ledger = ExposureLedger(
+        max_total_risk=Decimal(10_000),
+        max_new_entries=5,
+        settled_cash=Decimal(50),
+    )
+    result = _run_with_ledger(specs, ledger, min_gap_atr="0.25", stop_atr="1.5")
+
+    assert result.trades == ()
+    assert ledger.entries == 0
+    assert "settled cash" in ledger.refusals[0].reason
+
+
 def test_without_a_ledger_the_strategy_sizes_alone():
     """
     Every research replay: no ledger, no reservation, no change to any verdict.

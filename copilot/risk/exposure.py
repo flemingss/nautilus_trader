@@ -27,6 +27,17 @@ where an unstated one is not. Ranking signals is a research question and is on t
 roadmap; this module records who was refused and why, which is the input that question
 needs.
 
+Settled cash, the third cap
+---------------------------
+The playbook's ``floor(C_settled_net / P)``: a cash account can only buy with cash that has
+settled, and the basket's buys draw on one pool of it. So the ledger also holds the settled
+cash the session may spend, and a buy commits its notional plus its commission against it.
+**A closed position does not give its cash back.** The sale's proceeds settle the next
+session (T+1), so cash spent on a position that opened and closed today is still spent;
+only an entry that never filled returns what it committed. The pool is what the broker
+reported when the session began, less what this session committed - working buys from an
+earlier session are the sweep's to have cancelled.
+
 [RISK.md]: ../docs/playbook/RISK.md
 
 """
@@ -63,18 +74,51 @@ class ExposureLedger:
     """
     Most new positions this session may open, whatever the risk arithmetic allows.
     """
+    settled_cash: Decimal | None = None
+    """
+    Settled cash the session may spend on buys, or None where no cash cap applies.
+
+    None in every research replay, which sizes against a risk budget alone. A live
+    session always supplies it, read from the broker.
+
+    """
     reserved: dict[str, Decimal] = field(default_factory=dict)
+    committed: dict[str, Decimal] = field(default_factory=dict)
+    """
+    Settled cash committed per strategy: a buy's notional plus its commission.
+    """
     entries: int = 0
     refusals: list[Refusal] = field(default_factory=list)
 
     def __post_init__(self) -> None:
         """
         Refuse a ledger that could never grant anything, which is a misconfiguration.
+
+        Settled cash of zero is not refused. An account with nothing settled is a real
+        morning after a sale, and the answer then is that no buy is granted, which the
+        cap already gives.
+
         """
         if self.max_total_risk <= 0:
             raise ValueError(f"max_total_risk must be positive, got {self.max_total_risk}")
         if self.max_new_entries <= 0:
             raise ValueError(f"max_new_entries must be positive, got {self.max_new_entries}")
+
+    @property
+    def cash_committed(self) -> Decimal:
+        """
+        Settled cash committed across every strategy this session.
+        """
+        return sum(self.committed.values(), Decimal(0))
+
+    @property
+    def cash_headroom(self) -> Decimal | None:
+        """
+        Settled cash still spendable, never negative, or None where no cash cap applies.
+        """
+        if self.settled_cash is None:
+            return None
+        return max(self.settled_cash - self.cash_committed, Decimal(0))
 
     @property
     def total(self) -> Decimal:
@@ -90,13 +134,18 @@ class ExposureLedger:
         """
         return max(self.max_total_risk - self.total, Decimal(0))
 
-    def reserve(self, key: str, amount: Decimal) -> bool:
+    def reserve(self, key: str, amount: Decimal, cash: Decimal = Decimal(0)) -> bool:
         """
-        Reserve ``amount`` for ``key`` if the cap and the entry count both allow it.
+        Reserve ``amount`` of risk and ``cash`` of settled cash for ``key``, or refuse.
+
+        Granted only if the entry count, the risk cap and - where the ledger holds settled
+        cash - the cash pool all allow it.
 
         All or nothing: a strategy sized to risk 1.50 does not get 0.80 of it, because a
         position at half its planned size has a different R and a different expectancy
-        from the one the gate scored. It either takes the trade it sized or it skips.
+        from the one the gate scored. It either takes the trade it sized or it skips. A
+        strategy that wants to fit the cash sizes down **before** asking, from
+        :attr:`cash_headroom`.
 
         A key that already holds a reservation is refused rather than topped up. One
         position per strategy is the rule the strategies themselves keep, and a second
@@ -124,20 +173,45 @@ class ExposureLedger:
                 ),
             )
             return False
+        headroom = self.cash_headroom
+        if headroom is not None and cash > headroom:
+            self.refusals.append(
+                Refusal(
+                    key,
+                    amount,
+                    f"settled cash would reach {self.cash_committed + cash} against "
+                    f"{self.settled_cash} settled",
+                ),
+            )
+            return False
         self.reserved[key] = amount
+        if cash > 0:
+            self.committed[key] = cash
         self.entries += 1
         return True
 
     def release(self, key: str) -> Decimal:
         """
-        Give ``key``'s reservation back, returning what it was, or zero if it had none.
+        Give ``key``'s risk back, returning what it was, or zero if it had none.
 
         The entry count is **not** decremented. A position that opened and closed still
         counts as one of the session's entries; the cap is on how many the session
-        starts, not on how many it holds at once.
+        starts, not on how many it holds at once. Nor is the cash: see
+        :meth:`release_cash`.
 
         """
         return self.reserved.pop(key, Decimal(0))
+
+    def release_cash(self, key: str) -> Decimal:
+        """
+        Give back the settled cash ``key`` committed, for an entry that never filled.
+
+        Separate from :meth:`release` because the two come back at different times. Risk
+        is free the moment a position closes; the cash is not free until its sale settles,
+        which is not this session.
+
+        """
+        return self.committed.pop(key, Decimal(0))
 
     def as_record(self) -> dict[str, object]:
         """
@@ -149,6 +223,9 @@ class ExposureLedger:
             "entries": self.entries,
             "reserved": {k: str(v) for k, v in sorted(self.reserved.items())},
             "total": str(self.total),
+            "settled_cash": str(self.settled_cash) if self.settled_cash is not None else "",
+            "committed_cash": {k: str(v) for k, v in sorted(self.committed.items())},
+            "cash_committed": str(self.cash_committed),
             "refusals": [
                 {"key": r.key, "amount": str(r.amount), "reason": r.reason} for r in self.refusals
             ],

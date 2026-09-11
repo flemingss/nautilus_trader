@@ -72,7 +72,9 @@ from copilot.data.calendar import is_trading_day
 from copilot.data.calendar import session_close
 from copilot.data.calendar import session_open
 from copilot.live.account import EXEC_CLIENT_VENUE
+from copilot.live.account import NoAccountError
 from copilot.live.account import find_account
+from copilot.live.account import reported_settled_cash
 from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.node import build_paper_node
 from copilot.live.session import PaperSession
@@ -421,6 +423,25 @@ def observe_environment(cache: object, session: PaperSession) -> list[Check]:
                 "A paper account may not carry the live account's type - see "
                 "docs/PAPER_CAMPAIGN.md on what paper cannot reproduce."
             ),
+        ),
+    )
+    # The basket refuses to size a cash account without a settled figure, so the evening
+    # should find out here, before it warms nine activations, rather than at the first bar.
+    if found:
+        try:
+            amount, basis = reported_settled_cash(cache, venues)
+            passed, observed = True, str(amount) if amount is not None else "not applicable"
+        except NoAccountError as e:
+            passed, observed, basis = False, "missing", str(e)
+    else:
+        passed, observed, basis = False, "missing", "no account to read it from"
+    checks.append(
+        Check(
+            name="account_reports_settled_cash",
+            passed=passed,
+            observed=observed,
+            expected="a number, or not applicable on margin",
+            note=basis,
         ),
     )
     return checks

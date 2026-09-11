@@ -89,6 +89,7 @@ from copilot.data.catalog import equity_for
 from copilot.data.catalog import read_series
 from copilot.live.account import EXEC_CLIENT_VENUE
 from copilot.live.account import reported_equity
+from copilot.live.account import reported_settled_cash
 from copilot.live.client_ids import BROKER_PAIRS
 from copilot.live.manifest import Manifest
 from copilot.live.manifest import current_commit
@@ -499,10 +500,18 @@ async def run_session(
         first = plans[0].activation
         venues = (broker_instrument_id(first.symbol, first.venue).venue, Venue(EXEC_CLIENT_VENUE))
         equity, _account = reported_equity(cache, venues)
-        budget = budget_for(equity, allocation=allocation, policy=policy)
+        settled_cash, settled_cash_basis = reported_settled_cash(cache, venues)
+        budget = budget_for(
+            equity,
+            allocation=allocation,
+            policy=policy,
+            settled_cash=settled_cash,
+            settled_cash_basis=settled_cash_basis,
+        )
         ledger = ExposureLedger(
             max_total_risk=budget.max_total_risk,
             max_new_entries=policy.max_new_entries,
+            settled_cash=budget.spendable_cash,
         )
         # Before any bar: a cooldown in force from an earlier session must bar this one's first
         # order, and the guard's start-time evaluation is what reads it.

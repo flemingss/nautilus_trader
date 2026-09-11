@@ -101,6 +101,63 @@ class TestRelease:
         assert ledger().release("nobody") == Decimal(0)
 
 
+class TestSettledCash:
+    """
+    The pool a cash account's buys draw on, and when the cash comes back.
+    """
+
+    def test_a_buy_within_the_settled_cash_is_granted_and_committed(self) -> None:
+        book = ledger(settled_cash=Decimal("1000.00"))
+        assert book.reserve("eem", Decimal("1.00"), Decimal("981.00"))
+        assert book.cash_committed == Decimal("981.00")
+        assert book.cash_headroom == Decimal("19.00")
+
+    def test_the_second_buy_sees_the_first_ones_cash(self) -> None:
+        book = ledger(settled_cash=Decimal("1000.00"))
+        assert book.reserve("eem", Decimal("1.00"), Decimal("600.00"))
+        assert not book.reserve("schx", Decimal("1.00"), Decimal("600.00"))
+        assert "settled cash would reach 1200.00" in book.refusals[0].reason
+        assert book.entries == 1
+        assert "schx" not in book.reserved
+
+    def test_a_closed_position_frees_its_risk_and_keeps_its_cash(self) -> None:
+        """
+        The sale settles next session; until then the cash it spent is spent.
+        """
+        book = ledger(settled_cash=Decimal("1000.00"))
+        book.reserve("eem", Decimal("1.00"), Decimal("900.00"))
+        book.release("eem")
+        assert book.total == Decimal(0)
+        assert book.cash_committed == Decimal("900.00")
+
+    def test_an_entry_that_never_filled_gives_its_cash_back(self) -> None:
+        book = ledger(settled_cash=Decimal("1000.00"))
+        book.reserve("eem", Decimal("1.00"), Decimal("900.00"))
+        book.release("eem")
+        assert book.release_cash("eem") == Decimal("900.00")
+        assert book.cash_headroom == Decimal("1000.00")
+
+    def test_nothing_settled_grants_no_buy(self) -> None:
+        book = ledger(settled_cash=Decimal(0))
+        assert not book.reserve("eem", Decimal("1.00"), Decimal("50.00"))
+
+    def test_without_settled_cash_there_is_no_cash_cap(self) -> None:
+        """
+        Every research replay sizes against risk alone, so no verdict moves.
+        """
+        book = ledger()
+        assert book.cash_headroom is None
+        assert book.reserve("eem", Decimal("1.00"), Decimal("1000000.00"))
+
+    def test_the_record_carries_the_cash(self) -> None:
+        book = ledger(settled_cash=Decimal("1000.00"))
+        book.reserve("eem", Decimal("1.00"), Decimal("981.00"))
+        record = book.as_record()
+        assert record["settled_cash"] == "1000.00"
+        assert record["committed_cash"] == {"eem": "981.00"}
+        assert record["cash_committed"] == "981.00"
+
+
 class TestConstruction:
     @pytest.mark.parametrize("kwargs", [{"max_total_risk": Decimal(0)}, {"max_new_entries": 0}])
     def test_a_ledger_that_could_grant_nothing_is_refused(self, kwargs: dict) -> None:

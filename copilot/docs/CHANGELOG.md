@@ -2,6 +2,43 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, settled-cash sizing
+
+### Added
+
+- **The playbook's settled-cash cap, `floor(C_settled_net / P)`.** The session's
+  `ExposureLedger` now holds the settled cash the basket may spend, and a buy commits its
+  notional plus its commission against it. The strategy sizes down to what is left, the way
+  the notional cap already sizes down, and the ledger refuses and records a buy that cannot
+  fit one share. **A closed position keeps its cash committed**, because its sale settles the
+  next session; only an entry that never filled gives the cash back, and one cancelled after
+  a partial fill keeps all of it.
+- **`reported_settled_cash`** reads IB's `SettledCash` summary tag from the account state.
+  `budget_for` records the figure, what the activation may spend of it (never more than the
+  allocation, never negative), and where it came from.
+- **A preflight check, `account_reports_settled_cash`**, so an evening finds a missing figure
+  before it warms the basket.
+
+### Found
+
+- **IB sends no `SettledCash` for a margin account.** The first live preflight with the check
+  failed (`live/out/preflight_20260911T204241Z.json`): of the ten summary tags the adapter
+  requests, nine reached the paper account's state and `SettledCash` did not. Refusing there
+  would have stopped every paper session. **A margin account now has no settled-cash cap and
+  the record says so; every other account type must report the figure or the session
+  refuses.** Re-run, preflight passed sixteen of sixteen with the check reading *not
+  applicable* (`preflight_20260911T204732Z.json`).
+
+### Not verifiable on paper
+
+- Whether IB sends the tag for a **cash** account, and how the cap behaves when it binds, are
+  answerable only on the live cash account. The two *Waiting on the account* rows stand.
+
+### Regrouped
+
+- Open work is twenty-three items: eight ready to build, five waiting on the VM, two on the
+  account, two on a decision, one charter conflict, one on spend, five deferred.
+
 ## 2026-09-11, the account sweep under both commission plans
 
 ### Added

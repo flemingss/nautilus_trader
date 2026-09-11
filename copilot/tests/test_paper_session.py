@@ -273,6 +273,75 @@ def test_an_absent_account_names_the_read_only_cause():
     assert "Read-Only API" in account.note
 
 
+class FakeAccountState:
+    def __init__(self, info: dict) -> None:
+        self.info = info
+
+
+class FakeAccount:
+    def __init__(self, account_type: object, info: dict) -> None:
+        self.account_type = account_type
+        self.base_currency = None
+        self.events = [FakeAccountState(info)]
+
+    def balances(self) -> dict:
+        return {"USD": object()}
+
+
+class FakeCacheWithAccount(FakeCache):
+    def __init__(self, instruments: list[object], account: FakeAccount) -> None:
+        super().__init__(instruments, account_id="IB-DU0000000")
+        self._account = account
+
+    def account_for_venue(self, venue: object) -> object | None:
+        return self._account
+
+
+def _settled_check(account: FakeAccount):
+    from copilot.live.preflight import observe_environment
+    from nautilus_trader.model import InstrumentId
+
+    session = a_session(instrument_ids=("AAPL=STK.SMART",))
+    cache = FakeCacheWithAccount(
+        [FakeInstrument(InstrumentId.from_str("AAPL=STK.SMART"))],
+        account,
+    )
+    return next(
+        c for c in observe_environment(cache, session) if c.name == "account_reports_settled_cash"
+    )
+
+
+def test_a_margin_account_passes_with_no_settled_cash_cap():
+    """
+    The paper account: IB sends no SettledCash for margin, and the term does not apply.
+    """
+    from nautilus_trader.model import AccountType
+
+    check = _settled_check(FakeAccount(AccountType.MARGIN, {"TotalCashValue": "1000000"}))
+
+    assert check.passed
+    assert check.observed == "not applicable"
+    assert "margin" in check.note
+
+
+def test_a_cash_account_without_settled_cash_fails_before_the_basket():
+    from nautilus_trader.model import AccountType
+
+    check = _settled_check(FakeAccount(AccountType.CASH, {"TotalCashValue": "1000"}))
+
+    assert not check.passed
+    assert "reports no SettledCash" in check.note
+
+
+def test_a_cash_account_reports_its_settled_cash():
+    from nautilus_trader.model import AccountType
+
+    check = _settled_check(FakeAccount(AccountType.CASH, {"SettledCash": "8500.00"}))
+
+    assert check.passed
+    assert check.observed == "8500.00"
+
+
 # ------------------------------------------------------- the controlled order outcome
 
 
