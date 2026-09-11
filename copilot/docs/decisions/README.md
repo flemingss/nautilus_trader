@@ -14,32 +14,32 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 
 ## Index
 
-| #                                                               | Decision                                                             | Status     |
-| --------------------------------------------------------------- | -------------------------------------------------------------------- | ---------- |
-| [0001](0001-record-architecture-decisions.md)                   | Record architecture decisions                                        | Accepted   |
-| [0002](0002-fork-local-overlay.md)                              | Fork-local work lives in `copilot/`                                  | Accepted   |
-| [0003](0003-registered-upstream-deltas.md)                      | Upstream changes are permitted but registered                        | Accepted   |
-| [0004](0004-quarterly-upstream-sync.md)                         | Sync with upstream on demand, reviewed quarterly                     | Superseded |
-| [0005](0005-setup-is-code-activation-is-data.md)                | A setup is code; activation is data                                  | Accepted   |
-| [0006](0006-ops-progression.md)                                 | Ops progression: WSL and TWS, then Gateway, then Kubernetes          | Accepted   |
-| [0007](0007-self-sourced-images.md)                             | We build and source our own images                                   | Accepted   |
-| [0008](0008-direct-api-execution.md)                            | Direct API execution supersedes the HITL assumption                  | Accepted   |
-| [0009](0009-cost-is-modelled-at-the-target-account-size.md)     | Cost is modelled at the target account size                          | Accepted   |
-| [0010](0010-the-repository-is-ours.md)                          | The repository is ours; upstream is a source we read                 | Accepted   |
-| [0011](0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) | Spread is charged at p95 from a pinned snapshot                      | Accepted   |
-| [0012](0012-the-holdout-is-carved-at-2022-01-01.md)             | The holdout is carved at 2022-01-01                                  | Accepted   |
-| [0013](0013-entry-timing-is-evaluated-as-a-bracket.md)          | Entry timing is evaluated as a bracket                               | Accepted   |
-| [0014](0014-the-holdout-is-spent-as-one-more-fold.md)           | The holdout is spent as one more fold                                | Accepted   |
-| [0015](0015-databento-is-the-intraday-source-only.md)           | Databento is the intraday source, and only the intraday source       | Accepted   |
-| [0016](0016-corporate-actions-are-applied-on-read.md)           | Corporate actions are applied on read, from one table                | Accepted   |
-| [0017](0017-the-evaluation-window-is-pinned-at-both-ends.md)    | The evaluation window is pinned at both ends                         | Accepted   |
-| [0018](0018-an-unusable-bar-is-substituted-whole.md)            | An unusable bar is substituted whole, from a versioned table         | Accepted   |
-| [0019](0019-spread-is-charged-from-measured-history.md)         | Spread is charged from measured history, in the execution window     | Accepted   |
-| [0020](0020-the-holdout-boundary-is-per-activation.md)          | The holdout boundary is pinned per activation                        | Accepted   |
-| [0021](0021-an-unscorable-spend-still-consumes-the-holdout.md)  | An unscorable spend still consumes the holdout                       | Accepted   |
-| [0022](0022-the-always-on-host-is-a-dedicated-vm.md)            | The always-on host is a dedicated VM, not the production cluster     | Accepted   |
-| [0023](0023-a-critical-alert-demands-acknowledgement.md)        | A critical alert demands acknowledgement, and severity is a contract | Accepted   |
-| [0024](0024-a-holdout-pass-needs-an-interval.md)                | A holdout pass needs an interval                                     | Accepted   |
-| [0025](0025-commission-is-modelled-per-plan.md)                 | Commission is modelled per plan, and the plan is pinned              | Accepted   |
-| [0026](0026-attribution-is-measured-per-trade.md)               | Attribution is measured per trade, against pinned factor returns     | Accepted   |
-| [0027](0027-the-kill-switch-is-a-host-latch.md)                 | The kill switch is a latch on the host, read by every node at build  | Accepted   |
+| #                                                               | Decision                                                                                        | Status     |
+| --------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------- |
+| [0001](0001-record-architecture-decisions.md)                   | Record architecture decisions                                                                   | Accepted   |
+| [0002](0002-fork-local-overlay.md)                              | Fork-local work lives in `copilot/`                                                             | Accepted   |
+| [0003](0003-registered-upstream-deltas.md)                      | Upstream changes are permitted but registered                                                   | Accepted   |
+| [0004](0004-quarterly-upstream-sync.md)                         | Sync with upstream on demand, reviewed quarterly                                                | Superseded |
+| [0005](0005-setup-is-code-activation-is-data.md)                | A setup is code; activation is data                                                             | Accepted   |
+| [0006](0006-ops-progression.md)                                 | Ops progression: WSL and TWS, then Gateway, then Kubernetes                                     | Accepted   |
+| [0007](0007-self-sourced-images.md)                             | We build and source our own images                                                              | Accepted   |
+| [0008](0008-direct-api-execution.md)                            | Direct API execution supersedes the HITL assumption                                             | Accepted   |
+| [0009](0009-cost-is-modelled-at-the-target-account-size.md)     | Cost is modelled at the target account size                                                     | Accepted   |
+| [0010](0010-the-repository-is-ours.md)                          | The repository is ours; upstream is a source we read                                            | Accepted   |
+| [0011](0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md) | Spread is charged at p95 from a pinned snapshot                                                 | Accepted   |
+| [0012](0012-the-holdout-is-carved-at-2022-01-01.md)             | The holdout is carved at 2022-01-01                                                             | Accepted   |
+| [0013](0013-entry-timing-is-evaluated-as-a-bracket.md)          | Entry timing is evaluated as a bracket                                                          | Accepted   |
+| [0014](0014-the-holdout-is-spent-as-one-more-fold.md)           | The holdout is spent as one more fold                                                           | Accepted   |
+| [0015](0015-databento-is-the-intraday-source-only.md)           | Databento is the intraday source, and only the intraday source                                  | Accepted   |
+| [0016](0016-corporate-actions-are-applied-on-read.md)           | Corporate actions are applied on read, from one table                                           | Accepted   |
+| [0017](0017-the-evaluation-window-is-pinned-at-both-ends.md)    | The evaluation window is pinned at both ends                                                    | Accepted   |
+| [0018](0018-an-unusable-bar-is-substituted-whole.md)            | An unusable bar is substituted whole, from a versioned table                                    | Accepted   |
+| [0019](0019-spread-is-charged-from-measured-history.md)         | Spread is charged from measured history, in the window the order goes into                      | Accepted   |
+| [0020](0020-the-holdout-boundary-is-per-activation.md)          | The holdout boundary is per activation                                                          | Accepted   |
+| [0021](0021-an-unscorable-spend-still-consumes-the-holdout.md)  | An unscorable spend still consumes the holdout                                                  | Accepted   |
+| [0022](0022-the-always-on-host-is-a-dedicated-vm.md)            | The always-on host is a dedicated VM, not the production cluster                                | Accepted   |
+| [0023](0023-a-critical-alert-demands-acknowledgement.md)        | A critical alert demands acknowledgement, and severity is a contract                            | Accepted   |
+| [0024](0024-a-holdout-pass-needs-an-interval.md)                | A holdout pass needs an interval, and "not proven" is a third outcome                           | Accepted   |
+| [0025](0025-commission-is-modelled-per-plan.md)                 | Commission is modelled per plan, and the plan is pinned                                         | Accepted   |
+| [0026](0026-attribution-is-measured-per-trade.md)               | Attribution is measured per trade, against pinned factor returns, bracketed on the exit session | Accepted   |
+| [0027](0027-the-kill-switch-is-a-host-latch.md)                 | The kill switch is a latch on the host, read by every node at build                             | Accepted   |

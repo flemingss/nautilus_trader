@@ -2,6 +2,71 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, the audit of 2026-09-06 to 2026-09-11
+
+Twenty-nine pull requests, #55 to #83, read whole against the charter, the ADRs and the
+records, with the live path exercised against paper TWS and the suite run. Nothing in the
+window is changed by this entry; it files what the audit found and corrects the record where
+the record had drifted. The rows are in [`ROADMAP.md`](ROADMAP.md).
+
+### Found
+
+- **The sweep's cancel has never run since 2026-09-10.** The settlement poll #66 introduced
+  is satisfied before the cancel strategy has started, so the node is told to stop before it
+  starts and aborts startup without issuing a cancel. Confirmed live at 09:56 ET: *Stop
+  signal received during startup, aborting startup*, no strategy start, then the census
+  node reading `BROKER CLEAR`. Every sweep since - the evening's, `day sweep`, the close
+  phase, `kill`'s third limb - cancelled nothing; the broker was clear each time, which is
+  why the census verdict was honest and the defect invisible. The unit test written for the
+  poll asserts the behaviour that causes it.
+- **Two ways the alert path fails silently.** The acknowledgement check raises on a
+  transport error and `day` runs it first outside any `try`, so one outstanding CRITICAL
+  receipt plus an unreachable Pushover crashes every scheduled phase before it does anything.
+  And a CRITICAL that does not deliver is printed and forgotten: no receipt, no latch, and
+  the sweep is marked as alerting for itself, so the day raises nothing either.
+- **The unacknowledged-CRITICAL consumer runs three times a day**, at the `day` phases, so a
+  CRITICAL expiring at 11:30 engages the latch at 17:00, after the 11:35 phase has placed
+  orders. And the pre-open phase, now on a daily timer, sends an emergency-priority
+  self-test every trading morning.
+- **Two timers can overlap**: the 10:30 sweep's census retries reach past 10:45 exactly when
+  something is working, and the 10:45 phase rests a probe order inside that window.
+- **The predeclared effect size ADR-0024 rests on has never been set**; every activation
+  files it empty and the gate is `lower_r > 0`. `effective_trades` equals the raw count on
+  nine of twelve verdicts because the autocorrelation is measured in trade order. The
+  attribution fit is unweighted over a leverage that spans 5 to 380, and its dependent
+  variable is a bracketed payoff, which flatters alpha - so the no-alpha verdict is stronger
+  than ADR-0026 argues, not weaker. Alternative block lengths and calendar-year blocks move
+  no verdict. The AAPL holdout's reassessment block was written by hand and its record has no
+  trade rows.
+- **Money passes through `as_double`** in the replay and the guard, against the exactness
+  rule, where `Money.as_decimal()` exists.
+
+### Corrected
+
+- The roadmap's kill-chain table and its paper-VM paragraph were six pull requests stale:
+  alerting *unwired*, no kill command, the sweep unconfirmed. Its carrying-cost table listed
+  nine upstream files against a register of thirty-six, its test count read 287 against
+  1,038, and its *shortest route* still named an unspent SPY holdout after AAPL's was spent
+  and the family rejected. The charter's conflict table said the holdout was unspent.
+- The campaign log gains the #80 census, the #82 kill drill and this morning's sweep.
+- `DRAFT_PAPER_VM.md` said one secrets file where the runbook and the host check require
+  four, pinned the Gateway by tag against ADR-0007, and passed stage seven on the kill
+  command merely existing. The runbook claimed an engaged latch makes `day` *nothing to do*
+  (it prints the latch and runs, orders denied), chained the kill drill's release on the
+  sweep's exit code, and told the operator to commit a digest a test forbids committing.
+- `copilot/AGENTS.md`'s pull-request checklist still said `prek run --all-files`, the
+  invocation that locked the box up. The decisions index paraphrased four ADR titles. The
+  retention rule did not cover `strategies/out/`, and one superseded pooled record nothing
+  cited is pruned under it. One entry below dated the VM to the 16th.
+
+### Not logged at the time
+
+Eight pull requests in the window had no entry here. For the record: #55 restored the lint
+gate and declared `zstandard`; #64 accepted a locked quote in the preflight; #65 and #69
+logged the morning and the close; #66 replaced the sweep's fixed sleep with a settlement
+poll (the entry above is its consequence); #67 built the evidence interval (ADR-0024); #68
+built the pooled walk-forward; #73 restated the kill chain; #77 wrote the VM plan.
+
 ## 2026-09-10, the paper VM package
 
 Prep for the paper VM ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md), items 6 and 7). With this,
@@ -204,7 +269,7 @@ than left to look like work:
   signal carries information; it cannot become a tradable candidate without a charter
   change.
 
-### Opened, for the paper VM due 2026-09-16
+### Opened, for the paper VM due 2026-09-15
 
 Five rows: pick the next premise; the VM's bootstrap, services and environment template;
 IB Gateway headless; a heartbeat so silence is an alert; and the guard's cooldown across a

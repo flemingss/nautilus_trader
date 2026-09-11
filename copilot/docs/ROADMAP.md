@@ -43,19 +43,19 @@ The organising frame for everything below: the eleven stages between finding a t
 banking it, ordered as the trade travels, so a break shows where everything downstream
 stalls.
 
-| #   | Stage                | Covered by                    | State as of 2026-09-10                                                                |
-| --- | -------------------- | ----------------------------- | ------------------------------------------------------------------------------------- |
-| 00  | Historical data      | `copilot/data`                | **Ready, with known holes.** 9 registered symbols, 29,722 daily bars to 2026-09-09    |
-| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                                                   |
-| 02  | Research / strategy  | `copilot/strategies`          | **NOT READY.** Gap-fade family rejected 2026-09-10; no premise in research            |
-| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                   |
-| 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Three-way verdict with an interval (ADR-0024)                |
-| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash        |
-| 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live.** Balance and margin checks do not run on the SMART venue path    |
-| 07  | Orders / exits       | Nautilus execution            | **Ready and exercised.** Order-type matrix passed in regular hours 2026-09-10         |
-| 08  | Live deployment      | Nautilus `LiveNode`           | **Supervised: ready on the dev box.** VM stands up 2026-09-15, plan drafted           |
-| 09  | Monitoring           | Nautilus analysis + tearsheet | **Alerting built, nothing calls it.** No kill command, so no consumer for its trigger |
-| 10  | Cost calibration     | `copilot/calibration`         | **Strongest stage.** Spread and commission both corroborated against the broker       |
+| #   | Stage                | Covered by                    | State as of 2026-09-11                                                                       |
+| --- | -------------------- | ----------------------------- | -------------------------------------------------------------------------------------------- |
+| 00  | Historical data      | `copilot/data`                | **Ready, with known holes.** 9 registered symbols, 29,722 daily bars to 2026-09-09           |
+| 01  | Screening / universe | -                             | **Pinned**, out of repo by decision                                                          |
+| 02  | Research / strategy  | `copilot/strategies`          | **NOT READY.** Gap-fade family rejected 2026-09-10; no premise in research                   |
+| 03  | Backtest engine      | Nautilus `BacktestEngine`     | Ready. Fill, fee and latency models                                                          |
+| 04  | Validation gate      | `copilot/validation`          | **Ready, and stricter.** Interval and attribution built; the effect-size knob is never set   |
+| 05  | Position sizing      | `copilot/risk/sizing`         | Ready for margin. **Settled-cash sizing absent**, and the live account is cash               |
+| 06  | Risk limits          | `copilot/risk/protections`    | **Halt proven live; breaker survives a restart.** Guard still wired into no node             |
+| 07  | Orders / exits       | Nautilus execution            | **Exercised, and the sweep cancels nothing.** Found 2026-09-11; the census verdict is honest |
+| 08  | Live deployment      | Nautilus `LiveNode`           | **Packaged for the VM.** Timers, Gateway compose, runbook, host check; stand-up 2026-09-15   |
+| 09  | Monitoring           | Nautilus analysis + tearsheet | **Alerting wired, kill switch built.** Two silent failure modes found 2026-09-11, rows below |
+| 10  | Cost calibration     | `copilot/calibration`         | **Strongest stage.** Spread and commission both corroborated against the broker              |
 
 **Read the table by where it breaks, not by how much is green.** Ten of eleven stages are
 built and seven are proven against a live broker. The one that is not is stage 02, and it is
@@ -84,12 +84,14 @@ Three groups of open work, and they gate different things:
 - **A candidate worth deploying** - stage 02, five rows. The gap-fade family is rejected
   (2026-09-10), so the first row is picking the next premise; nothing downstream of research
   has a candidate until that produces one.
-- **The paper VM and unattended running** - stages 06, 08 and 09, prepared before the VM
-  stands up on 2026-09-15 ([`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md)). New: the VM's bootstrap and timers, IB Gateway headless, a heartbeat, and the
-  guard's cooldown across a restart. Carried: alerting is written and unwired, the operator
-  kill command does not exist, the sweep's *clear* verdict cannot be confirmed against the
-  broker, and the evening command cannot pass on the evening it is named for. A supervised
-  VM needs the bootstrap, Gateway and the evening fix; leaving it alone needs all of them.
+- **The paper VM and unattended running** - stages 06, 07, 08 and 09. The nine prep items in
+  [`DRAFT_PAPER_VM.md`](DRAFT_PAPER_VM.md) are done: the day fires safely from a timer, the
+  evening appends before it warms, alerting is wired and the morning beats, the breaker
+  survives a restart, the sweep asks the broker, the kill switch is a host latch, and the VM is
+  packaged with a host check. **The 2026-09-11 audit then found the sweep's cancel has never
+  run since 2026-09-10 and two ways the alert path fails silently**; those rows are what a
+  supervised VM needs before its stage five, and IB Gateway headless is the one prep item that
+  only the VM can close.
 - **Real money in a cash account** - stages 05 and 06, three rows. Settled-cash sizing, the
   T+1 rules confirmed with the carrying entity, and the margin-or-cash question. The paper
   account is MARGIN with USD 1M and **cannot surface any of them**, which is why they stay
@@ -176,7 +178,8 @@ experiment rather than to a memory of one.
 Trade counts land at 21-29 per 252 bars against the original's 30-37, because this port
 holds one position at a time and a run of gap days therefore blocks its own re-entries.
 
-287 tests, all passing: `PYTHONPATH=. pytest copilot/tests/ -q`.
+The overlay suite is `PYTHONPATH=. pytest copilot/tests/ -q`; 1,038 tests passed on
+2026-09-11, peak resident memory 0.51 GiB.
 
 ### Stage 08 - what a paper run actually needs
 
@@ -218,7 +221,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twenty-two items. Grouped by blocking condition rather than by component, because that is
+Thirty-eight items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -296,9 +299,11 @@ distinguishable without guessing, and the rejection itself is unchanged. `shutdo
 is no longer blocked by this class of noise. One test drives an orphan fill both ways and
 was verified to fail on the unfixed engine; registered in the delta.
 
-### Waiting on a decision (0)
+### Waiting on a decision (1)
 
-Nothing is waiting on the owner.
+| Item                                                  | Stage | The question                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **The charter's mode table and the pre-candidate VM** | 08    | Surfaced by the 2026-09-11 audit. [`CHARTER.md`](CHARTER.md)'s mode table admits supervised paper *after research gates*, and the VM plan stands up supervised and then unattended paper with no candidate past a gate, under the playbook's integration-testing carve-out (`OPERATIONS.md`: broker-integration testing may begin before a strategy passes the research gate). `AGENTS.md` makes the charter outrank the playbook, and the table carries no exception. Add the carve-out to the table, or cite it there. The charter is the owner's to edit. |
 
 **Resolved 2026-09-10: the gap-fade family is rejected as a source of edge.** Attribution
 found no four-factor alpha above zero in any walk-forward or the pool, under either
@@ -370,10 +375,32 @@ Databento-derived coefficient against the broker's own tape.
 | ------------------------------ | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Point-in-time index membership | 00    | Norgate Platinum, USD 630/year, the only verified source of true daily membership for the S&P 500 and Russell 3000 including delisted securities. Deferred until the universe correction starts, not rejected ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). |
 
-### Ready to build (14)
+### Ready to build (29)
 
 Twenty-two rows closed on 2026-09-03, 2026-09-04 and 2026-09-05 moved to [`CHANGELOG.md`](CHANGELOG.md);
-this table holds open work only, and its count is the checksum.
+this table holds open work only, and its count is the checksum. **Fifteen rows were filed by
+the 2026-09-11 audit** of the work since 2026-09-06; the first seven are what the VM's
+stand-up needs, in the order to take them.
+
+| Item                                                            | Stage  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| --------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Make the sweep's cancel actually run**                        | 07     | **Found 2026-09-11, confirmed live.** `cancel_working.sweep` waits on `not strategy.outstanding()`, which is true before `on_start` has found anything, so the wait returns without yielding, `handle.stop()` lands before the node has started, and the node aborts startup - *Stop signal received during startup* - without ever issuing `cancel_all_orders`. Introduced by the settlement poll on 2026-09-10 (#66). Every sweep since - the evening's last step, `day sweep`, the close phase, `kill`'s third limb - has cancelled nothing and read `BROKER CLEAR` only because the account was already clear; the census is unaffected, which is why the verdict was honest. Wait on `strategy.started` before settlement, add the lifecycle test the unit test enshrined the opposite of, and file a record - the sweep writes none. **Before stage five of the stand-up.** |
+| **Make the acknowledgement check survive its transport**        | 09     | `PushoverNotifier.receipt_status` and `ReceiptLog.outstanding` raise on a network error, bad JSON or an unreadable file, and `day` runs the check first, outside any `try`. One outstanding CRITICAL receipt on disk plus an unreachable Pushover crashes every scheduled phase - evening, sweep, morning - before it does anything, with no alert, no record and no heartbeat. Catch at the boundary, leave the receipt outstanding, say so, and run the day.                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Escalate a CRITICAL that did not deliver**                    | 09     | The sweep sends its CRITICAL and prints the outcome; nothing acts on `delivered=False`, an undelivered alert leaves no receipt for the acknowledgement check, and `day` marks the sweep `alerts_itself` so it raises nothing of its own. On a Pushover outage with an order still working, exit 1 in the journal is the only trace and the morning's heartbeat still reads healthy. An undelivered CRITICAL should engage the latch, or be retried from the next phase.                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Give the acknowledgement check its own timer**                | 09     | Only `day` phases settle receipts, at 08:30, 10:30 and 17:00 Eastern, so a CRITICAL from the 10:30 sweep that expires at 11:30 engages nothing until 17:00, and the 11:35 midday phase places orders in between. ADR-0023's deadline is one hour. A timer every fifteen minutes running `kill --check-acknowledgements`, and a runbook note that stopping the `copilot-*` timers also stops the kill switch's consumer.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Take the CRITICAL self-test off the daily timer**             | 09     | The pre-open phase sends `alerting --send-test --severity critical`, and its timer fires every weekday at 07:35 Eastern: an emergency-priority page, retried every two minutes until acknowledged, every trading day. That is the noise ADR-0023 warns against, on a schedule. A stand-up drill (#63) that #83 put on a timer. Send WARNING from the scheduled phase and CRITICAL from the stand-up drill only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Serialise the 10:30 sweep and the 10:45 order window**        | 08     | The sweep's census retries run about ten minutes plus four connection deadlines when something is working, which is exactly when it matters; the order-window phase rests a probe order at 10:45, inside that window, and the sweep's last census would report it `STILL WORKING`, CRITICAL. No `Conflicts=`, no lock. A lock file both honour, or the order window moves past the sweep's worst case.                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Make the evening's sweep conditional on orders denied**       | 08     | `day`'s docstring says the sweep moves to 10:30 the day orders are enabled; the 10:30 timer was added and the evening's sweep step stayed. Inert while `run_activation` hardcodes orders denied; the day that changes, the 08:30 evening places entries and cancels them itself before the open. Pairs with the deferred-decision row.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Set the predeclared effect size before the next holdout**     | 04     | ADR-0024's one knob, `minimum_effect_r`, has never been set: every activation files `""`, mapped to zero, so the holdout gate is `lower_r > 0` and the anti-tuning rule the ADR rests on guards nothing. The next premise's activation declares it with its hypothesis, before any fold is scored.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Count effective trades on the calendar, not the trade index** | 04     | `effective_trades` equals the raw count on nine of twelve verdicts (SPY 439 of 439): concurrency is exactly one for a one-position strategy, and the autocorrelation time is measured in trade order, where R has no lag-one dependence. The clustering the module was written for is calendar clustering. Checked 2026-09-11: year-long blocks move no verdict, so the intervals stand; the record's claim of independence does not.                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Weight or scale the attribution regression**                  | 02, 04 | `L = notional / risk` spans 5 to 380 in the pool, and the unweighted fit lets the top percentile carry twenty-five times a median trade. SPY next-close reads a market loading of 0.79 with the exit session included and 1.40 excluded, for a long-SPY premise. The dependent variable is a bracketed payoff, which attenuates beta and flatters alpha - the direction that makes the no-alpha verdict stronger, and ADR-0026 does not say so.                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Regenerate the AAPL holdout reassessment through code**       | 04     | The record's `reassessment.evidence` block was assembled by hand on 2026-09-10 and carries fields `Evidence.as_record()` does not emit; the record has no `trade_rows`, so its interval cannot be recomputed from the file and `attribute` never reads it. A reassessment command that writes the block from the snapshot and files the rows.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Supersede ADR-0024's worked example**                         | 04     | The ADR and `pool.py`'s docstring quote the gross AAPL interval [-0.126, +0.209]; the net one is [-0.140, +0.195]. ADRs are immutable, so the correction lives only in the changelog. A short superseding note, or the next ADR that touches the interval, carries the corrected example.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Take money out of `as_double`**                               | 04, 06 | `nautilus_replay.py` and `risk/guard.py` build `realized_pnl` as `Decimal(str(Money.as_double()))`; `Money.as_decimal()` exists and `live/account.py` uses it. `peak_qty.as_double()` has the same shape. The ATR-derived `risk_amount` descends from a float indicator and should say so rather than wear a `Decimal` that asserts an exactness it does not have.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Stand-up questions with no row**                              | 08     | Three of the four items `DRAFT_PAPER_VM.md` defers to the 15th had none: where the heartbeat is watched, whether `IBAPI_TIMEZONE_ALIASES` is still needed against an Eastern Gateway, and whether IBC's paper login prompts for two-factor. Settle each at its stage and record the answer here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| **Replace the paper account id in docstrings**                  | 08     | `DUT067974` is both the account id and the login name, and appears as a default in seven production docstrings and two docs. Not a secret on its own; half of a pair. The ops runbook already uses `$COPILOT_PAPER_ACCOUNT`, and the examples should follow.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+The fourteen rows carried from before the audit:
 
 | Item                                                                       | Stage | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------------------------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -421,33 +448,25 @@ decision to skip a separate consolidated-data purchase stands - Databento remain
 intraday source ([ADR-0015](decisions/0015-databento-is-the-intraday-source-only.md)). The spread coefficient was called on 2026-09-02
 ([ADR-0011](decisions/0011-spread-is-charged-at-p95-from-a-pinned-snapshot.md)).
 
-### Carrying cost, tracked (9 files)
+### Carrying cost, tracked (36 files)
 
 Not work items - the standing bill. Reported by `python -m copilot.tools.upstream_delta`,
-with the reasoning for each in `docs/UPSTREAM_DELTA.md`.
-
-| Path                                                           | Ours      | Upstream since base | Risk                    |
-| -------------------------------------------------------------- | --------- | ------------------- | ----------------------- |
-| `crates/risk/src/python/engine.rs`                             | new file  | n/a                 | **cannot conflict**     |
-| `crates/risk/src/python/mod.rs`                                | +2        | untouched           | quiet                   |
-| `crates/adapters/interactive_brokers/src/historical/client.rs` | +36 -2    | untouched           | quiet                   |
-| `crates/live/Cargo.toml`                                       | +1        | +3                  | touched                 |
-| `python/pyproject.toml`                                        | +54       | untouched           | quiet                   |
-| `.typos.toml`                                                  | +1        | untouched           | quiet                   |
-| `crates/live/src/python/node.rs`                               | +14       | +166 -88            | **churning**            |
-| `crates/adapters/interactive_brokers/src/data/core.rs`         | +16 -12   | +160 -64            | **churning, conflicts** |
-| `python/nautilus_trader/{live,risk}/__init__.pyi`              | generated | -                   | regenerate, never edit  |
-
-It grew from 2 files to 9 in one session, all to reach `set_trading_state`. Six of the
-nine are additive-only or new files, which is the cheapest shape a delta can take; two
-sit in files upstream is actively rewriting.
+with the reasoning for each in `docs/UPSTREAM_DELTA.md`, which is the register and the only
+list kept by hand. A table here went stale at nine files while the register grew to
+thirty-six, so the numbers now come from the tool: on 2026-09-11 it reported **36 files
+changed outside `copilot/`** against the 2026-08-31 merge base, 97 commits of ours against
+189 of upstream's, and **a forecast of 8 conflicting files** - the README, `AGENTS.md`,
+`CONTRIBUTING.md`, an issue template, the IB adapter's data and execution cores, the live
+node's Python binding and the risk engine's tests. Twenty of the thirty-six are the retired
+contribution scaffolding (templates, policies, the code of conduct); the code deltas are the
+IB adapter fixes, the execution and risk engine fixes, and the `set_trading_state` binding.
 
 **Nothing is due.** Syncing is on demand only - the fork is deliberately held still while
-development is active, so the conflict in `data/core.rs` is a forecast for a sync that has
-not been scheduled. Upstreaming the two IB fixes and the `RiskEngine` binding would retire
-three entries rather than carry them, and all three are additive capability or straight bug
-fixes upstream would plausibly accept - but that opens a review front on someone else's
-schedule, so it is deferred on the same reasoning.
+development is active, so every conflict above is a forecast for a sync that has not been
+scheduled. Upstreaming the IB fixes and the `RiskEngine` binding would retire entries rather
+than carry them, and they are additive capability or straight bug fixes upstream would
+plausibly accept - but that opens a review front on someone else's schedule, so it is
+deferred on the same reasoning.
 
 ## Shortest route to a paper run
 
@@ -468,17 +487,14 @@ and without one there is nothing to validate or deploy.
    [ADR-0013](decisions/0013-entry-timing-is-evaluated-as-a-bracket.md): next-open entry
    is not expressible on the daily-bar replay, so the premise runs at both expressible
    bounds. All six activations majority-pass net; the bracket table is under stage 02.
-5. **Spend the holdout - `spy-gap-fade-long-next-close` first** - the deliberate
-   one-time act, now un-gated and built: `spend_holdout` scores the holdout as one more
-   walk-forward fold with nothing chosen at spend time
-   ([ADR-0014](decisions/0014-the-holdout-is-spent-as-one-more-fold.md), accepted
-   2026-09-03). Only a `next_close` activation is spendable (ADR-0013), and **SPY
-   first**: the charter trades ETFs before single names, and SPY's is the only verdict
-   that leans on neither the survivor-chosen universe nor the hand-maintained splits
-   table. **Unspent.** The command is the owner's to run.
+5. ~~**Spend the holdout**~~ - spent 2026-09-04 on `aapl-gap-fade-long-next-close`, not
+   SPY, and read as `insufficient_evidence` under ADR-0024; the owner revised rather than
+   froze. The SCHX spend was voided (ADR-0021). Then attribution found no alpha anywhere
+   and **the family was rejected on 2026-09-10**, so this route ends here until the next
+   premise (the *Pick the next premise* row) reaches its own holdout.
 6. **Two to four weeks on IB paper** with the guard enabled, for a candidate that
    survives step 5. This is the first time the breakers can fire; they cannot fire in a
-   backtest by design.
+   backtest by design. Waiting on a candidate; the VM runs the system clock meanwhile.
 7. **Compare realised fills** against the modelled cost and close the loop.
 
 Nothing here goes near live capital.
