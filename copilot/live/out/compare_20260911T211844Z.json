@@ -1,0 +1,161 @@
+{
+  "compared_at": "2026-09-11T21:18:44.924427+00:00",
+  "record": "run_activation_20260911T154025Z.json",
+  "session": "2026-09-10",
+  "agrees": false,
+  "activations": [
+    {
+      "activation": "aapl-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "eem-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "gldm-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "hyg-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "msft-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "schx-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "deferred",
+      "offline_outcome": "deferred",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1}",
+          "offline": "{}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "spy-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "deferred",
+      "offline_outcome": "deferred",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1}",
+          "offline": "{}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "tlt-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    },
+    {
+      "activation": "xlf-gap-fade-long-next-close",
+      "decision_bar": "2026-09-09",
+      "live_outcome": "setup_not_triggered",
+      "offline_outcome": "setup_not_triggered",
+      "tolerance": "0.0100",
+      "agrees": false,
+      "disagreements": [
+        {
+          "field": "skips",
+          "live": "{'insufficient_history': 1, 'setup_not_triggered': 1}",
+          "offline": "{'setup_not_triggered': 1}",
+          "note": ""
+        }
+      ],
+      "note": ""
+    }
+  ]
+}

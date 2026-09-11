@@ -1,6 +1,6 @@
 # Draft: a day in the life of the operator
 
-**Status: working draft, fourth pass 2026-09-05. Not governance.** The [charter](CHARTER.md), the
+**Status: working draft, fifth pass 2026-09-11. Not governance.** The [charter](CHARTER.md), the
 [playbook](playbook/README.md) and the ADRs decide things; this file does not. It exists
 to be argued with and rewritten a few times, and its job is to force the question the
 other documents do not ask: *what does the person actually do, at what hour, with which
@@ -11,7 +11,11 @@ pass **ran it** on the morning of 2026-09-04. Third pass ran it again that eveni
 found a defect the whole day's work had missed. Fourth pass, 2026-09-05 JST, ran the day
 as **two commands** - the sequence this file had been carrying in prose now lives in
 `copilot/live/day.py` - and the first replay comparison found a second defect that nine
-sessions had run on without anyone noticing.
+sessions had run on without anyone noticing. Fifth pass, 2026-09-11 Eastern, ran the
+morning after the close and the evening for Monday's session on the code the paper VM stands
+up with - alerting, the kill latch, the global-cancel sweep, settled-cash sizing - and the
+comparison found the broker's own bar reaching the strategy before the warm-up, a second
+decision path the market-data subscriptions of 2026-09-09 had opened.
 
 Every **GAP** is tracked in [`ROADMAP.md`](ROADMAP.md); this file is where they are seen
 in sequence rather than as a list.
@@ -26,11 +30,18 @@ name; the exports are still the operator's to make.
 set -a; . trade-copilot/.env; set +a          # MARKETSTACK_API_KEY, DATABENTO_API_KEY
 export IBAPI_TIMEZONE_ALIASES="JST=Asia/Tokyo"  # or every IB connect fails opaquely
 export COPILOT_PAPER_ACCOUNT=<paper id>         # or preflight refuses, clearly, at least
+export IB_V2_HOST=<windows host ip>             # WSL only: the default gateway, per boot
+export COPILOT_OPERATOR_TZ=America/New_York     # the second clock the day prints; display
 ```
 
 ## The clock is the hard part
 
 The operator is in Japan. The market is not.
+
+**Since 2026-09-09 the operator is in Eastern time, for now.** Nothing below moves: every
+session decision keys off Eastern, and `COPILOT_OPERATOR_TZ` only chooses the second clock
+the day prints. The JST column is kept because it is the one the day was designed around and
+will return to.
 
 |                                      | US daylight time        | US standard time        |
 | ------------------------------------ | ----------------------- | ----------------------- |
@@ -61,15 +72,15 @@ The US close was about two hours ago. Nothing is urgent; this is the thinking pa
 python -m copilot.live.day morning
 ```
 
-| Step                                      | Command                                           | Walked 2026-09-05 (JST)                                    |
-| ----------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------- |
-| Ingest yesterday's bar                    | `copilot.data.append`                             | **5.4s**, `+0` on all nine, today pending; continues       |
-| Check corporate actions on the registry   | `copilot.data.corporate_actions <all> --to today` | **4.8s**, nothing to add; a finding here **stops the day** |
-| Recompute the verdict if anything changed | `copilot.strategies.validate --changed --write`   | **168.7s**, 12 recomputed - the code had changed           |
-| Compare last night against the replay     | `copilot.live.compare`                            | **0.6s**, **8 of 9 DISAGREE** - see below                  |
+| Step                                      | Command                                           | Walked 2026-09-11, 17:16 ET                                                         |
+| ----------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Ingest yesterday's bar                    | `copilot.data.append`                             | **2.4s**, `+2` on eight; **TLT's 2026-09-10 refused**, a close of 80.652; continues |
+| Check corporate actions on the registry   | `copilot.data.corporate_actions <all> --to today` | **2.4s**, nothing to add; a finding here **stops the day**                          |
+| Recompute the verdict if anything changed | `copilot.strategies.validate --changed --write`   | **155.1s**, 12 recomputed after a code change, every number identical               |
+| Compare last night against the replay     | `copilot.live.compare`                            | **0.6s**, **9 of 9 DISAGREE**, on skip counts alone - see below                     |
 
-Three minutes, one command, and the order is no longer knowledge that lives in this
-file. The scan now runs over every registered symbol and up to today: its default window
+Two minutes forty, one command, and the order is no longer knowledge that lives in this
+file. The fourth pass took three minutes over the same four steps. The scan now runs over every registered symbol and up to today: its default window
 ended 2025-12-31, so the command written to catch a split would have missed a 2026 one
 every morning.
 
@@ -84,6 +95,13 @@ to `on_bar` directly, so the rule decided with the ATR of the last warm-up bar. 
 sessions had run that way and every one of them read as a clean decision. Fixed the same
 hour (`GapReversalStrategy.decide`), and the evening below compared **9 of 9**. That is
 what the comparison is for, and it is now a morning step.
+
+**FOUND, fifth pass - a vendor close no auction printed, on the session before a weekend.**
+Marketstack sent TLT's 2026-09-10 close as 80.652. The gate refused it, the append said the
+warm-up would refuse TLT for the next session, and the day carried on, which is the designed
+answer. The fix is the patch: a Databento pull of that one session priced at USD 0.0000, and
+`patch --write` filled it with the official closing print, 8.67 bps from the venue's last
+trade. On the VM this is the morning's first alert; here it was the first line of the log.
 
 ### Daytime - nothing
 
@@ -105,7 +123,23 @@ python -m copilot.live.day evening
 | Reconcile positions, cash, working orders                      | `copilot.live.cancel_working --all`            | **40.3s for nine**, one node, was 41.5s each                                  |
 | Indicator warm-up from the local catalog                       | `copilot.live.warmup`                          | **0.1s**, 12/12 ready                                                         |
 | Parameters are the ones the gate scored                        | `copilot.strategies.promotion`, in the basket  | Closed: every session labelled `seeded identity ... not the gate's selection` |
-| Kill switch and remote broker access verified                  | -                                              | **GAP** - no operator kill command; roadmap row filed 2026-09-09              |
+| Kill switch and remote broker access verified                  | `copilot.live.kill`                            | **Closed**: a host latch every node reads (ADR-0027), drilled 2026-09-11      |
+
+**Fifth pass, 2026-09-11 at 17:25 ET, for Monday's session.** Six steps, **2m20s**, every
+one PASS: append 0.4s (the TLT hole patched), scan 2.2s, preflight 40.4s, warm-up 0.1s,
+basket 51.0s, sweep 45.5s ending *BROKER CLEAR* on a fresh census. Run two and a half days
+early on purpose, as a drill of the code the VM stands up with; the record says session
+2026-09-14.
+
+**FOUND, fifth pass - the broker's bar reached the strategy before the warm-up.** The
+morning's comparison disagreed nine times of nine, and not on any decision: every live record
+carried one `insufficient_history` skip the replay did not. The strategy subscribed to the
+broker's daily bars, which IB refused with 2188 until the market-data subscriptions of
+2026-09-09; since then it answers, and its bar reached `on_bar` during the node's settle wait,
+before the warm-up. Harmless that time. A bar arriving after the warm-up would have replaced
+the previous close and decided on a bar the replay never sees - a second decision path, live
+the moment orders are enabled. A live strategy no longer subscribes. The evening above ran with
+the fix, and the comparison after it read **9 of 9 AGREE**.
 
 **What the gating did on its first run.** The evening was first run for the session of
 2026-09-08 while Friday's session was still open, and the warm-up **blocked** all twelve
@@ -114,10 +148,10 @@ session of 2026-09-04 instead, everything passed: preflight 40.3s, warm-up 0.1s,
 50.6s, sweep 40.3s, **2m11s** for the evening. A stopping failure stops; the sweep runs
 regardless.
 
-**Unverified - the quote check before the open.** The nine quotes were read at 11:32 ET
-with the session open. The evening runs the check at 08:30 ET on a delayed feed, and IB's
-delayed data may not quote pre-market. If it does not, the check blocks every evening,
-and the first honest reading is Tuesday 2026-09-08 at 21:30 JST.
+**Answered 2026-09-10 - the feed quotes before the bell.** The fourth pass read its nine
+quotes with the session open and could not say whether the delayed feed quotes pre-market,
+which would have blocked every evening. At 09:02 ET the delayed feed passed fifteen of
+fifteen and realtime fourteen (the paper campaign log has the row).
 
 ### 22:30-00:30 JST - the execution window
 
@@ -162,10 +196,13 @@ CLEAR`, each instrument on its own line. While orders are denied the sweep runs 
 evening's last step; once they are enabled it is the 00:30 command, and `day sweep` is
 that command, built before it is needed.
 
-**GAP - nothing alerts.** The playbook makes alerting a limb of the kill switch and a
-gate for unattended paper. No code in this repository notifies anyone of anything.
-`failure_injection` proves the system notices; it does not prove the operator is told.
-The operator is asleep in ninety minutes.
+**Closed 2026-09-10 - the operator is told.** The fourth pass found that nothing alerted.
+The day now raises a WARNING on a failed step and the sweep a CRITICAL on an order it cannot
+confirm, through Pushover, and a CRITICAL demands acknowledgement
+([ADR-0023](decisions/0023-a-critical-alert-demands-acknowledgement.md)). One nobody received
+halts the host ([ADR-0028](decisions/0028-an-undelivered-critical-halts-the-host.md)). On
+this dev box no notifier is configured, so the fifth pass's three alerts printed *NOT
+delivered* and the latch, which only an undelivered CRITICAL engages, stayed released.
 
 ### Next morning - the After checklist
 
@@ -230,10 +267,14 @@ account's real buying-power behaviour.
 - ~~Should `run_activation --all` run the morning too?~~ **Answered:** no - the morning
   and the evening are separated by the vendor's publication lag and by the operator's
   sleep, and `day` makes each one command without merging them.
-- How does a `next_close` trigger become a live order? The deferral is now visible; the
-  execution of it is not designed.
-- What is the smallest alerting path that satisfies the playbook - a phone push on a
-  handful of conditions is probably enough, and probably an evening's work.
-- Does the delayed feed quote before the open? Tuesday answers it.
+- ~~How does a `next_close` trigger become a live order?~~ **Now a decision:** the roadmap
+  row *How a triggered next-close entry is placed in its session* carries a recommendation,
+  and it waits on a frozen candidate either way.
+- ~~What is the smallest alerting path that satisfies the playbook?~~ **Built 2026-09-10:**
+  Pushover, acknowledgement on CRITICAL, and a halt when one is not delivered.
+- ~~Does the delayed feed quote before the open?~~ **Yes, 2026-09-10:** fifteen of fifteen at
+  09:02 ET.
+- Should an append that finds a refused vendor close run the patch itself when the store can
+  price the session? The fifth pass did it by hand in two commands; the VM's morning cannot.
 - ~~When orders are enabled, the sweep becomes its own phase at 00:30 JST~~ - `day sweep`
   exists; on an early close it runs by 03:00 JST at the latest, not a moment later.

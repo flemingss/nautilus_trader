@@ -136,6 +136,25 @@ def test_the_strategy_is_configured_for_the_broker_instrument() -> None:
     assert str(strategy.config.bar_type) == f"{BROKER_ID}-{BAR_SPEC}"
 
 
+def test_a_live_strategy_does_not_subscribe_to_broker_bars() -> None:
+    # Since the 2026-09-09 subscriptions the broker answers a daily-bar subscription. Its
+    # bar reached on_bar before the warm-up in every activation on 2026-09-11, and one
+    # arriving after it would decide on a bar the replay never sees. The catalog is the
+    # live session's only bar source.
+    assert build_strategy(ACTIVATION, BROKER_ID).config.subscribe_bars is False
+
+
+def test_a_research_strategy_still_subscribes() -> None:
+    # A replay's bars arrive through the subscription; without it no fold would trade.
+    strategy = ACTIVATION.setup.factory(
+        dict(ACTIVATION.parameters),
+        instrument_id=CATALOG_EQUITY.id,
+        bar_type=broker_bar_type(CATALOG_EQUITY.id),
+        risk_registry=None,
+    )
+    assert strategy.config.subscribe_bars is True
+
+
 def test_the_strategy_carries_the_activations_own_parameters() -> None:
     # The activation's seeded identity, not a holdout's frozen set: reading frozen
     # parameters into a live run is a promotion, and a promotion is a reviewed diff.
