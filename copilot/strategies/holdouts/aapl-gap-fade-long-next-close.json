@@ -221,15 +221,25 @@
     "verdict_then": "pass",
     "verdict_under_adr_0024": "insufficient_evidence",
     "evidence": {
-      "effective_trades": "102.2",
+      "series": "net R per trade, in signal order",
+      "mean_r": "0.035130",
+      "effective_trades": "102.3",
       "concurrency": "1.000000",
       "block_trades": 5,
       "confidence": "0.90",
-      "lower_r": "-0.125983",
-      "upper_r": "0.208740",
-      "standard_error_r": "0.103355",
+      "lower_r": "-0.140466",
+      "upper_r": "0.195071",
+      "standard_error_r": "0.103262",
       "score_in_standard_errors": "0.34"
     },
-    "what_it_does_not_change": "The owner's decision was 'revise', which is what an unresolved result warrants. The gate could not say so; the owner said it anyway. Nothing is reopened: the holdout is spent under ADR-0021 whichever of the three verdicts it returned."
+    "what_it_does_not_change": "The owner's decision was 'revise', which is what an unresolved result warrants. The gate could not say so; the owner said it anyway. Nothing is reopened: the holdout is spent under ADR-0021 whichever of the three verdicts it returned.",
+    "corrected": {
+      "on": "2026-09-10",
+      "what": "The interval first written here, [-0.125983, +0.208740] with standard error 0.103355 and 102.2 effective trades, was bootstrapped on the gross series while the score beside it was net. Recomputed on the net series from the same snapshot, reproducing 111 trades at +0.035130 R exactly. The verdict under ADR-0024 is unchanged.",
+      "gross_interval_as_first_written": [
+        "-0.125983",
+        "0.208740"
+      ]
+    }
   }
 }
