@@ -993,6 +993,40 @@ fn cancel_all_orders_emits_no_events_when_client_not_ready() {
     assert!(rx.try_recv().is_err(), "expected no events");
 }
 
+#[rstest]
+fn global_cancel_on_cancel_all_is_opt_in() {
+    // It reaches every open order on the account, beyond the command's instrument, so only a
+    // client that exists to sweep the account turns it on.
+    assert!(!InteractiveBrokersExecutionClientConfig::default().global_cancel_on_cancel_all);
+
+    let config = InteractiveBrokersExecutionClientConfig::builder()
+        .global_cancel_on_cancel_all(true)
+        .build();
+    assert!(config.global_cancel_on_cancel_all);
+}
+
+#[rstest]
+fn cancel_all_orders_with_global_cancel_emits_no_events_when_client_not_ready() {
+    let (mut client, mut rx, _cache) = create_test_execution_client();
+    client.config.global_cancel_on_cancel_all = true;
+    let cmd = CancelAllOrders::new(
+        client.core.trader_id,
+        Some(client.core.client_id),
+        StrategyId::from("S-001"),
+        create_test_stock_instrument(),
+        None,
+        UUID4::new(),
+        UnixNanos::default(),
+        None,
+        None,
+    );
+
+    // No connection, so no global cancel is attempted and nothing is emitted
+    client.cancel_all_orders(cmd).unwrap();
+
+    assert!(rx.try_recv().is_err(), "expected no events");
+}
+
 fn create_test_execution_data(
     order_id: i32,
     execution_id: &str,

@@ -18,8 +18,10 @@ from copilot.live.alerting import ReceiptLog
 from copilot.live.alerting import Severity
 from copilot.live.halt import OPERATOR
 from copilot.live.halt import UNACKNOWLEDGED_CRITICAL
+from copilot.live.halt import UNDELIVERED_CRITICAL
 from copilot.live.halt import Latch
 from copilot.live.halt import engage
+from copilot.live.halt import engaged_automatically
 from copilot.live.halt import orders_allowed
 from copilot.live.halt import read_latch
 from copilot.live.halt import release
@@ -182,6 +184,38 @@ def test_a_critical_still_retrying_or_unreadable_is_left_outstanding(
 
     assert read_latch(tmp_path / "HALT.json") is None
     assert receipts.outstanding() == {"r-3": "sweep STILL WORKING"}
+
+
+def test_an_unreadable_receipt_log_is_said_not_raised_and_not_read_as_empty(tmp_path: Path) -> None:
+    """
+    Audit F2: the check runs first in every ``day`` phase and must not stop the sweep.
+    """
+    path = tmp_path / "receipts.jsonl"
+    path.mkdir()
+
+    lines = check_acknowledgements(
+        ReceiptLog(path),
+        lambda r: _state(r, expired=True),
+        latch_path=tmp_path / "HALT.json",
+    )
+
+    assert len(lines) == 1
+    assert "cannot be read" in lines[0]
+    assert read_latch(tmp_path / "HALT.json") is None
+
+
+@pytest.mark.parametrize(
+    ("trigger", "automatic"),
+    [
+        (OPERATOR, False),
+        (UNACKNOWLEDGED_CRITICAL, True),
+        (UNDELIVERED_CRITICAL, True),
+        ("unknown", True),
+    ],
+)
+def test_only_an_operator_latch_is_one_somebody_knows_about(trigger: str, automatic: bool) -> None:
+    assert engaged_automatically(Latch("id", "t", trigger, "r", "h")) is automatic
+    assert engaged_automatically(None) is False
 
 
 def test_only_a_delivered_alert_with_a_receipt_is_remembered(tmp_path: Path) -> None:

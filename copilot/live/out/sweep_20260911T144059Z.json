@@ -1,0 +1,72 @@
+{
+  "run_at": "2026-09-11T14:40:59.041543+00:00",
+  "account": "DUT067974",
+  "instruments": [
+    "AAPL=STK.SMART",
+    "EEM=STK.SMART",
+    "GLDM=STK.SMART",
+    "HYG=STK.SMART",
+    "MSFT=STK.SMART",
+    "SCHX=STK.SMART",
+    "SPY=STK.SMART",
+    "TLT=STK.SMART",
+    "XLF=STK.SMART"
+  ],
+  "swept": true,
+  "found": {
+    "AAPL=STK.SMART": [
+      "O-20260911-143256-001-000-1"
+    ]
+  },
+  "acknowledged": [],
+  "never_acknowledged": {
+    "AAPL=STK.SMART": [
+      "O-20260911-143256-001-000-1"
+    ]
+  },
+  "verdict": "STILL WORKING",
+  "exit_code": 1,
+  "censuses": [
+    {
+      "open": {
+        "AAPL=STK.SMART": [
+          "O-20260911-143256-001-000-1"
+        ]
+      },
+      "elsewhere": [],
+      "account": "IB-DUT067974"
+    },
+    {
+      "open": {
+        "AAPL=STK.SMART": [
+          "O-20260911-143256-001-000-1"
+        ]
+      },
+      "elsewhere": [],
+      "account": "IB-DUT067974"
+    },
+    {
+      "open": {
+        "AAPL=STK.SMART": [
+          "O-20260911-143256-001-000-1"
+        ]
+      },
+      "elsewhere": [],
+      "account": "IB-DUT067974"
+    },
+    {
+      "open": {
+        "AAPL=STK.SMART": [
+          "O-20260911-143256-001-000-1"
+        ]
+      },
+      "elsewhere": [],
+      "account": "IB-DUT067974"
+    }
+  ],
+  "alert": {
+    "severity": "CRITICAL",
+    "title": "sweep STILL WORKING",
+    "outcome": "NOT delivered (no notifier configured: export PUSHOVER_TOKEN and PUSHOVER_USER_KEY to deliver alerts; halt latch 4fa491f4 engaged: nobody can acknowledge an undelivered CRITICAL)"
+  }
+}

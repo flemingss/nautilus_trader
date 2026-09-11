@@ -259,6 +259,53 @@ def test_an_undeliverable_deadline_is_refused(retry, expire, match):
         PushoverNotifier("t", "u", retry_seconds=retry, expire_seconds=expire)
 
 
+def test_a_blank_deadline_setting_is_the_default_and_no_problem():
+    settings = alerting.alert_settings(
+        {alerting.RETRY_SECONDS_ENV: "", alerting.EXPIRE_SECONDS_ENV: " "},
+    )
+
+    assert settings == alerting.AlertSettings()
+
+
+def test_a_valid_deadline_setting_is_kept():
+    settings = alerting.alert_settings(
+        {alerting.RETRY_SECONDS_ENV: "60", alerting.EXPIRE_SECONDS_ENV: "1800"},
+    )
+
+    assert (settings.retry_seconds, settings.expire_seconds, settings.problems) == (60, 1800, ())
+
+
+@pytest.mark.parametrize(
+    ("environ", "named"),
+    [
+        ({alerting.RETRY_SECONDS_ENV: "two minutes"}, "not a whole number"),
+        ({alerting.EXPIRE_SECONDS_ENV: "10800"}, "more than 50 retries"),
+        ({alerting.RETRY_SECONDS_ENV: "10"}, "at least 30"),
+    ],
+)
+def test_a_deadline_setting_that_would_not_work_falls_back_and_says_so(environ, named):
+    """
+    Audit F2: these raised inside every ``day`` phase, before the phase did anything.
+    """
+    settings = alerting.alert_settings(environ)
+
+    assert (settings.retry_seconds, settings.expire_seconds) == (
+        alerting.DEFAULT_RETRY_SECONDS,
+        alerting.DEFAULT_EXPIRE_SECONDS,
+    )
+    assert any(named in problem for problem in settings.problems)
+    assert "default deadline is in force" in settings.problems[-1]
+
+
+def test_a_bad_deadline_setting_does_not_stop_the_transport_being_built(capsys):
+    notifier = notifier_from_environment({**CONFIGURED, alerting.RETRY_SECONDS_ENV: ""})
+    assert isinstance(notifier, PushoverNotifier)
+
+    notifier = notifier_from_environment({**CONFIGURED, alerting.EXPIRE_SECONDS_ENV: "10800"})
+    assert isinstance(notifier, PushoverNotifier)
+    assert "alert deadline setting" in capsys.readouterr().err
+
+
 def test_the_default_deadline_is_within_pushover_limits():
     PushoverNotifier("t", "u")  # the constructor is the check; it refuses a bad deadline
 
@@ -297,6 +344,26 @@ def test_an_unacknowledged_alert_is_outstanding_until_it_expires(monkeypatch):
 
     payload["expired"] = 1
     assert PushoverNotifier("t", "u").receipt_status("r").outstanding is False
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [URLError("unreachable"), TimeoutError("slow"), "not json"],
+)
+def test_a_receipt_that_cannot_be_read_is_unknown_not_an_exception(monkeypatch, capsys, failure):
+    """
+    Audit F2: ``day`` reads receipts first, and a Pushover outage raised before the sweep.
+    """
+
+    def unreadable(*_: object, **__: object) -> _Response:
+        if isinstance(failure, str):
+            return _Response(failure)
+        raise failure
+
+    monkeypatch.setattr(alerting, "urlopen", unreadable)
+
+    assert receipt_status(PushoverNotifier("t", "u"), "rcpt-1") is None
+    assert "stays outstanding" in capsys.readouterr().err
 
 
 def test_a_transport_without_receipts_says_unknown_rather_than_acknowledged():
@@ -403,6 +470,112 @@ def test_a_notifier_that_raises_becomes_a_failed_delivery():
 
     assert delivery.delivered is False
     assert "kaboom" in delivery.detail
+
+
+# ---------------------------------------------------------- a CRITICAL nobody received
+
+
+class _Undelivered:
+    name = "down"
+
+    def send(self, alert: Alert) -> Delivery:
+        return Delivery(alert=alert, delivered=False, notifier="down", detail="URLError: down")
+
+
+def test_an_undelivered_critical_is_escalated_and_the_delivery_says_how():
+    """
+    Audit F3: it was printed and forgotten - no receipt, no latch, nothing from the day.
+    """
+    escalated: list[Delivery] = []
+    alerter = Alerter(
+        _Undelivered(),
+        on_undelivered_critical=lambda d: (escalated.append(d), "halt latch ab12 engaged")[1],
+    )
+
+    delivery = alerter.critical("sweep STILL WORKING", "b")
+
+    assert [d.alert.title for d in escalated] == ["sweep STILL WORKING"]
+    assert delivery.delivered is False
+    assert "URLError: down" in delivery.detail
+    assert "halt latch ab12 engaged" in delivery.detail
+
+
+def test_a_raising_notifier_on_a_critical_is_escalated_too():
+    class _Exploding:
+        name = "exploding"
+
+        def send(self, alert: Alert) -> Delivery:
+            raise RuntimeError("kaboom")
+
+    escalated: list[str] = []
+    Alerter(
+        _Exploding(),
+        on_undelivered_critical=lambda d: (escalated.append("x"), "x")[1],
+    ).critical(
+        "t",
+        "b",
+    )
+
+    assert escalated == ["x"]
+
+
+def test_only_an_undelivered_critical_is_escalated(monkeypatch):
+    escalated: list[str] = []
+    hook = lambda d: (escalated.append(str(d.alert.severity)), "noted")[1]  # noqa: E731
+
+    Alerter(_Undelivered(), on_undelivered_critical=hook).warning("w", "b")
+    Alerter(_notifier(monkeypatch, _Recorder()), on_undelivered_critical=hook).critical("c", "b")
+
+    assert escalated == []
+
+
+def test_an_escalation_that_raises_does_not_take_the_session_down():
+    def hook(_delivery: Delivery) -> str:
+        raise OSError("disk full")
+
+    delivery = Alerter(_Undelivered(), on_undelivered_critical=hook).critical("t", "b")
+
+    assert delivery.delivered is False
+    assert "escalation raised OSError: disk full" in delivery.detail
+
+
+def test_an_alerter_from_the_environment_halts_on_an_undelivered_critical(tmp_path, capsys):
+    """
+    With no transport configured every CRITICAL is undelivered, so it engages the latch.
+    """
+    from copilot.live.halt import UNDELIVERED_CRITICAL
+    from copilot.live.halt import read_latch
+
+    latch_path = tmp_path / "HALT.json"
+    alerter = alerter_from_environment(
+        {},
+        receipts_path=tmp_path / "receipts.jsonl",
+        latch_path=latch_path,
+    )
+
+    delivery = alerter.critical("sweep UNCONFIRMED", "b")
+
+    latch = read_latch(latch_path)
+    assert latch is not None
+    assert latch.trigger == UNDELIVERED_CRITICAL
+    assert "sweep UNCONFIRMED" in latch.reason
+    assert latch.latch_id in delivery.detail
+    assert alerter.warning("w", "b").delivered is False
+    assert read_latch(latch_path) == latch, "a WARNING nobody received halts nothing"
+
+
+def test_a_malformed_receipt_line_is_skipped_not_raised(tmp_path, capsys):
+    from copilot.live.alerting import ReceiptLog
+
+    path = tmp_path / "receipts.jsonl"
+    path.write_text(
+        '["not", "an", "object"]\n'
+        '{"event": "sent"}\n'
+        '{"event": "sent", "receipt": "r-1", "title": "t"}\n',
+    )
+
+    assert ReceiptLog(path).outstanding() == {"r-1": "t"}
+    assert capsys.readouterr().err.count("unreadable receipt line") == 2
 
 
 def test_the_severity_helpers_set_the_severity(monkeypatch):

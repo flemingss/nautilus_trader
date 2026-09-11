@@ -49,9 +49,24 @@ def test_a_complete_environment_passes_and_names_what_is_missing_otherwise() -> 
     assert all(f.ok for f in check_environment(COMPLETE) if f.level == REQUIRED)
 
     without = {k: v for k, v in COMPLETE.items() if k != PUSHOVER_TOKEN_ENV}
-    (env, _heartbeat) = check_environment(without)
+    env = check_environment(without)[0]
     assert env.ok is False
     assert PUSHOVER_TOKEN_ENV in env.detail
+
+
+def test_an_alert_deadline_pushover_would_refuse_fails_the_host() -> None:
+    """
+    Audit F2: it raised inside every phase; now it falls back, and the host check says so.
+    """
+    findings = {f.name: f for f in check_environment(COMPLETE)}
+    assert findings["alert deadline"].ok
+
+    bad = {
+        f.name: f for f in check_environment({**COMPLETE, "COPILOT_ALERT_EXPIRE_SECONDS": "10800"})
+    }
+    assert bad["alert deadline"].ok is False
+    assert bad["alert deadline"].level == REQUIRED
+    assert "default deadline is in force" in bad["alert deadline"].detail
 
 
 def test_a_missing_heartbeat_warns_rather_than_fails() -> None:

@@ -27,7 +27,9 @@ It is also the consumer
 [ADR-0023](../docs/decisions/0023-a-critical-alert-demands-acknowledgement.md) left
 without one: ``--check-acknowledgements`` reads every recorded ``CRITICAL`` receipt, and one
 that expired unacknowledged engages the latch. ``copilot.live.day`` runs that check first,
-on every phase, so an alert nobody answered on Friday night halts Monday's evening.
+on every phase, so an alert nobody answered on Friday night halts Monday's evening. The
+check cannot stop the phase that runs it: an unreachable transport leaves a receipt
+outstanding, and an unreadable log is reported, not raised.
 
 """
 
@@ -90,12 +92,23 @@ def check_acknowledgements(
     Settle outstanding ``CRITICAL`` receipts, halting for any that expired unanswered.
 
     Returns one line per receipt settled. A receipt the transport cannot read back - no
-    credentials, or a transport without receipts - stays outstanding rather than being
-    treated as either answer.
+    credentials, a transport without receipts, or one that is unreachable - stays
+    outstanding rather than being treated as either answer. A receipt log that cannot be
+    read returns one line saying so, and settles nothing: it is not read as empty, and it
+    does not stop the phase that asked.
 
     """
     lines: list[str] = []
-    for receipt, title in receipts.outstanding().items():
+    try:
+        outstanding = receipts.outstanding()
+    except OSError as e:
+        return [
+            (
+                f"WARNING: the receipt log {receipts.path} cannot be read ({e}); an "
+                "unanswered CRITICAL cannot engage the halt until it can"
+            ),
+        ]
+    for receipt, title in outstanding.items():
         state = read_receipt(receipt)
         if state is None or state.outstanding:
             continue

@@ -136,9 +136,20 @@ def test_the_pre_open_phase_exercises_alerting():
 
     assert step.module == "copilot.live.alerting"
     assert "--send-test" in step.argv
-    assert "critical" in step.argv, "CRITICAL is what exercises the receipt and the deadline"
+    assert "critical" in step.argv, "by hand, CRITICAL exercises the receipt and the deadline"
     assert step.stops_on_failure is False
     assert step.places_orders is False
+
+
+def test_the_timer_fired_self_test_does_not_page_every_morning():
+    """
+    Audit F5: the weekday timer sent an emergency-priority page every trading day.
+    """
+    scheduled = phases(CONNECTION, PRICE, scheduled=True)
+    step = next(s for s in phase_named("pre-open", scheduled).steps if s.name == "alerting")
+
+    assert "warning" in step.argv
+    assert "critical" not in step.argv
 
 
 def test_the_plan_says_it_is_not_the_operating_day(capsys, monkeypatch):

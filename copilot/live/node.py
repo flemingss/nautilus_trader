@@ -146,21 +146,7 @@ def build_paper_node(
         .add_exec_client(
             None,
             InteractiveBrokersExecutionClientFactory(),
-            InteractiveBrokersExecutionClientConfig(
-                host=session.host,
-                port=session.port,
-                client_id=session.exec_client_id,
-                account_id=session.account_id,
-                connection_timeout=CONNECTION_TIMEOUT_SECS,
-                # `reqAllOpenOrders` rather than `reqOpenOrders`, which returns only orders
-                # bound to the calling client id. Every run here uses a fresh client id, so
-                # the default left each one blind to every order any previous run had placed
-                # - and the sweep tool reported "nothing working" while orders were live at
-                # the broker. An operations tool that cannot see the account's orders is
-                # worse than none.
-                fetch_all_open_orders=True,
-                instrument_provider=provider,
-            ),
+            execution_client_config(session, provider),
             # Orders route by the instrument's venue, and the execution client does not
             # register under one - the account reads `IB-DUT067974` while instruments
             # resolve on `SMART`. Without this the engine finds no client for `SMART` and
@@ -196,6 +182,38 @@ def build_paper_node(
         )
     apply_order_switch(risk_engine, orders_enabled=allowed)
     return node, risk_engine
+
+
+def execution_client_config(
+    session: PaperSession,
+    provider: InteractiveBrokersInstrumentProviderConfig,
+) -> InteractiveBrokersExecutionClientConfig:
+    """
+    Return the execution client's configuration for one session.
+    """
+    return InteractiveBrokersExecutionClientConfig(
+        host=session.host,
+        port=session.port,
+        client_id=session.exec_client_id,
+        account_id=session.account_id,
+        connection_timeout=CONNECTION_TIMEOUT_SECS,
+        # `reqAllOpenOrders` rather than `reqOpenOrders`, which returns only orders
+        # bound to the calling client id. Every run here uses a fresh client id, so
+        # the default left each one blind to every order any previous run had placed
+        # - and the sweep tool reported "nothing working" while orders were live at
+        # the broker. An operations tool that cannot see the account's orders is
+        # worse than none.
+        fetch_all_open_orders=True,
+        # Seeing an order is not being able to cancel it: IB ignores a cancel for an
+        # order another client id placed, without an error. Measured 2026-09-11, two
+        # sweeps' cancels over twenty-two minutes left a stranded order working, and one
+        # cancel from the placing client id cleared it. So a session that exists only to
+        # cancel sends IB's global cancel too, which reaches every open order on the
+        # account however it was placed. No other session may: it reaches past the
+        # command's instrument.
+        global_cancel_on_cancel_all=session.cancels_only,
+        instrument_provider=provider,
+    )
 
 
 CANCEL_DEADLINE_SECS = 120
@@ -261,5 +279,6 @@ __all__ = [
     "SupportsTradingState",
     "apply_order_switch",
     "build_paper_node",
+    "execution_client_config",
     "wait_for_settlement",
 ]

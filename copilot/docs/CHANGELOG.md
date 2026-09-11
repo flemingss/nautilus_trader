@@ -2,6 +2,54 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, audit batch A: the sweep cancels, and a CRITICAL nobody received halts
+
+The four rows [`AUDIT_2026-09-11.md`](AUDIT_2026-09-11.md) put before the VM's supervised day.
+Fixing the first found two more defects in the same limb, both closed here.
+
+### Fixed
+
+- **The sweep starts before it settles** (F1). It waited on *nothing outstanding*, true before
+  its strategy had looked, so the node was stopped during startup and cancelled nothing from
+  2026-09-10. It now waits for the strategy to start, then for acknowledgements, says so when
+  the cancel node never starts (a WARNING even on a clear broker), and files
+  `live/out/sweep_<stamp>.json` - before this no sweep kept a record.
+- **A retried census no longer crashes the sweep** (F1b, found live). The second census reused
+  the first's client ids a minute later and TWS refused them with IB 326; the startup failure
+  raised out of the census and the sweep ended with no verdict, alert or record. Each census has
+  its own id pair, and a node that fails to start is an unread census.
+- **The sweep's cancels reach every open order on the account** (F1c, found live). IB ignores a
+  cancel for an order another client id placed, with no error: two sweeps from 822 left an order
+  placed by 832 working for twenty-two minutes, and one cancel from 832 cleared it. A
+  cancels-only session now sends IB's global cancel,
+  [ADR-0029](decisions/0029-the-sweep-cancels-with-the-global-cancel.md) - an option added to
+  the IB adapter's execution client, off by default, registered in the delta. Until now the
+  sweep and the kill switch's cancel limb could remove only their own orders, which is none.
+- **The acknowledgement check cannot stop a phase** (F2). An unreachable or garbled receipt read
+  leaves the receipt outstanding; an unreadable receipt log is reported, not read as empty; a
+  deadline setting Pushover would refuse falls back to the default, says so, and fails the host
+  check; and `day` runs the check behind a boundary so a failure it did not foresee still lets
+  the phase - which may be the sweep - run.
+- **An undelivered CRITICAL halts the host** (F3). The alerter built for sessions engages the
+  halt latch (trigger `undelivered_critical`), and while a latch no operator engaged holds, the
+  morning withholds its heartbeat so the watcher off the host raises the alarm Pushover could
+  not. [ADR-0028](decisions/0028-an-undelivered-critical-halts-the-host.md).
+- **The timer-fired self-test is a WARNING** (F5). The weekday pre-open timer was sending an
+  emergency-priority page every morning; the CRITICAL drill is the hand-run stand-up stage three.
+
+### Measured
+
+- Against paper TWS, 10:32 to 10:58 ET: the strand, both sweeps, the four censuses on four id
+  pairs, the undelivered CRITICAL engaging latch `4fa491f4`, the native cancel and the clear
+  census are in the campaign log. `live/out/sweep_20260911T144059Z.json` is the first sweep
+  record.
+- **The global cancel, verified twice** on the rebuilt extension, 11:06 and 11:12 ET: an order
+  placed by client 832 was gone at the first census from 822, `BROKER CLEAR`, with no error line
+  after the per-order path was skipped under the global cancel
+  (`live/out/sweep_20260911T150722Z.json`, `sweep_20260911T151241Z.json`).
+- 1,074 overlay tests and the IB adapter's 422 Rust tests pass; the rebuild peaked at 6.2 GiB
+  under an 11 GiB cap.
+
 ## 2026-09-11, the audit of 2026-09-06 to 2026-09-11
 
 Twenty-nine pull requests, #55 to #83, read whole against the charter, the ADRs and the

@@ -53,9 +53,15 @@ severities). A step that fails raises a ``WARNING`` naming the step and what its
 protects; a stopped day is the safe direction, so it does not wake anyone. The sweep raises
 its own ``CRITICAL`` - an order that may still be working is the case that must - so the day
 does not repeat it. Every morning that runs ends with an ``INFO`` summary, and every morning,
-run or not, pings ``COPILOT_HEARTBEAT_URL`` for a watcher off the host. A scheduled run
-refuses without alerting credentials: an unattended run nobody is told about when it breaks
-is exactly what the playbook forbids.
+run or not, pings ``COPILOT_HEARTBEAT_URL`` for a watcher off the host - **except while a
+latch no operator engaged holds**: a CRITICAL that expired unanswered or never arrived means
+nobody knows, and the missed beat is how the watcher, which does not depend on Pushover,
+finds out. A scheduled run refuses without alerting credentials: an unattended run nobody is
+told about when it breaks is exactly what the playbook forbids.
+
+The acknowledgement check runs first in every phase and **cannot stop it**. Until 2026-09-11
+a Pushover outage with one CRITICAL outstanding raised there, before the session check and
+before the sweep (``docs/AUDIT_2026-09-11.md``, F2).
 
 What the day needs exported, checked first
 ------------------------------------------
@@ -100,6 +106,8 @@ from copilot.data.calendar import trading_days
 from copilot.live.alerting import Alert
 from copilot.live.alerting import Severity
 from copilot.live.alerting import alerter_from_environment
+from copilot.live.halt import Latch
+from copilot.live.halt import engaged_automatically
 from copilot.live.halt import read_latch
 from copilot.live.heartbeat import ping
 from copilot.live.kill import acknowledgement_check
@@ -700,7 +708,7 @@ def notify(
         delivery = alerter.send(alert)
         print(f"  alert {alert.severity} {alert.title!r}: {delivery.outcome}")
     if phase == MORNING:
-        beat()
+        beat(read_latch())
 
 
 def _check_the_halt() -> None:
@@ -708,20 +716,43 @@ def _check_the_halt() -> None:
     Settle outstanding CRITICAL receipts, and say plainly if this host is halted.
 
     First, on every phase and every day a timer fires, so an alert nobody answered on a
-    Friday night engages the latch before Monday's evening builds a node.
+    Friday night engages the latch before Monday's evening builds a node. Nothing here may
+    stop the phase: a check that cannot finish says so and the phase runs, because the phase
+    may be the sweep.
 
     """
-    for line in acknowledgement_check():
+    try:
+        lines = acknowledgement_check()
+    except Exception as e:  # noqa: BLE001 - the check must never stop the phase that sweeps
+        lines = [
+            (
+                f"WARNING: the acknowledgement check failed ({type(e).__name__}: {e}); this "
+                "phase runs, and an unanswered CRITICAL cannot engage the halt until the check "
+                "succeeds"
+            ),
+        ]
+    for line in lines:
         print(line)
     latch = read_latch()
     if latch is not None:
         print(describe_latch(latch) + "\n")
 
 
-def beat() -> None:
+def beat(latch: Latch | None) -> None:
     """
-    Ping the heartbeat URL and say what happened.
+    Ping the heartbeat URL and say what happened, unless the host halted itself unheard.
+
+    A latch no operator engaged means a CRITICAL expired unanswered or never arrived, so
+    Pushover has already failed to reach anyone. The watcher off the host is the one
+    path left, and withholding the beat is how it is used.
+
     """
+    if engaged_automatically(latch):
+        print(
+            f"  heartbeat withheld: halt latch {latch.latch_id} was engaged by {latch.trigger}, "
+            "so the watcher's missed beat is the alert that could not be sent",
+        )
+        return
     _, line = ping(os.environ.get(HEARTBEAT_URL_ENV, "").strip())
     print(f"  {line}")
 
@@ -826,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
             print(f"nothing to do: {nothing}")
             if args.phase == MORNING:
                 # A quiet weekend must still read as alive to the watcher.
-                beat()
+                beat(read_latch())
             return 0
 
     missing = required_environment(

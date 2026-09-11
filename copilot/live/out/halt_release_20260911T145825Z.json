@@ -1,0 +1,8 @@
+{
+  "latch_id": "4fa491f4",
+  "engaged_at": "2026-09-11T14:54:51.747057+00:00",
+  "trigger": "undelivered_critical",
+  "reason": "CRITICAL alert 'sweep STILL WORKING' could not be delivered (no notifier configured: export PUSHOVER_TOKEN and PUSHOVER_USER_KEY to deliver alerts)",
+  "host": "LAPTOP-IQ0QFSE1",
+  "released_at": "2026-09-11T14:58:25.071395+00:00"
+}
