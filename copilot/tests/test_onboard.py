@@ -22,17 +22,26 @@ from datetime import UTC
 from datetime import date
 from datetime import datetime
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
+from copilot.data.onboard import MAX_ACTIONS
 from copilot.data.onboard import TARGET_REJECTION_RATIO
 from copilot.data.onboard import Coverage
 from copilot.data.onboard import Step
 from copilot.data.onboard import _readable
 from copilot.data.onboard import _recommended_start
 from copilot.data.onboard import _unusable_tail
+from copilot.data.onboard import apply_steps
+from copilot.data.onboard import fillable_holes
+from copilot.data.onboard import main
 from copilot.data.onboard import preferred_boundary
+from copilot.data.onboard import register
+from copilot.data.onboard import registration_name
 from copilot.data.onboard import report
+from copilot.strategies.activations import Lifecycle
+from copilot.strategies.activations import load_activation
 from copilot.validation.holdout import MAX_HOLDOUT_SHARE
 from copilot.validation.holdout import MIN_HOLDOUT_SHARE
 
@@ -227,3 +236,176 @@ class TestReport:
         sessions, and a survey that promises a backfill will pass must be right.
         """
         assert Decimal("0.02") > TARGET_REJECTION_RATIO
+
+
+BACKFILL = ("copilot.data.backfill", "--symbols", "IJH")
+VALIDATE = ("copilot.strategies.validate", "--changed", "--write")
+
+
+class TestApply:
+    """
+    Free stages taken in order, and the three places it must stop.
+    """
+
+    def test_takes_free_stages_in_order_until_every_stage_is_done(self) -> None:
+        states = iter(
+            [
+                [
+                    Step("catalog history", done=False, detail="nothing stored", action=BACKFILL),
+                    Step("validated", done=False, detail="unfiled", action=VALIDATE),
+                ],
+                [
+                    Step("catalog history", done=True, detail="2430 bars"),
+                    Step("validated", done=False, detail="unfiled", action=VALIDATE),
+                ],
+                [
+                    Step("catalog history", done=True, detail="2430 bars"),
+                    Step("validated", done=True, detail="1/1 current"),
+                ],
+            ],
+        )
+        ran: list[tuple[str, ...]] = []
+
+        code = apply_steps("IJH.ARCX", lambda: next(states), lambda a: ran.append(a) or 0)
+
+        assert code == 0
+        assert ran == [BACKFILL, VALIDATE]
+
+    def test_stops_at_a_deliberate_act_without_running_anything_after_it(self) -> None:
+        """
+        The metered pull and the repin are the operator's; a stage after them is not
+        reached.
+        """
+        steps = [
+            Step("spread calibrated", done=False, detail="absent", command="databento --pull"),
+            Step("validated", done=False, detail="unfiled", action=VALIDATE),
+        ]
+        ran: list[tuple[str, ...]] = []
+
+        code = apply_steps("IJH.ARCX", lambda: steps, lambda a: ran.append(a) or 0)
+
+        assert code == 1
+        assert ran == []
+
+    def test_stops_when_a_stage_fails(self) -> None:
+        steps = [Step("catalog history", done=False, detail="nothing stored", action=BACKFILL)]
+        ran: list[tuple[str, ...]] = []
+
+        code = apply_steps("IJH.ARCX", lambda: steps, lambda a: ran.append(a) or 3)
+
+        assert code == 3
+        assert ran == [BACKFILL]
+
+    def test_a_stage_that_ran_and_is_still_not_done_is_not_repeated(self) -> None:
+        """
+        A patch whose store fills nothing would otherwise run until the action cap.
+        """
+        steps = [
+            Step("holes filled", done=False, detail="13 missing", action=("copilot.data.patch",)),
+        ]
+        ran: list[tuple[str, ...]] = []
+
+        code = apply_steps("GLDM.ARCX", lambda: steps, lambda a: ran.append(a) or 0)
+
+        assert code == 1
+        assert len(ran) == 1
+        assert len(ran) < MAX_ACTIONS
+
+    def test_without_a_store_no_hole_is_counted_fillable(self, tmp_path: Path) -> None:
+        assert fillable_holes("unused", "GLDM", "ARCX", None) is None
+        assert fillable_holes("unused", "GLDM", "ARCX", tmp_path / "absent") is None
+
+
+TEMPLATE = """\
+strategy = "gap_reversal"
+lifecycle = "PAPER"
+note = "the template"
+
+[instrument]
+symbol = "SPY"
+venue = "ARCX"
+
+[parameters]
+long = true
+entry_timing = "next_close"
+atr_period = 14
+stop_atr = "1.5"
+
+[validation]
+train_bars = 252
+test_bars = 126
+holdout_start = "2022-01-01"
+"""
+
+
+class TestRegister:
+    """
+    A registry file written from a template, which the registry itself must load.
+    """
+
+    @pytest.fixture
+    def registry(self, tmp_path: Path) -> Path:
+        (tmp_path / "spy-gap-fade-long-next-close.toml").write_text(TEMPLATE)
+        return tmp_path
+
+    def test_writes_a_research_activation_like_the_template(self, registry: Path) -> None:
+        path = register(
+            "IJH.ARCX",
+            like="spy-gap-fade-long-next-close",
+            holdout_start="2023-04-01",
+            minimum_effect_r="0",
+            directory=registry,
+        )
+
+        written = load_activation(path)
+        template = load_activation(registry / "spy-gap-fade-long-next-close.toml")
+        assert path.name == "ijh-gap-fade-long-next-close.toml"
+        assert (written.symbol, written.venue) == ("IJH", "ARCX")
+        assert written.lifecycle is Lifecycle.RESEARCH
+        assert written.strategy == template.strategy
+        assert written.parameters == template.parameters
+        assert written.validation.train_bars == template.validation.train_bars
+        assert written.validation.holdout_start == "2023-04-01"
+        assert written.validation.minimum_effect_r == "0"
+
+    def test_a_registration_is_written_once(self, registry: Path) -> None:
+        kwargs = {
+            "like": "spy-gap-fade-long-next-close",
+            "holdout_start": "2023-04-01",
+            "minimum_effect_r": "0",
+            "directory": registry,
+        }
+        register("IJH.ARCX", **kwargs)  # type: ignore[arg-type]
+        with pytest.raises(FileExistsError, match="written once"):
+            register("IJH.ARCX", **kwargs)  # type: ignore[arg-type]
+
+    def test_an_empty_effect_size_is_not_a_declaration(self, registry: Path) -> None:
+        with pytest.raises(ValueError, match="zero is, empty is not"):
+            register(
+                "IJH.ARCX",
+                like="spy-gap-fade-long-next-close",
+                holdout_start="2023-04-01",
+                minimum_effect_r="",
+                directory=registry,
+            )
+        assert not (registry / "ijh-gap-fade-long-next-close.toml").exists()
+
+    def test_a_template_not_named_for_its_symbol_is_refused(self) -> None:
+        with pytest.raises(ValueError, match="nothing to swap"):
+            registration_name("gap-template", "SPY", "IJH")
+
+
+class TestCommandLine:
+    """
+    The flag combinations that would otherwise skip a stage or an effect-size
+    declaration.
+    """
+
+    def test_apply_without_the_survey_is_refused(self) -> None:
+        assert main(["--symbols", "IJH.ARCX", "--apply"]) == 2
+
+    def test_like_without_an_effect_size_is_refused(self) -> None:
+        assert main(["--symbols", "IJH.ARCX", "--like", "spy-gap-fade-long-next-close"]) == 2
+
+    def test_register_needs_every_input(self) -> None:
+        assert main(["--register", "IJH.ARCX", "--like", "spy-gap-fade-long-next-close"]) == 2
