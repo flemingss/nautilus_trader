@@ -205,10 +205,11 @@ wide margin; the rate falls with volume, so using the top of the table is the
 conservative read.
 
 ``exchange_per_share`` is Reg NMS Rule 610(c)'s access fee cap. The SEC cut it from
-0.003 to 0.001 in September 2024, but the compliance date has been pushed to
-**2026-11-02** and SIFMA was still asking for a further extension in May 2026. Today it
-is 0.003, so that is what is charged. See [ADR-0025] for the crossover this creates and
-for why the November date is a revisit trigger rather than something to preempt.
+0.003 to 0.001 in September 2024, and has since deferred compliance twice by exemptive
+order: to 2026-11-02, then on 2026-06-11 to the first business day of November 2027,
+**2027-11-01**. Today it is 0.003, so that is what is charged. See [ADR-0025] for the
+crossover this creates and for why the compliance date is a revisit trigger rather than
+something to preempt.
 
 [ADR-0025]: ../docs/decisions/0025-commission-is-modelled-per-plan.md
 

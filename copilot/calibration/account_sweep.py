@@ -56,6 +56,10 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from copilot.calibration.cost_impact import scored_trades
+from copilot.calibration.cost_model import FIXED
+from copilot.calibration.cost_model import SCHEDULE
+from copilot.calibration.cost_model import TIERED
+from copilot.calibration.cost_model import CommissionSchedule
 from copilot.calibration.cost_model import CostModel
 from copilot.calibration.cost_model import commission
 from copilot.calibration.cost_model import split_factor
@@ -141,14 +145,19 @@ def reprice(
     symbol: str,
     risk_budget: Decimal,
     bps_per_side: Decimal,
+    schedule: CommissionSchedule = SCHEDULE,
 ) -> Priced:
     """
-    Re-price scored trades at a different risk budget.
+    Re-price scored trades at a different risk budget, on one commission plan.
 
     Trades that cannot be sized at this budget are dropped from **both** the cost and
     the gross, because a position that is never opened earns nothing and costs nothing.
     Reporting them as zero-return trades would understate the edge; reporting the
     original gross beside the new cost would overstate it.
+
+    ``schedule`` defaults to the pinned plan. Naming another one prices the same trades on
+    the plan the account would be switched to, which is the comparison [ADR-0025] could not
+    make at the research sizing alone.
 
     """
     spread_total = Decimal(0)
@@ -171,7 +180,7 @@ def reprice(
         notional = resized * trade.entry_price
         real_shares = resized / split_factor(symbol, trade.opened_at)
         spread_total += 2 * (bps_per_side / 10_000) * notional / realised_risk
-        commission_total += 2 * commission(real_shares, notional) / realised_risk
+        commission_total += 2 * commission(real_shares, notional, schedule) / realised_risk
         gross_total += trade.r_multiple
         taken += 1
 
@@ -209,15 +218,31 @@ def sweep(
     symbol: str,
     bps_per_side: Decimal,
     risk_fraction: Decimal,
+    *,
     equities: Sequence[Decimal] = EQUITIES,
+    schedule: CommissionSchedule = SCHEDULE,
 ) -> list[tuple[Decimal, Priced]]:
     """
-    Price one symbol across account sizes at a fixed planned risk fraction.
+    Price one symbol across account sizes at a fixed planned risk fraction, on one plan.
     """
     return [
-        (equity, reprice(trades, symbol, equity * risk_fraction, bps_per_side))
+        (equity, reprice(trades, symbol, equity * risk_fraction, bps_per_side, schedule))
         for equity in equities
     ]
+
+
+PLAN_CHOICES = {
+    "pinned": (SCHEDULE,),
+    "fixed": (FIXED,),
+    "tiered": (TIERED,),
+    "both": (FIXED, TIERED),
+}
+"""
+What ``--plan`` prices.
+
+``pinned`` is the plan every verdict is charged at, and the default.
+
+"""
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -234,6 +259,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("activation", nargs="?", help="Activation name, or use --all")
     parser.add_argument("--all", action="store_true", help="Sweep every activation")
     add_catalog_argument(parser)
+    parser.add_argument(
+        "--plan",
+        choices=sorted(PLAN_CHOICES),
+        default="pinned",
+        help="Commission plan to price on (default: the pinned plan)",
+    )
     parser.add_argument("--write", action="store_true", help="File the report as JSON")
     args = parser.parse_args(argv)
 
@@ -244,10 +275,11 @@ def main(argv: list[str] | None = None) -> int:
     else:
         parser.error("name an activation or pass --all")
 
+    schedules = PLAN_CHOICES[args.plan]
     model = CostModel.from_snapshot()
     print(
-        f"Spread at {model.percentile} per side from {model.snapshot}, plus the IB "
-        f"schedule including its USD 1.00 per-order minimum.\n"
+        f"Spread at {model.percentile} per side from {model.snapshot}, plus "
+        f"{' and '.join(s.name for s in schedules)} including the per-order minimum.\n"
         f"Gross is the mean R of the trades that still size at each budget "
         f"(ADR-0009).\n",
     )
@@ -255,39 +287,28 @@ def main(argv: list[str] | None = None) -> int:
     report: dict[str, object] = {
         "run_at": datetime.now(tz=UTC).isoformat(),
         "cost_model": {"snapshot": model.snapshot, "percentile": model.percentile},
+        "plans": {schedule.name: schedule.describe() for schedule in schedules},
+        "pinned_plan": SCHEDULE.name,
         "activations": {},
     }
 
     for activation in activations:
         symbol = activation.symbol
+        # Scored once and priced per plan: the walk-forward does not depend on the plan,
+        # so running it twice would only double the wait.
         trades, _ = scored_trades(activation, args.catalog)
         bps = model.spread_bps_for(symbol)
-        entry: dict[str, object] = {"symbol": symbol, "scored_trades": len(trades), "by_risk": {}}
+        entry: dict[str, object] = {"symbol": symbol, "scored_trades": len(trades), "by_plan": {}}
 
-        for fraction in RISK_FRACTIONS:
-            rows = sweep(trades, symbol, bps, fraction)
-            crossing = crossing_equity(rows)
-            pct = f"{fraction * 100:.2f}%"
-            print(f"-- {activation.name}  risk {pct} of equity --")
-            print(
-                f"  {'equity':>10}{'budget':>9}{'taken':>8}{'unsized':>9}"
-                f"{'gross R':>10}{'spread R':>10}{'comm R':>9}{'net R':>10}",
-            )
-            for equity, priced in rows:
-                mark = "  <-- crosses" if crossing is not None and equity == crossing else ""
-                print(
-                    f"  {equity:>10,.0f}{priced.risk_budget:>9,.0f}{priced.trades_taken:>8}"
-                    f"{priced.trades_unsized:>9}{priced.gross_r:>10.4f}{priced.spread_r:>10.4f}"
-                    f"{priced.commission_r:>9.4f}{priced.net_r:>10.4f}{mark}",
+        for schedule in schedules:
+            by_risk: dict[str, object] = {}
+            for fraction in RISK_FRACTIONS:
+                rows = sweep(trades, symbol, bps, fraction, schedule=schedule)
+                by_risk[f"{fraction * 100:.2f}%"] = _print_rows(
+                    f"{activation.name}  {schedule.name}  risk {fraction * 100:.2f}% of equity",
+                    rows,
                 )
-            print(
-                f"  crosses zero at: "
-                f"{f'USD {crossing:,.0f}' if crossing else 'nowhere in the swept range'}\n",
-            )
-            entry["by_risk"][pct] = {
-                "crossing_equity": str(crossing) if crossing else None,
-                "rows": [{"equity": str(e), **p.as_record()} for e, p in rows],
-            }
+            entry["by_plan"][schedule.name] = {"by_risk": by_risk}
 
         report["activations"][activation.name] = entry
 
@@ -298,6 +319,33 @@ def main(argv: list[str] | None = None) -> int:
         path.write_text(json.dumps(report, indent=2) + "\n")
         print(f"filed {path}")
     return 0
+
+
+def _print_rows(title: str, rows: Sequence[tuple[Decimal, Priced]]) -> dict[str, object]:
+    """
+    Print one sweep's table and return its JSON form.
+    """
+    crossing = crossing_equity(rows)
+    print(f"-- {title} --")
+    print(
+        f"  {'equity':>10}{'budget':>9}{'taken':>8}{'unsized':>9}"
+        f"{'gross R':>10}{'spread R':>10}{'comm R':>9}{'net R':>10}",
+    )
+    for equity, priced in rows:
+        mark = "  <-- crosses" if crossing is not None and equity == crossing else ""
+        print(
+            f"  {equity:>10,.0f}{priced.risk_budget:>9,.0f}{priced.trades_taken:>8}"
+            f"{priced.trades_unsized:>9}{priced.gross_r:>10.4f}{priced.spread_r:>10.4f}"
+            f"{priced.commission_r:>9.4f}{priced.net_r:>10.4f}{mark}",
+        )
+    print(
+        f"  crosses zero at: "
+        f"{f'USD {crossing:,.0f}' if crossing else 'nowhere in the swept range'}\n",
+    )
+    return {
+        "crossing_equity": str(crossing) if crossing else None,
+        "rows": [{"equity": str(e), **p.as_record()} for e, p in rows],
+    }
 
 
 if __name__ == "__main__":

@@ -2,6 +2,53 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, the account sweep under both commission plans
+
+### Added
+
+- **`account_sweep --plan {pinned,fixed,tiered,both}`.** The sweep priced every budget on the
+  pinned plan only, so ADR-0025's comparison stopped at the research sizing of USD 1,000, the
+  one point where Fixed is cheaper. Trades are scored once and priced per plan. The default is
+  unchanged.
+
+### Measured
+
+- **Tiered cuts the equity at which an activation pays for itself to half or less**, at both
+  risk fractions, on every activation that crosses at all. Filed as
+  `calibration/out/account_sweep_20260911T203625Z.json`. Commission at USD 25,000 and 0.10% risk
+  is 0.081 to 0.091 R on Fixed and 0.031 to 0.042 R on Tiered.
+
+The equity, in USD, at which each activation's net expectancy first crosses zero:
+
+| Activation (next-close unless named) | Fixed, 0.10% | Tiered, 0.10% | Fixed, 0.25% | Tiered, 0.25% |
+| ------------------------------------ | ------------ | ------------- | ------------ | ------------- |
+| AAPL                                 | 25,000       | 10,000        | 10,000       | 5,000         |
+| GLDM                                 | 25,000       | 10,000        | 10,000       | 5,000         |
+| SPY                                  | 50,000       | 20,000        | 20,000       | 8,000         |
+| SPY signal-close                     | 50,000       | 20,000        | 20,000       | 8,000         |
+| XLF                                  | 50,000       | 20,000        | 20,000       | 8,000         |
+| AAPL signal-close                    | 50,000       | 20,000        | 20,000       | 8,000         |
+| MSFT                                 | 100,000      | 50,000        | 35,000       | 15,000        |
+| MSFT signal-close                    | 75,000       | 35,000        | 35,000       | 15,000        |
+| SCHX                                 | 100,000      | 50,000        | 35,000       | 15,000        |
+| EEM, HYG, TLT                        | nowhere      | nowhere       | nowhere      | nowhere       |
+
+These price the gross each walk-forward scored, so they say what commission does to a premise,
+not that any of them has an edge: the gap-fade family stays rejected (ADR-0026, ADR-0031). The
+switch to Tiered was already decided; this is the at-size evidence ADR-0025 lacked.
+
+### Changed
+
+- **The access fee cap's compliance date is 2027-11-01.** The SEC deferred Rule 610(c) again on
+  2026-06-11, by exemptive order, from 2026-11-02. `TIERED` still charges the 0.003 in force; its
+  docstring carries the new date, and the re-measure row moves to *Deferred by decision* with that
+  date as its trigger.
+
+### Regrouped
+
+- Open work is twenty-four items: nine ready to build, five waiting on the VM, two on the account,
+  two on a decision, one charter conflict, one on spend, five deferred.
+
 ## 2026-09-11, audit batch D: hygiene, and the audit closed
 
 ### Changed
