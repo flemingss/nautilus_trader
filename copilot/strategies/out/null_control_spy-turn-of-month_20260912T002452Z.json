@@ -1,0 +1,34 @@
+{
+  "activation": "spy-turn-of-month",
+  "instrument": "SPY.ARCX",
+  "run_at": "2026-09-12T00:24:52.934819+00:00",
+  "window": {
+    "first": "2005-01-03",
+    "last": "2021-12-31",
+    "sessions": 4280
+  },
+  "parameters": {
+    "atr_period": "14",
+    "hold_sessions": "3",
+    "long": "True",
+    "risk_budget": "1000",
+    "stop_atr": "1.5"
+  },
+  "cost_model": {
+    "snapshot": "spread_history_20260904T112723Z.json",
+    "percentile": "p95"
+  },
+  "min_scoreable_trades": 20,
+  "control": "random entry dates, matched count and holding rule",
+  "replicates": 500,
+  "scored": 500,
+  "skipped": 0,
+  "seed": 20260911,
+  "significance": "0.10",
+  "premise_mean_r": "0.1378071299640615197886429944",
+  "premise_trades": 203,
+  "null_mean_r": "0.037457",
+  "percentile": "96.00",
+  "p_value": "0.0419",
+  "reading": "beats_chance"
+}

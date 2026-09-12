@@ -1,0 +1,22 @@
+strategy = "turn_of_month"
+lifecycle = "RESEARCH"
+note = "EXP-2026-001, the first premise after the gap-fade family was rejected. Holds SPY from the close of a month's last session through the close of the third session of the next, on the institutional flow argument in the experiment card. The fold geometry is deliberately not the gap fade's: one hold a month puts about twelve trades in a 252-bar window, so a 252-bar training window under a 20-trade floor would make every parameter set ineligible and the gate would return the absence of a verdict rather than a verdict - the V1-31 failure RESEARCH.md warns about. Four years of training, one year of test."
+
+[instrument]
+symbol = "SPY"
+venue = "ARCX"
+
+[parameters]
+long = true
+atr_period = 14
+hold_sessions = 3
+stop_atr = "1.5"
+risk_budget = "1000"
+
+[validation]
+train_bars = 1008
+test_bars = 252
+purge_bars = 5
+min_trades = 20
+fold_min_trades = 6
+minimum_effect_r = "0"
