@@ -185,8 +185,12 @@ FIXED = CommissionSchedule(
     max_pct=Decimal("0.01"),
 )
 """
-The plan the paper account is measurably on, confirmed 2026-09-10 by a one-share trip
+The plan the account was on until 2026-09-12, confirmed 2026-09-10 by a one-share trip
 paying the USD 1.00 minimum twice.
+
+Kept because every verdict filed before the switch was charged at it, so a number in the
+record cannot be read without the schedule that produced it. It is no longer the pin.
+
 """
 
 TIERED = CommissionSchedule(
@@ -217,20 +221,35 @@ something to preempt.
 
 SCHEDULES = {schedule.name: schedule for schedule in (FIXED, TIERED)}
 
-SCHEDULE = FIXED
+SCHEDULE = TIERED
 """
 The plan every verdict is charged at, pinned the way the spread snapshot is.
 
-It stays ``FIXED`` until the account is actually switched, because a verdict priced on a
-plan the broker is not running is a verdict about a different account. [ADR-0025] records
-the switch and the revalidation it requires.
+**Moved from ``FIXED`` to ``TIERED`` on 2026-09-12**, when the owner switched the account
+to IBKR Pro with stocks on Tiered. [ADR-0025] approved the switch, measured it under both
+plans before it was made, and required exactly this sequence: the pin moves in a commit of
+its own, and every verdict is recomputed against it. A verdict priced on a plan the broker
+is not running is a verdict about a different account, which is why the pin followed the
+account rather than leading it.
+
+The revalidation filed with that ADR found **0 of 12 verdicts change their majority** under
+Tiered, so nothing here was expected to flip; the gain is in live execution, where Tiered
+is 2.7x cheaper at the charter's USD 20 risk per trade.
+
+One thing is measured rather than assumed, and has not been re-measured yet: the paper
+account's *empirical* charge. The 2026-09-10 one-share round trip paid the USD 1.00
+minimum twice, which is how Fixed was confirmed. The next shakedown round trip should pay
+about USD 0.35 plus the pass-through instead, and the campaign log carries that as an open
+check.
 
 """
 
-# Retained under their old names because three modules and the verdict record read them.
-COMMISSION_PER_SHARE = SCHEDULE.per_share
-COMMISSION_MIN = SCHEDULE.minimum
-COMMISSION_MAX_PCT = SCHEDULE.max_pct
+# Retired 2026-09-12. These were kept as aliases of the pinned schedule for callers that
+# read a bare per-share rate, and ADR-0025 said they would go when a second plan appeared.
+# It has, and under Tiered a bare `per_share` is actively wrong: the plan passes exchange
+# and clearing through separately, so a caller charging 0.0035 a share would understate by
+# the pass-through. Nothing outside this module reads them any more, so rather than leave a
+# constant that is only safe on one plan, the schedule is the only way to ask.
 
 
 class UncalibratedSymbolError(KeyError):

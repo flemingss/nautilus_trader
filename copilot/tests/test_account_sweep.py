@@ -27,6 +27,7 @@ from copilot.calibration.account_sweep import sweep
 from copilot.calibration.cost_model import FIXED
 from copilot.calibration.cost_model import SCHEDULE
 from copilot.calibration.cost_model import TIERED
+from copilot.calibration.cost_model import commission
 
 
 @dataclass(frozen=True)
@@ -76,10 +77,13 @@ def test_commission_in_r_falls_as_the_account_grows() -> None:
     dollars are at risk. This is the whole mechanism the sweep exists to expose, and the
     two ends of it are different schedules rather than one scaled.
 
-    At a USD 20 budget the position is 20 shares, per-share comes to 10 cents, and the
-    USD 1.00 minimum binds: a round trip costs USD 2 against USD 20 at risk, 0.10 R. At
-    USD 10,000 it is 10,000 shares, per-share comes to USD 50, the minimum is
-    irrelevant, and the same round trip is 0.01 R.
+    At a USD 20 budget the position is 20 shares and the per-order minimum binds; at USD
+    10,000 it is 10,000 shares, per-share dominates and the minimum is irrelevant. The
+    mechanism is the same on any plan, so the expectation is charged from the pinned
+    schedule rather than written out: on Fixed these were exactly 0.10 R and 0.01 R, a
+    clean factor of ten, and on Tiered the small end is cheaper because its minimum is
+    USD 0.35 rather than USD 1.00. What must hold either way is that the small account
+    pays **several times** the large one for the same trade.
 
     """
     trades = [trade("1.00")]
@@ -87,9 +91,13 @@ def test_commission_in_r_falls_as_the_account_grows() -> None:
     small = reprice(trades, "SPY", Decimal(20), Decimal(2))
     large = reprice(trades, "SPY", Decimal(10_000), Decimal(2))
 
-    assert small.commission_r == Decimal("0.10")
-    assert large.commission_r == Decimal("0.01")
-    assert small.commission_r == large.commission_r * 10
+    # 20 shares at 100 against USD 20 of risk, and 10,000 against USD 10,000.
+    assert small.commission_r == 2 * commission(Decimal(20), Decimal(2_000)) / Decimal(20)
+    assert large.commission_r == 2 * commission(
+        Decimal(10_000),
+        Decimal(1_000_000),
+    ) / Decimal(10_000)
+    assert small.commission_r > large.commission_r * 3
 
 
 def test_a_trade_too_small_to_size_leaves_both_the_cost_and_the_gross() -> None:

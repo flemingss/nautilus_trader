@@ -2,6 +2,43 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-12, the pinned commission plan is Tiered
+
+The owner switched the account to IBKR Pro with stocks on Tiered, which closes the half of
+[ADR-0025](decisions/0025-commission-is-modelled-per-plan.md) that was never the repository's to
+do. The pin followed the account rather than leading it, because a verdict priced on a plan the
+broker is not running is a verdict about a different account.
+
+### Changed
+
+- **`SCHEDULE` is `TIERED`.** ADR-0025 required exactly this sequence: measure under both plans
+  first, then move the pin in a commit of its own, then recompute every verdict. The
+  revalidation filed with that ADR found 0 of 12 verdicts change their majority on the plan
+  alone; the gain is in live execution, where Tiered is 2.7x cheaper at the charter's USD 20 of
+  risk per trade.
+- **`FIXED` stays in the module and stops being the pin.** Every verdict filed before today was
+  charged at it, and a number in the record cannot be read without the schedule that produced it.
+
+### Removed
+
+- **`COMMISSION_PER_SHARE`, `COMMISSION_MIN` and `COMMISSION_MAX_PCT`.** ADR-0025 kept these as
+  aliases of the pinned schedule and said they would go when a second caller of a non-default
+  plan appeared. They go now for a stronger reason: **under Tiered a bare per-share rate is
+  wrong**, because the plan passes exchange and clearing through separately, so a caller charging
+  0.0035 a share would understate the cost by the pass-through. Nothing outside the module read
+  them any more, so the schedule is now the only way to ask. A test pins that the pinned plan
+  charges a pass-through at all.
+
+### Open
+
+- **No verdict may be quoted until it is refiled.** Two changes landed today that each change
+  every R - this pin and the stressed gap allowance - so the 28 filed verdicts, both pooled runs,
+  the attribution and the turn-of-month premise are in a unit the code no longer computes. One
+  re-file carries both.
+- **The plan is confirmed by account settings, not yet by the tape.** Fixed was proven on
+  2026-09-10 by a one-share round trip paying the USD 1.00 minimum twice. The next shakedown
+  round trip should pay about USD 0.35 plus the pass-through; the campaign log carries the check.
+
 ## 2026-09-12, sizing carries the stressed gap allowance
 
 The playbook has sized as `q = floor(R / (abs(P - S) + g))` since it was adopted, and
