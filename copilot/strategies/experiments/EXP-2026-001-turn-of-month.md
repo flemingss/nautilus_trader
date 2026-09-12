@@ -109,6 +109,15 @@ gapped stop loses more than the one R the denominator implies**. The roadmap car
 own row; this card's results are read knowing it, and the failure tests below include the regimes
 where gaps cluster.
 
+**Built 2026-09-12, and this paragraph is kept as written rather than corrected.** The allowance
+now exists: `g` is measured per symbol over development bars and pinned in
+`copilot/risk/gap_stress.py`, at 1.23 ATR for SPY, and `size_from_levels` divides by
+`abs(P - S) + g`. So the two rows above are no longer what a stop-out and a gapped stop cost in
+this experiment's unit: on the same fixture they are about **0.55 R and 2.75 R**, because one R is
+now the stressed loss rather than the stop distance. The measurement in the table is unchanged and
+correct for the basis it was taken on; what it implied about the code is not, and the refiled
+section below carries the numbers that supersede it.
+
 **About 200 trades.** One hold a month over 2005-2021 is roughly 204, and SPY's filed
 walk-forwards put the standard error of a per-trade mean near 0.048 R at 418 trades, so near
 0.07 R here: a 90% interval roughly 0.11 R either side. **An edge below about 0.1 R per trade
@@ -190,11 +199,61 @@ it says for a thin sample: extend the history, forward test for longer, simplify
 reject. It does not offer spending the holdout on it, and under ADR-0033 there is no carved
 holdout left to spend: this premise earns its out-of-sample evidence forward.
 
+**The interval reading above was superseded on 2026-09-12, and not by new evidence.** Sizing
+and the commission plan both changed that day, so every R in this card is in a different unit
+than it was written in. The section below records what the same 144 trades say on the corrected
+basis. The 2026-09-11 numbers are left exactly as filed, because a card that quietly restates
+its own results is not a record.
+
+## Refiled 2026-09-12: all three gates pass, and the third one turned on cost
+
+Two changes landed that day, each of which rescales every R in this experiment: sizing began
+carrying the playbook's stressed gap allowance (`g` = 1.23 ATR on SPY, measured on development
+bars), and the pinned commission plan moved to IBKR Pro Tiered because the account did. The
+same trades, re-scored:
+
+| Gate                                                 | 2026-09-11, Fixed and no `g`    | 2026-09-12, Tiered and `g`          |
+| ---------------------------------------------------- | ------------------------------- | ----------------------------------- |
+| Walk-forward majority, after costs                   | Pass: 9 of 12, +0.100541 R      | **Pass: 10 of 12, +0.074665 R**     |
+| Net evidence interval above the declared bar of zero | **Fail**: [-0.003868, 0.194246] | **Pass**: [0.016124, 0.129851]      |
+| Null control, one-sided p at or below 0.10           | Pass: p 0.0419, percentile 96.0 | **Pass**: p 0.0419, percentile 96.0 |
+
+**The null control did not move, and that is the correct answer rather than a coincidence.** It
+is a rank test: the seed is the same, so the same 500 sets of entry dates were drawn, and
+rescaling R divides the premise and every replicate by the same factor. A change to sizing or
+costs therefore *cannot* move the percentile, and if it had, the control would have been
+measuring something other than the entry dates. The absolute means fell together - the premise
+from +0.137807 to +0.075057, the null from +0.037457 to +0.019937.
+
+**The interval gate flipped because costs fell, not because evidence grew.** There are still 144
+scored trades and the dollar edge is unchanged. Two things moved in its favour: Tiered charges
+less than Fixed at this sizing, and the allowance makes every position smaller, so each trade
+pays less spread and commission per unit of R. Measured as mean over interval half-width, the
+signal-to-noise rose from 1.015 to 1.313, where most other activations moved by less than 0.03 -
+so this is not purely the larger denominator, but it is also not new information.
+
+**Attribution still finds no alpha.** On the refiled record the four-factor fit reads
+`bracket_disagrees`, alpha -0.014327 with the exit session included and -0.057072 with it
+excluded, and the gross +0.080925 R decomposes into +0.002250 cash, **+0.086909 factor exposure**
+and -0.008234 alpha. The premise is long the market and paid for it, exactly as ADR-0026 predicts
+for a timing premise on a broad index ETF - which is why the null control and not alpha is this
+card's timing gate.
+
+**What this does and does not license.** Three declared gates pass, on a bar of zero predeclared
+before any of this. It does **not** make the premise a frozen candidate: the gate that changed
+turned on a commission switch, the carved holdout is compromised rather than spendable
+([ADR-0033](../../docs/decisions/0033-the-turn-of-month-single-use-test-is-forward.md)), and
+attribution finds the return is market exposure. The evidence that would advance it is forward
+evidence, on the paper clock, which is what ADR-0033 already decided.
+
 ## Trial ledger
 
-| #   | Date       | What was run                                                                              | Result                                                                                                                                                          |
-| --- | ---------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1   | 2026-09-11 | Descriptive look at turn-of-month windows against all four-session windows, SPY 2005-2021 | +8.7 bps, t = 0.61; recorded as a look                                                                                                                          |
-| 2   | 2026-09-11 | Walk-forward, development window only, six declared points, 12 folds                      | 9 of 12 folds passed, +0.100541 R per trade, interval [-0.003868, +0.194246], **straddles zero**                                                                |
-| 3   | 2026-09-11 | Null control, **run over the holdout by mistake**, 500 replicates                         | +0.1080 R against a null of +0.0381, p 0.0838; **void**, and a look at the holdout                                                                              |
-| 4   | 2026-09-11 | Null control on the carved window, 2005-2021, 500 replicates, seed 20260911               | +0.137807 R over 203 trades against a null of +0.037457; percentile 96.0, p 0.0419, `beats_chance` (`out/null_control_spy-turn-of-month_20260912T002452Z.json`) |
+| #   | Date       | What was run                                                                              | Result                                                                                                                                                                              |
+| --- | ---------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | 2026-09-11 | Descriptive look at turn-of-month windows against all four-session windows, SPY 2005-2021 | +8.7 bps, t = 0.61; recorded as a look                                                                                                                                              |
+| 2   | 2026-09-11 | Walk-forward, development window only, six declared points, 12 folds                      | 9 of 12 folds passed, +0.100541 R per trade, interval [-0.003868, +0.194246], **straddles zero**                                                                                    |
+| 3   | 2026-09-11 | Null control, **run over the holdout by mistake**, 500 replicates                         | +0.1080 R against a null of +0.0381, p 0.0838; **void**, and a look at the holdout                                                                                                  |
+| 4   | 2026-09-11 | Null control on the carved window, 2005-2021, 500 replicates, seed 20260911               | +0.137807 R over 203 trades against a null of +0.037457; percentile 96.0, p 0.0419, `beats_chance` (`out/null_control_spy-turn-of-month_20260912T002452Z.json`)                     |
+| 5   | 2026-09-12 | Walk-forward refiled under the stressed gap allowance and the Tiered pin                  | 10 of 12 folds, +0.074665 R per trade, 144 trades, interval [+0.016124, +0.129851], **clears zero** (`verdicts/spy-turn-of-month_20260912T020544Z.json`)                            |
+| 6   | 2026-09-12 | Null control refiled on the same basis, 500 replicates, same seed 20260911                | +0.075057 R over 203 trades against a null of +0.019937; percentile 96.0, p 0.0419, `beats_chance`, 0 skipped (`out/null_control_spy-turn-of-month_20260912T022541Z.json`)          |
+| 7   | 2026-09-12 | Attribution refiled on the same basis                                                     | alpha -0.014327 [-0.035231, +0.004269] with the exit session in, -0.057072 with it out, `bracket_disagrees`; gross +0.080925 = cash +0.002250 + factors +0.086909 + alpha -0.008234 |
