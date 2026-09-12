@@ -143,12 +143,24 @@ failure the whole holdout mechanism exists to prevent.
 
 The fix is in `null_run.development_bars`, which now carves through the gate's own
 `carve(bars, holdout_start=...)`, and in `test_null_run.py`, which pins the window for an
-activation with no boundary of its own. What remains is a decision that is not the code's to
-make: **whether this activation's holdout is now spent.** The aggregate was seen - a mean and a
-percentile over the full span, not per-trade holdout detail - so the honest options are to treat
-the holdout as consumed (ADR-0021's reasoning: a look is a look), or to re-pin this activation's
-boundary earlier and carry the 2022-2025 span as development data for it. **Do not spend this
-holdout until that is decided.**
+activation with no boundary of its own.
+
+**Resolved 2026-09-12 as [ADR-0033](../../docs/decisions/0033-the-turn-of-month-single-use-test-is-forward.md):
+this premise's single-use test is forward, not carved.** The owner concurred with re-pinning the
+boundary earlier, and the arithmetic refused it. The charter's band reserves 15-20% of the
+window, which over SPY's 5,283 in-window bars admits boundaries from 2021-11-01 (19.80%) to
+2022-11-01 (15.03%) and no others. Every holdout any of them carves lies wholly inside
+2005-01-03 to 2025-12-31 - the span the void run read - so moving the pin earlier enlarges the
+holdout with bars that were *also* in the aggregate and buys no unread history. A re-pin would
+have produced a holdout that reads as pristine in the record and is not.
+
+So the carved holdout is **compromised**: not spent in ADR-0021's sense, because nothing was
+decided from it and nothing was selected against it, but never to be quoted as a clean
+out-of-sample pass. The boundary stays at the shared pin. The single-use test is the forward
+span, which `carve` clips and the void run provably never touched - 174 bars already in the
+catalog past 2026-01-01, and the paper clock from 2026-09-15. `spend_holdout` now refuses this
+activation **by name**: today ADR-0013 refuses it anyway as a `signal_close` activation, but that
+protection is accidental and disappears the day this premise is re-expressed on intraday bars.
 
 ## Results, as of 2026-09-11
 
@@ -175,7 +187,8 @@ yet.
 
 So the premise is **not rejected and not advanced**. What the playbook offers here is exactly what
 it says for a thin sample: extend the history, forward test for longer, simplify the claim, or
-reject. It does not offer spending the holdout on it, and the holdout question is open anyway.
+reject. It does not offer spending the holdout on it, and under ADR-0033 there is no carved
+holdout left to spend: this premise earns its out-of-sample evidence forward.
 
 ## Trial ledger
 

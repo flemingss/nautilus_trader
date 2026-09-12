@@ -2,6 +2,37 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-12, the turn of the month's single-use test is forward
+
+### Decided
+
+- **[ADR-0033](decisions/0033-the-turn-of-month-single-use-test-is-forward.md): the carved
+  holdout is compromised, and this premise's single-use test is the forward span.** The owner
+  concurred with re-pinning the boundary earlier; the arithmetic refused it. The charter's
+  15-20% band admits boundaries only from 2021-11-01 (19.80% of SPY's 5,283 in-window bars) to
+  2022-11-01 (15.03%), and every holdout any of them carves lies wholly inside 2005-2025 - the
+  span the accidental run read - so an earlier pin enlarges the holdout with bars that were also
+  in that aggregate and buys no unread history. It would have produced a holdout that reads as
+  pristine and is not.
+- **What follows.** The boundary stays at the shared pin and nothing in the fold geometry or any
+  filed digest moves. The holdout is compromised rather than spent, since nothing was decided
+  from it and nothing was selected against it, and it may never be quoted as a clean
+  out-of-sample pass. The single-use test is the span `carve` clips and the run never touched:
+  174 catalog bars past 2026-01-01, and the paper clock from 2026-09-15. Forward testing at two
+  trades a month is a multi-year monitoring commitment, which is stated in the ADR rather than
+  discovered later.
+
+### Added
+
+- **`spend_holdout.HOLDOUT_LOOKED_AT`**, a named refusal for an activation whose holdout has
+  been seen. `spy-turn-of-month` is refused today for an unrelated reason - a `signal_close`
+  activation may not spend a holdout at all (ADR-0013) - and that protection is accidental: it
+  disappears the day the premise is re-expressed on intraday bars as `next_close`. The named
+  refusal is what survives that, and two tests pin it, including one asserting the ADR-0033
+  reason is not reachable only through the ADR-0013 one.
+- The guard is a table in the spend module rather than a `[validation]` field, because a field
+  would enter `identity_digest` and force twelve recomputes for a fact that changes no number.
+
 ## 2026-09-11, the turn of the month: measured, not advanced
 
 The first premise after the gap-fade family was rejected. EXP-2026-001, the card written before

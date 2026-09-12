@@ -48,3 +48,4 @@ merits; where one descends from a trade-copilot ADR, it says so and says what ch
 | [0030](0030-the-host-runs-one-broker-session-at-a-time.md)               | The paper host runs one broker session at a time, and tells someone when a unit dies            | Accepted   |
 | [0031](0031-evidence-and-attribution-after-the-audit.md)                 | Evidence and attribution, as corrected by the audit                                             | Accepted   |
 | [0032](0032-a-next-close-trigger-is-placed-as-a-marketable-day-limit.md) | A triggered next-close entry is placed as a marketable day limit, cancelled by 10:30            | Accepted   |
+| [0033](0033-the-turn-of-month-single-use-test-is-forward.md)             | The turn of the month's single-use test is forward, not carved                                  | Accepted   |
