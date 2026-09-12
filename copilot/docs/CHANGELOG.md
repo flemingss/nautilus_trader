@@ -2,6 +2,55 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-11, the turn of the month: measured, not advanced
+
+The first premise after the gap-fade family was rejected. EXP-2026-001, the card written before
+anything ran: [`strategies/experiments/EXP-2026-001-turn-of-month.md`](../strategies/experiments/EXP-2026-001-turn-of-month.md).
+
+### Added
+
+- **`copilot.strategies.turn_of_month`**: enter at the close of a month's last trading session,
+  exit at the close of the `hold_sessions`-th session after it or at an ATR stop. The trigger is a
+  calendar question asked of the exchange calendar, so it cannot read the future and a close fill
+  is honest. `entry_sessions` overrides the calendar, which is how the null control runs the same
+  rule on random dates.
+- **`copilot.strategies.null_run`**, the runner that points the control at a premise: the premise
+  once over its development window at its seeded parameters, then the same number of random entry
+  sessions drawn from the same window, scored through the same cost model.
+- **An activation, `spy-turn-of-month`**, with the fold geometry the premise needs - four years of
+  training, one year of test - because one hold a month puts about twelve trades in a 252-bar
+  window and the gap fade's 20-trade floor over it would make every parameter set ineligible.
+- **The experiment registry** the playbook has asked for since it was adopted, starting with this
+  card and its trial ledger.
+
+### Measured
+
+Development window only, 2005-01-03 to 2021-12-31.
+
+| Gate                              | Reading                                                                                      |
+| --------------------------------- | -------------------------------------------------------------------------------------------- |
+| Walk-forward majority after costs | **Pass**: 9 of 12 folds, +0.100541 R per trade, 144 trades                                   |
+| Net evidence interval above zero  | **Fail**: [-0.003868, +0.194246], straddles zero; 111.7 effective trades                     |
+| Null control, p at or below 0.10  | **Pass**: +0.137807 R over 203 trades against a null of +0.037457; percentile 96.0, p 0.0419 |
+
+**Not rejected and not advanced.** The entry dates earn about 0.14 R where random sessions earn
+0.04, and a gap that size arose in 21 of 500 draws; but 144 scored trades cannot resolve an edge
+near 0.1 R, which is the gate ADR-0024 exists for and the one this card predicted would bind.
+
+### Found
+
+- **The holdout was looked at by accident.** The control's first run carved on the activation's own
+  boundary, and this activation declares none, so `None` was read as "nothing withheld" and the run
+  covered 2005-2025. The record is deleted, the reading is void, the card records what was seen,
+  `development_bars` now carves through the gate's own call, and a test pins the window for an
+  activation with no boundary of its own. **Whether this activation's holdout is now spent is an
+  open decision**; it must not be spent until it is taken.
+- **Sizing carries no gap allowance.** Measured on the replay: a stop breached inside a session
+  fills at its trigger for exactly one R, and a session that gaps through it fills at the close -
+  five R on a 15-point gap against a 3-point stop. `RISK.md` sizes with a stressed per-share
+  allowance for exactly this and `size_from_levels` has none, so planned risk is understated by the
+  gap risk in every verdict filed so far. Now a ready row.
+
 ## 2026-09-11, the randomised-signal control
 
 ### Added

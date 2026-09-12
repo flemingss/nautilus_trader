@@ -383,6 +383,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "copilot/data/databento_audit.py" = ["T201"]
 "copilot/data/databento_probe.py" = ["T201"]
 "copilot/data/eodhd_probe.py" = ["T201"]
+"copilot/strategies/null_run.py" = ["T201"]
 "copilot/risk/sizing.py" = [
   "PLR0913",
 ] # position_size takes the playbook's sizing inputs by keyword; folding them into an object would hide which cap bound

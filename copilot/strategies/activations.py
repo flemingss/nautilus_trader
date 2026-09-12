@@ -44,6 +44,7 @@ from pathlib import Path
 from typing import Any
 
 from copilot.strategies import gap_reversal
+from copilot.strategies import turn_of_month
 from copilot.validation.insample import ParameterGrid
 
 
@@ -113,6 +114,12 @@ SETUPS: Mapping[str, SetupSpec] = {
         factory=gap_reversal.strategy_factory,
         warmup_bars=gap_reversal.WARMUP_BARS,
         axis_defaults=gap_reversal.AXIS_DEFAULTS,
+    ),
+    "turn_of_month": SetupSpec(
+        search_space=turn_of_month.SEARCH_SPACE,
+        factory=turn_of_month.strategy_factory,
+        warmup_bars=turn_of_month.WARMUP_BARS,
+        axis_defaults=turn_of_month.AXIS_DEFAULTS,
     ),
 }
 """
