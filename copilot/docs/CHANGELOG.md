@@ -2,6 +2,68 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-12, sizing carries the stressed gap allowance
+
+The playbook has sized as `q = floor(R / (abs(P - S) + g))` since it was adopted, and
+`size_from_levels` divided by the stop distance alone. So **every verdict filed before today
+understated planned risk by exactly the gap risk `g` exists to cover**, and all of them are now in
+the wrong unit.
+
+### Added
+
+- **`copilot.calibration.gap_history`**, which measures the adverse opening gap per symbol in
+  units of the ATR standing at the previous close, and files the evidence. **Development bars
+  only**: each symbol is carved at its activations' *earliest* holdout boundary first, because an
+  allowance fitted to holdout bars is a sizing basis that read the single-use test
+  ([ADR-0033](decisions/0033-the-turn-of-month-single-use-test-is-forward.md)). The percentile is
+  nearest-rank, so a pinned figure is a gap that actually happened rather than an interpolation
+  between two that did.
+- **`copilot.risk.gap_stress`**, the pinned table, from
+  `calibration/out/gap_stress_20260912T014515Z.json`. It lives under `risk/` deliberately:
+  `fingerprint.CODE_ROOTS` covers that directory, so changing an allowance moves the code digest
+  and forces a recompute, which it would not do from a new `calibration/` module.
+- **`risk_per_share(distance, gap_allowance)`** and `size_from_levels(..., gap_allowance=...)`.
+  Both the quantity and the recorded risk come from `abs(P - S) + g`.
+- **`gap_atr` on every activation**, because activation is data (ADR-0005) and a sizing input
+  belongs in the reviewable file beside the risk budget. `test_gap_stress.py` fails if a
+  declaration drifts from the measurement, which is what makes it safe to keep the number in two
+  places: the declaration is what runs, the measurement is what is true.
+
+### Measured
+
+Adverse next-session gap, in ATR units, nearest-rank p99 over development bars:
+
+| Symbol | `g`  | Symbol | `g`  | Symbol | `g`  |
+| ------ | ---- | ------ | ---- | ------ | ---- |
+| AAPL   | 1.34 | HYG    | 1.68 | SPY    | 1.23 |
+| EEM    | 1.89 | MSFT   | 1.11 | TLT    | 1.49 |
+| GLDM   | 1.63 | SCHX   | 1.50 | XLF    | 1.07 |
+
+**All but two exceed the 1.5-ATR stop the registry uses**, so a position stopped 1.5 ATR away can
+lose roughly twice that overnight. The spread is informative rather than noise: XLF, a domestic
+sector fund, gaps least; EEM, which prices a night of foreign trading at its open, gaps most. A
+single global allowance would have been wrong for both.
+
+### Changed, deliberately
+
+- **An ordinary stop-out now costs a fraction of one R.** R is the stressed per-share loss, and a
+  clean stop-out is not the stressed case. On the turn-of-month fixture the stop is 1.5 ATR and
+  the allowance 1.23, so a stop-out costs 3.00 of a 5.46 risk, about 0.55 R, and the gap that
+  used to cost five R now costs about 2.75. The allowance does not prevent that loss - nothing
+  can - it makes the position small enough that the loss is on the scale R claims to measure.
+  Two tests were renamed and re-asserted to state the new arithmetic rather than the old.
+- **A strategy whose activation declares no allowance refuses to trade**, recording
+  `no_gap_allowance`. A silent zero would be the defect itself.
+- **An old session record replays as a refusal.** `compare.py` rebuilds the offline decision from
+  the parameters the session *recorded*, and records filed before today carry no `gap_atr`, so
+  comparing one now reports a disagreement that is this change and not a defect. Records filed
+  from here carry it, because the live builder passes the activation's own parameters.
+
+### Still to do
+
+Every filed verdict is in the old unit. The re-file is held until the pinned commission plan
+moves to Tiered, because both change every R and one recomputation should carry both.
+
 ## 2026-09-12, the turn of the month's single-use test is forward
 
 ### Decided

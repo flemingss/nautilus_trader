@@ -14,6 +14,7 @@ import pytest
 
 from copilot.risk.sizing import position_size
 from copilot.risk.sizing import risk_amount
+from copilot.risk.sizing import risk_per_share
 from copilot.risk.sizing import size_from_levels
 from copilot.risk.sizing import stop_distance
 from copilot.validation.types import Direction
@@ -212,3 +213,83 @@ class TestMaxNotional:
         )
         assert qty == Decimal(3)
         assert risk == Decimal("1.50")
+
+
+class TestTheStressedGapAllowance:
+    """
+    The playbook's ``g``: a stop is not a loss guarantee, so sizing cannot assume it is.
+    """
+
+    def test_the_allowance_shrinks_the_position(self):
+        # Same budget and stop; the allowance widens the per-share loss being divided by.
+        without = position_size(risk_budget=Decimal(1000), distance=Decimal(4))
+        with_allowance = size_from_levels(
+            direction=Direction.LONG,
+            entry_price=Decimal(100),
+            stop_price=Decimal(96),
+            risk_budget=Decimal(1000),
+            gap_allowance=Decimal(2),
+        )
+        assert without == Decimal(250)
+        assert with_allowance[0] == Decimal(166)
+
+    def test_the_recorded_risk_is_the_stressed_per_share_loss(self):
+        quantity, risk = size_from_levels(
+            direction=Direction.LONG,
+            entry_price=Decimal(100),
+            stop_price=Decimal(96),
+            risk_budget=Decimal(1000),
+            gap_allowance=Decimal(2),
+        )
+        # 4 of stop plus 2 of allowance, times the floored quantity.
+        assert risk == quantity * Decimal(6)
+        assert risk <= Decimal(1000)
+
+    def test_an_ordinary_stop_out_costs_less_than_one_r(self):
+        """
+        The intended consequence, and the reason every filed R moves.
+
+        R is what the trade can lose in the stressed case. A stop-out at the stop is not
+        that case, so it costs a fraction of R - and a gap through the stop costs about
+        one. Before the allowance, the stop-out was one R and the gap was unbounded.
+
+        """
+        quantity, risk = size_from_levels(
+            direction=Direction.LONG,
+            entry_price=Decimal(100),
+            stop_price=Decimal(96),
+            risk_budget=Decimal(1000),
+            gap_allowance=Decimal(2),
+        )
+        at_the_stop = quantity * Decimal(4)
+        through_the_stop = quantity * Decimal(6)
+
+        assert at_the_stop / risk < Decimal(1)
+        assert through_the_stop / risk == Decimal(1)
+
+    def test_zero_allowance_is_the_unstressed_arithmetic(self):
+        levels = {
+            "direction": Direction.LONG,
+            "entry_price": Decimal(100),
+            "stop_price": Decimal(96),
+            "risk_budget": Decimal(1000),
+        }
+        assert size_from_levels(**levels) == size_from_levels(**levels, gap_allowance=Decimal(0))
+
+    def test_an_allowance_cannot_make_an_invalid_stop_sizeable(self):
+        # The stop is on the wrong side, so the distance is zero and stays unsizeable.
+        quantity, risk = size_from_levels(
+            direction=Direction.LONG,
+            entry_price=Decimal(100),
+            stop_price=Decimal(105),
+            risk_budget=Decimal(1000),
+            gap_allowance=Decimal(5),
+        )
+        assert (quantity, risk) == (Decimal(0), Decimal(0))
+
+    def test_a_negative_allowance_is_refused(self):
+        with pytest.raises(ValueError, match="cannot be negative"):
+            risk_per_share(distance=Decimal(4), gap_allowance=Decimal(-1))
+
+    def test_the_per_share_loss_is_the_stop_plus_the_allowance(self):
+        assert risk_per_share(distance=Decimal(4), gap_allowance=Decimal("1.23")) == Decimal("5.23")

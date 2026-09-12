@@ -1,0 +1,153 @@
+{
+  "measured_at": "2026-09-12T01:45:15.574510+00:00",
+  "atr_period": 14,
+  "percentile": "0.99",
+  "min_samples": 250,
+  "quantum": "0.01",
+  "symbols": {
+    "AAPL": {
+      "symbol": "AAPL",
+      "venue": "XNAS",
+      "holdout_start": "2022-01-01",
+      "development_bars": 4280,
+      "samples": 4265,
+      "median_atr": "0.000",
+      "p95_atr": "0.567",
+      "p99_atr": "1.335",
+      "worst_atr": "4.911",
+      "allowance_atr": "1.34",
+      "range": [
+        "2005-01-03",
+        "2021-12-31"
+      ]
+    },
+    "EEM": {
+      "symbol": "EEM",
+      "venue": "ARCX",
+      "holdout_start": "2024-07-01",
+      "development_bars": 1883,
+      "samples": 1868,
+      "median_atr": "0.000",
+      "p95_atr": "1.191",
+      "p99_atr": "1.880",
+      "worst_atr": "3.420",
+      "allowance_atr": "1.89",
+      "range": [
+        "2017-01-03",
+        "2024-06-28"
+      ]
+    },
+    "GLDM": {
+      "symbol": "GLDM",
+      "venue": "ARCX",
+      "holdout_start": "2024-10-01",
+      "development_bars": 1562,
+      "samples": 1547,
+      "median_atr": "0.000",
+      "p95_atr": "1.042",
+      "p99_atr": "1.627",
+      "worst_atr": "3.569",
+      "allowance_atr": "1.63",
+      "range": [
+        "2018-06-27",
+        "2024-09-30"
+      ]
+    },
+    "HYG": {
+      "symbol": "HYG",
+      "venue": "ARCX",
+      "holdout_start": "2024-07-01",
+      "development_bars": 1883,
+      "samples": 1868,
+      "median_atr": "0.000",
+      "p95_atr": "0.919",
+      "p99_atr": "1.676",
+      "worst_atr": "5.496",
+      "allowance_atr": "1.68",
+      "range": [
+        "2017-01-03",
+        "2024-06-28"
+      ]
+    },
+    "MSFT": {
+      "symbol": "MSFT",
+      "venue": "XNAS",
+      "holdout_start": "2022-01-01",
+      "development_bars": 4280,
+      "samples": 4265,
+      "median_atr": "0.000",
+      "p95_atr": "0.583",
+      "p99_atr": "1.103",
+      "worst_atr": "8.338",
+      "allowance_atr": "1.11",
+      "range": [
+        "2005-01-03",
+        "2021-12-31"
+      ]
+    },
+    "SCHX": {
+      "symbol": "SCHX",
+      "venue": "ARCX",
+      "holdout_start": "2024-07-01",
+      "development_bars": 1883,
+      "samples": 1868,
+      "median_atr": "0.000",
+      "p95_atr": "0.776",
+      "p99_atr": "1.495",
+      "worst_atr": "3.349",
+      "allowance_atr": "1.50",
+      "range": [
+        "2017-01-03",
+        "2024-06-28"
+      ]
+    },
+    "SPY": {
+      "symbol": "SPY",
+      "venue": "ARCX",
+      "holdout_start": "2022-01-01",
+      "development_bars": 4280,
+      "samples": 4265,
+      "median_atr": "0.000",
+      "p95_atr": "0.693",
+      "p99_atr": "1.225",
+      "worst_atr": "3.872",
+      "allowance_atr": "1.23",
+      "range": [
+        "2005-01-03",
+        "2021-12-31"
+      ]
+    },
+    "TLT": {
+      "symbol": "TLT",
+      "venue": "XNAS",
+      "holdout_start": "2024-07-01",
+      "development_bars": 1884,
+      "samples": 1869,
+      "median_atr": "0.020",
+      "p95_atr": "0.991",
+      "p99_atr": "1.487",
+      "worst_atr": "2.167",
+      "allowance_atr": "1.49",
+      "range": [
+        "2017-01-03",
+        "2024-06-28"
+      ]
+    },
+    "XLF": {
+      "symbol": "XLF",
+      "venue": "ARCX",
+      "holdout_start": "2025-01-01",
+      "development_bars": 1154,
+      "samples": 1139,
+      "median_atr": "0.000",
+      "p95_atr": "0.679",
+      "p99_atr": "1.064",
+      "worst_atr": "2.520",
+      "allowance_atr": "1.07",
+      "range": [
+        "2020-06-02",
+        "2024-12-31"
+      ]
+    }
+  }
+}

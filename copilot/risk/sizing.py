@@ -112,6 +112,28 @@ def position_size(
     return lots * lot_size
 
 
+def risk_per_share(*, distance: Decimal, gap_allowance: Decimal = Decimal(0)) -> Decimal:
+    """
+    Return what one share can lose in the stressed case: ``|P - S| + g``.
+
+    The playbook's denominator, and the reason it is not just the stop distance: a stop is
+    not a loss guarantee. Measured on the replay, a stop breached inside a session fills at
+    its trigger and costs the stop distance, while a session that **gaps through** the stop
+    fills at the open and costs the gap. ``g`` is the stressed allowance for the second
+    case, measured per symbol by :mod:`copilot.calibration.gap_history` and pinned in
+    :mod:`copilot.risk.gap_stress`.
+
+    Zero distance stays zero, because a signal whose stop cannot be honoured is unsizeable
+    however large the allowance is; an allowance must never make an invalid stop sizeable.
+
+    """
+    if distance <= 0:
+        return Decimal(0)
+    if gap_allowance < 0:
+        raise ValueError(f"gap_allowance cannot be negative, got {gap_allowance}")
+    return distance + gap_allowance
+
+
 def risk_amount(*, quantity: Decimal, distance: Decimal) -> Decimal:
     """
     Currency actually at risk once the size has been floored.
@@ -135,6 +157,7 @@ def size_from_levels(
     risk_budget: Decimal,
     lot_size: Decimal = Decimal(1),
     max_notional: Decimal | None = None,
+    gap_allowance: Decimal = Decimal(0),
 ) -> tuple[Decimal, Decimal]:
     """
     Return ``(quantity, risk_amount)`` for one signal.
@@ -144,26 +167,36 @@ def size_from_levels(
     same way flooring already leaves it at or under, and for the same reason it is
     recorded per trade rather than assumed.
 
+    ``gap_allowance`` is the playbook's ``g``. Both the quantity and the recorded risk are
+    computed from ``|P - S| + g``, so a position is smaller and the risk it reports is the
+    stressed one. A stop-out at the stop then costs **less** than one R, which is correct:
+    R is what the trade can lose in the stressed case, and an ordinary stop-out is not that
+    case. It defaults to zero so a caller that has no measurement is unchanged rather than
+    silently charged a number nobody measured - but every activation declares one, and both
+    strategies refuse to trade without it.
+
     """
     distance = stop_distance(
         direction=direction,
         entry_price=entry_price,
         stop_price=stop_price,
     )
+    per_share = risk_per_share(distance=distance, gap_allowance=gap_allowance)
     quantity = position_size(
         risk_budget=risk_budget,
-        distance=distance,
+        distance=per_share,
         lot_size=lot_size,
         max_notional=max_notional,
         entry_price=entry_price if max_notional is not None else None,
     )
-    return quantity, risk_amount(quantity=quantity, distance=distance)
+    return quantity, risk_amount(quantity=quantity, distance=per_share)
 
 
 __all__ = [
     "Sizing",
     "position_size",
     "risk_amount",
+    "risk_per_share",
     "size_from_levels",
     "stop_distance",
 ]

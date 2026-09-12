@@ -93,10 +93,15 @@ The mirror, for the short leg.
 def run(specs, **parameters: object):
     """
     Replay one parameter set over a hand-built series.
+
+    ``gap_atr`` defaults to SPY's pinned allowance, because the rule refuses to size
+    without one: sizing on the stop distance alone is the understatement the allowance
+    exists to prevent. A test that wants the unstressed arithmetic passes it explicitly.
+
     """
     return run_nautilus_replay(
         bars_from(specs),
-        parameters,
+        {"gap_atr": "1.23", **parameters},
         instrument=INSTRUMENT,
         bar_type=BAR_TYPE,
         strategy_factory=strategy_factory,
@@ -104,7 +109,12 @@ def run(specs, **parameters: object):
 
 
 def a_strategy(**overrides: object) -> GapReversalStrategy:
-    settings = {"instrument_id": INSTRUMENT.id, "bar_type": BAR_TYPE, **overrides}
+    settings = {
+        "instrument_id": INSTRUMENT.id,
+        "bar_type": BAR_TYPE,
+        "gap_atr": "1.23",
+        **overrides,
+    }
     strategy = GapReversalStrategy(GapReversalConfig(**settings))
     strategy.configure(RiskAmountRegistry())
     return strategy
@@ -232,9 +242,11 @@ def test_next_close_freezes_the_atr_at_the_signal_bar():
 
     assert len(result.trades) == 1
     trade = result.trades[0]
-    stop_distance = trade.risk_amount / trade.quantity
-    # Frozen: ~2 ATR x 1.5 = ~3. Live at the fill bar would be at least double that.
-    assert stop_distance < Decimal(5)
+    per_share = trade.risk_amount / trade.quantity
+    # Frozen: ~2 ATR x (1.5 stop + 1.23 allowance) = ~5.5. The live ATR at the fill bar
+    # is at least double, so a per-share risk under 8 can only have come from the frozen
+    # one. The threshold moved with the allowance; what it discriminates did not.
+    assert per_share < Decimal(8)
 
 
 def test_a_signal_on_the_final_bar_never_fills_under_next_close():
@@ -307,12 +319,15 @@ def test_every_trade_reports_the_risk_it_took():
         assert trade.r_multiple == trade.realized_pnl / trade.risk_amount
 
 
-def test_risk_is_the_floored_quantity_times_the_stop_distance():
+def test_risk_is_the_floored_quantity_times_the_stressed_per_share_loss():
     """
-    Not the budget.
+    Not the budget, and not the stop distance alone.
 
     Quantity floors to whole shares, so realised risk sits at or just under the budget;
     using the budget as the R denominator would overstate every trade by that rounding.
+    The per-share figure is the stop plus the measured gap allowance, which is what
+    makes one R the loss a gap through the stop produces rather than the loss a clean
+    stop-out produces.
 
     """
     specs = [*flat_series(20), ("96", "99", "95", "98"), *RESOLVE_LONG]
@@ -556,9 +571,11 @@ def _with_ledger(ledger: ExposureLedger, **sizing: object):
 
 
 def _run_with_ledger(specs: list, ledger: ExposureLedger, **parameters: object):
+    # The allowance defaults here for the same reason it does in `run`: without one the
+    # rule refuses to size, so a ledger test would measure the refusal and not the ledger.
     return run_nautilus_replay(
         bars_from(specs),
-        parameters,
+        {"gap_atr": "1.23", **parameters},
         instrument=INSTRUMENT,
         bar_type=BAR_TYPE,
         strategy_factory=_with_ledger(ledger),
@@ -714,7 +731,12 @@ class TestDecisionRecord:
         series = [*flat_series(WARMUP_BARS_FOR_TEST), ("94", "95", "93", "94.5")]
         decided = run_to_decision(
             bars_from(series),
-            {"long": True, "entry_timing": "signal_close", "min_gap_atr": "0.25"},
+            {
+                "long": True,
+                "entry_timing": "signal_close",
+                "min_gap_atr": "0.25",
+                "gap_atr": "1.23",
+            },
             instrument=INSTRUMENT,
             bar_type=BAR_TYPE,
             strategy_factory=strategy_factory,

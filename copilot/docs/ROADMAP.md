@@ -234,7 +234,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twenty-one items. Grouped by blocking condition rather than by component, because that is
+Twenty items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -467,7 +467,7 @@ questions the stand-up plan defers to its stages, each now a row of its own.
 | **Whether `IBAPI_TIMEZONE_ALIASES` is still needed against an Eastern Gateway** | 08    | Stand-up stage four. `day` refuses without it; the alias exists for a TWS configured in Japan and the Gateway container runs in `America/New_York`. Connect once without it and once with it; relax the check only on that evidence, and record both results here.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | **Whether IBC's paper login prompts for two-factor**                            | 08    | Stand-up stage four. If it prompts, the Gateway's nightly restart needs the owner present and unattended running is blocked on it; if not, record that it did not and when the check was made.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
-### Ready to build (4)
+### Ready to build (3)
 
 **Closed 2026-09-11: the random-entry null control is built.** `copilot.validation.null_control`
 draws entry sessions at random from the development window, runs the premise's own machinery on
@@ -495,9 +495,18 @@ on the VM*. **Batch C closed 2026-09-11** too, all fifteen rows
 next-close carry moved to *Waiting on a decision*, because building it means choosing how an
 entry is placed ([ADR-0030](decisions/0030-the-host-runs-one-broker-session-at-a-time.md)).
 
-| Item                                                | Stage  | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| --------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Size with the playbook's stressed gap allowance** | 05, 06 | Opened 2026-09-11 by the turn-of-month build, and it applies to every premise. [`RISK.md`](playbook/RISK.md) sizes as `q = floor(R / (abs(P - S) + g))`, where `g` is a **stressed per-share allowance for gaps, slippage and fees**. `size_from_levels` divides by the stop distance alone: nothing in `copilot/risk/` carries `g`. Measured on the replay the same day: a stop breached inside a session fills at its trigger for exactly one R, and a session that gaps straight through it fills at the close - five R on a 15-point gap against a 3-point stop. So **planned risk is understated by exactly the gap risk the allowance exists to cover**, in every verdict filed so far. Needs a declared `g` (a fraction of ATR is the obvious shape), the sizing to divide by `abs(P - S) + g`, and a re-score of anything whose majority turns on it. |
+**Closed 2026-09-12: sizing carries the stressed gap allowance.** `g` is measured per symbol by
+`calibration/gap_history.py` over **development bars only**, pinned in `risk/gap_stress.py`, and
+declared by every activation; `size_from_levels` divides by `abs(P - S) + g` and records the
+stressed per-share loss as the trade's risk. The measured allowances run from 1.07 ATR on XLF to
+1.89 on EEM, and **all but two exceed the 1.5-ATR stop the registry uses** - a position stopped
+1.5 ATR away can lose roughly twice that overnight, so the old sizing understated planned risk by
+more than half. Two consequences are deliberate: an ordinary stop-out now costs a **fraction** of
+one R, because one R is the stressed loss and a clean stop-out is not that case; and a strategy
+whose activation declares no allowance **refuses to trade** rather than silently reverting to the
+stop distance. Every filed verdict is now in the wrong unit and must be recomputed - the row for
+that sits below with the Tiered switch, because both change every R and one re-file should carry
+both.
 
 The fourteen rows carried from before the audit:
 

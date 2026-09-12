@@ -12,6 +12,7 @@ entry_timing = "next_close"
 require_unfilled = false
 atr_period = 14
 stop_atr = "1.5"
+gap_atr = "1.11"
 entry_buffer_atr = "0.25"
 risk_budget = "1000"
 

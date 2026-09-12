@@ -43,6 +43,8 @@ Two constraints that are easy to lose:
   next-session stress loss**, not from an assumption that `|P - S| + g` bounds the loss.
 
 Implemented in `copilot/risk/sizing.py` (the quantity and the notional cap),
+`copilot/risk/gap_stress.py` (the pinned `g`, measured by
+`copilot/calibration/gap_history.py`),
 `copilot/risk/budget.py` (`R = A * r` and the caps from equity) and
 `copilot/risk/exposure.py` (total open planned risk and the entry count, across every
 strategy in a session). Quantity is **floored, never rounded** - rounding
@@ -61,6 +63,31 @@ q = floor(20 / 4.50) = 4 shares, USD 400 notional, 5% of equity
 
 A stop is not a loss guarantee. Gaps produce larger losses, which is what `g` is for and
 why it is stressed rather than typical.
+
+### Where `g` comes from, measured 2026-09-12
+
+`copilot/calibration/gap_history.py` measures the adverse opening gap per symbol, in units
+of the ATR standing at the previous close, over **development bars only** - each symbol
+carved at its activations' earliest holdout boundary, because an allowance fitted to
+holdout bars is a sizing basis that read the single-use test. The pinned figure is the
+nearest-rank 99th percentile, so it is a gap that actually happened, and it lives in
+`copilot/risk/gap_stress.py` with each activation declaring its own value in the registry.
+
+| Symbol | `g`, in ATR | Symbol | `g`, in ATR |
+| ------ | ----------- | ------ | ----------- |
+| AAPL   | 1.34        | SCHX   | 1.50        |
+| EEM    | 1.89        | SPY    | 1.23        |
+| GLDM   | 1.63        | TLT    | 1.49        |
+| HYG    | 1.68        | XLF    | 1.07        |
+| MSFT   | 1.11        |        |             |
+
+**Every one of these exceeds a typical session's whole range, and all but two exceed the
+1.5-ATR stop the registry uses.** A position stopped 1.5 ATR away can lose roughly twice
+that overnight, so charging only the stop distance understated planned risk by more than
+half - which is what every verdict filed before 2026-09-12 did. One consequence is worth
+stating plainly: **an ordinary stop-out now costs a fraction of one R**, because one R is
+the stressed loss. R has not changed meaning arbitrarily; it has stopped pretending the
+stop is a floor.
 
 ## Initial live-risk defaults
 
@@ -178,7 +205,7 @@ what this account can trade - recorded and shelved, not a strategy waiting for c
 ## Checklist
 
 - [ ] `S` is an executable stop, not an end-of-day invalidation level
-- [ ] `g` comes from a tested stress loss where exits are next-session
+- [x] `g` comes from a tested stress loss where exits are next-session
 - [ ] Quantity floored, and all three caps applied
 - [ ] Caps recomputed after every fill, cancel, FX conversion and corporate action
 - [ ] Cost swept across account sizes, with the zero-crossing equity reported
