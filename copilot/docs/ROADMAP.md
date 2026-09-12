@@ -234,7 +234,7 @@ What stages 1 to 6 need built, none of it blocked:
 
 ## Open work, grouped by what unblocks it
 
-Twenty-two items. Grouped by blocking condition rather than by component, because that is
+Twenty-one items. Grouped by blocking condition rather than by component, because that is
 the axis that decides what can move today. A final group records the standing carrying
 cost of the upstream changes this fork already holds - not work, but the bill that
 arrives at every sync.
@@ -317,7 +317,22 @@ distinguishable without guessing, and the rejection itself is unchanged. `shutdo
 is no longer blocked by this class of noise. One test drives an orphan fill both ways and
 was verified to fail on the unfixed engine; registered in the delta.
 
-### Waiting on a decision (1)
+### Waiting on a decision (0)
+
+**Decided 2026-09-12 as [ADR-0033](decisions/0033-the-turn-of-month-single-use-test-is-forward.md):
+the turn of the month's single-use test is forward, not carved.** The owner concurred with the
+recommendation below - re-pin the boundary earlier and keep a real single-use test - and
+executing it showed the recommendation was not available. The band admits boundaries only from
+2021-11-01 (19.80% of the window) to 2022-11-01 (15.03%), and every holdout any of them carves
+lies wholly inside 2005-2025, which is the span the void run read; moving the pin earlier adds
+bars that were also in the aggregate. So the carved holdout is **compromised rather than spent**
+
+- nothing was decided from it, and it may never be quoted as a clean out-of-sample pass - the
+boundary stays at the shared pin, and the single-use test becomes the forward span the void run
+provably never touched: 174 catalog bars past 2026-01-01 and the paper clock from 2026-09-15.
+`spend_holdout` refuses the activation by name, because today's ADR-0013 refusal is accidental
+and would vanish the day the premise is re-expressed on intraday bars. The reasoning that was
+recommended, and the arithmetic that overruled it, are kept below.
 
 **Opened 2026-09-11: is `spy-turn-of-month`'s holdout spent?** The randomised-signal control's
 first run carved on the activation's own boundary, which this activation does not declare, so the

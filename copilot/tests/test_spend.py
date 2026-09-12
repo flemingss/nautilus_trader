@@ -213,6 +213,36 @@ def test_an_activation_without_entry_timing_is_the_diagnostic_bound(tmp_path: Pa
     assert refusal(activation, tmp_path) is not None
 
 
+def test_an_activation_whose_holdout_was_looked_at_may_not_spend(tmp_path: Path):
+    """
+    ADR-0033: a look is not a spend, and the refusal has to outlive ADR-0013's.
+
+    `spy-turn-of-month` is refused today for an unrelated reason - it is a `signal_close`
+    activation - so the named refusal is tested at `next_close`, which is the case it
+    exists for: the premise re-expressed on intraday bars, with the look forgotten.
+
+    """
+    looked_at = Activation(
+        **{**an_activation().__dict__, "name": "spy-turn-of-month"},
+    )
+
+    why = refusal(looked_at, tmp_path, tmp_path / "verdicts")
+
+    assert why is not None
+    assert "ADR-0033" in why
+    assert "read by accident" in why
+
+
+def test_the_looked_at_refusal_is_not_the_entry_timing_refusal(tmp_path: Path):
+    # Same activation at signal_close: refused either way, but the reasons are distinct
+    # and the ADR-0033 one must not be reachable only through the ADR-0013 one.
+    named = Activation(**{**an_activation().__dict__, "name": "spy-turn-of-month"})
+    unnamed = an_activation()
+
+    assert "ADR-0033" in (refusal(named, tmp_path, tmp_path / "verdicts") or "")
+    assert "ADR-0033" not in (refusal(unnamed, tmp_path, tmp_path / "verdicts") or "")
+
+
 def _declared(effect: str = "0.05") -> Activation:
     from copilot.strategies.activations import ValidationSettings
 

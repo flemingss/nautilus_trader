@@ -99,6 +99,31 @@ SPENDABLE_ENTRY_TIMING = "next_close"
 The only timing mode a holdout may be spent on (ADR-0013).
 """
 
+HOLDOUT_LOOKED_AT = {
+    "spy-turn-of-month": (
+        "its holdout was read by accident on 2026-09-11, as an aggregate over 2005-2025, and "
+        "ADR-0033 rules that this premise's single-use test is forward rather than carved"
+    ),
+}
+"""
+Activations whose holdout has been seen, whatever the ``holdouts/`` directory says.
+
+A look is not a spend: nothing here was decided from, or selected against, the bars in
+question, so these activations have no spend record and ADR-0021 does not apply. But the
+holdout is no longer a clean single-use test either, and the refusal has to outlive the
+reason it is currently unreachable - ``spy-turn-of-month`` is a ``signal_close``
+activation, so ADR-0013 refuses it today for a different reason entirely, and that
+protection disappears the moment the premise is re-expressed on intraday bars.
+
+A table here rather than a field on the activation, because a ``[validation]`` flag would
+enter ``identity_digest`` and move every activation's identity - twelve recomputes for a
+fact that changes no number, which is the cost the fingerprint exists to avoid.
+[ADR-0033] records the measurement behind the entry.
+
+[ADR-0033]: ../docs/decisions/0033-the-turn-of-month-single-use-test-is-forward.md
+
+"""
+
 OWNER_DECISIONS = ("reject", "revise", "freeze")
 """
 The charter's three, and only three, outcomes at a gate.
@@ -138,6 +163,14 @@ def refusal(
             f"activation {activation.name!r} has already spent its holdout: "
             f"{spent_dir / (activation.name + '.json')} exists. Once viewed, the holdout "
             f"is development data; there is no second spend and no partial reopening."
+        )
+    looked_at = HOLDOUT_LOOKED_AT.get(activation.name)
+    if looked_at is not None:
+        return (
+            f"activation {activation.name!r} may not spend its holdout: {looked_at}. "
+            f"Re-expressing the premise at entry_timing={SPENDABLE_ENTRY_TIMING!r} does "
+            f"not restore it, and no boundary the charter's band admits carves a span "
+            f"that was not read (ADR-0033). Forward evidence is this premise's path."
         )
     return _effect_size_refusal(activation, verdicts_dir)
 
