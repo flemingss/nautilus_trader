@@ -65,19 +65,60 @@ def trade(
 # --- commission schedule ------------------------------------------------------------
 
 
-def test_the_minimum_binds_below_two_hundred_shares() -> None:
-    # Measured live twice: 1 and 3 shares both cost ~USD 1.00 per order.
-    assert commission(Decimal(1), Decimal(300)) == Decimal("1.00")
-    assert commission(Decimal(199), Decimal(60_000)) == Decimal("1.00")
+def test_the_minimum_binds_below_the_plans_breakeven_share_count() -> None:
+    """
+    The property, stated against the pinned plan rather than one plan's share counts.
+
+    Measured live on Fixed twice: 1 and 3 shares both cost ~USD 1.00 per order, the
+    minimum binding. Where that stops being true is a **property of the plan**: the
+    breakeven is ``minimum / per_share``, which is 200 shares on Fixed and 100 on Tiered.
+    An earlier version of this test asserted the minimum still bound at 199 shares, which
+    was true only on Fixed and became false the day the pin moved.
+
+    """
+    breakeven = SCHEDULE.minimum / SCHEDULE.per_share
+    pass_rate = SCHEDULE.exchange_per_share + SCHEDULE.clearing_per_share
+
+    for shares in (Decimal(1), breakeven - Decimal(1)):
+        notional = shares * Decimal(300)
+
+        assert shares * SCHEDULE.per_share < SCHEDULE.minimum
+        assert commission(shares, notional) == SCHEDULE.minimum + shares * pass_rate
+
+    # And immediately above it the per-share rate takes over, so the boundary is real.
+    assert breakeven * SCHEDULE.per_share == SCHEDULE.minimum
 
 
 def test_per_share_takes_over_above_the_minimum() -> None:
-    assert commission(Decimal(1000), Decimal(300_000)) == Decimal("5.000")
+    shares, notional = Decimal(1000), Decimal(300_000)
+    per_share = shares * SCHEDULE.per_share
+    pass_through = shares * (SCHEDULE.exchange_per_share + SCHEDULE.clearing_per_share)
+
+    assert per_share > SCHEDULE.minimum
+    assert commission(shares, notional) == per_share + pass_through
 
 
 def test_the_notional_cap_binds_on_penny_notional() -> None:
-    # 100 shares at USD 0.50: per-share says 1.00 (the minimum), the 1% cap says 0.50.
-    assert commission(Decimal(100), Decimal(50)) == Decimal("0.50")
+    """
+    The 1% cap applies to the commission; the pass-through is charged on top of it.
+
+    The cap only binds when it is below the minimum, so the fixture is built from the
+    pinned plan rather than written out: a notional of half the plan's breakeven puts the
+    cap under the minimum on either plan. The old fixture - 100 shares at USD 0.50 - was a
+    cap case on Fixed and is a *minimum* case on Tiered, where 1% of USD 50 is 0.50 and
+    the minimum is only 0.35.
+
+    The regulatory and exchange fees are not commission, so the cap does not cover them
+    (ADR-0025); they are charged on top.
+
+    """
+    notional = SCHEDULE.minimum / SCHEDULE.max_pct / Decimal(2)
+    shares = Decimal(10)
+    capped = SCHEDULE.max_pct * notional
+    pass_through = shares * (SCHEDULE.exchange_per_share + SCHEDULE.clearing_per_share)
+
+    assert capped < SCHEDULE.minimum
+    assert commission(shares, notional) == capped + pass_through
 
 
 # --- split correction ---------------------------------------------------------------
@@ -106,10 +147,14 @@ def test_early_aapl_commission_is_charged_on_real_shares() -> None:
         risk_amount=Decimal(1_000),
         bps_per_side=Decimal(0),
     )
-    # 2.00 of commission plus the regulatory fee on the sale of 100 real shares at
-    # USD 70. Was exactly 2/1000 until ADR-0025 added the pass-through the broker
-    # actually charges; the shakedown's measured trips are what showed it missing.
-    expected = Decimal(2) + regulatory_fees(Decimal(100), Decimal(7_000))
+    # Commission on both legs of 100 *real* shares, plus the regulatory fee on the sale.
+    # Charged from the pinned schedule rather than written out, so this keeps testing the
+    # split correction - 100 real shares, not 2,800 adjusted ones - when the plan moves.
+    # It was 2/1000 on Fixed, where the USD 1.00 minimum bound twice.
+    expected = 2 * commission(Decimal(100), Decimal(7_000)) + regulatory_fees(
+        Decimal(100),
+        Decimal(7_000),
+    )
     assert cost == expected / Decimal(1_000)
 
 
@@ -128,7 +173,11 @@ def test_round_trip_charges_spread_both_ways_and_commission_both_legs() -> None:
         risk_amount=Decimal(100),
         bps_per_side=Decimal(2),
     )
-    expected = Decimal("0.40") + Decimal(2) + regulatory_fees(Decimal(10), Decimal(1_000))
+    expected = (
+        Decimal("0.40")
+        + 2 * commission(Decimal(10), Decimal(1_000))
+        + regulatory_fees(Decimal(10), Decimal(1_000))
+    )
     assert cost == expected / Decimal(100)
 
 
@@ -353,11 +402,24 @@ def test_the_pinned_plan_is_the_one_the_account_is_on() -> None:
     """
     A verdict priced on a plan the broker is not running is about a different account.
 
-    The paper account is measurably on Fixed, confirmed by the round trips above. This
-    stays Fixed until the switch is actually made.
+    The account moved to IBKR Pro Tiered on 2026-09-12, so the pin moved with it - after
+    the switch and not before, which is the sequence ADR-0025 required.
 
     """
-    assert SCHEDULE is FIXED
+    assert SCHEDULE is TIERED
+
+
+def test_the_pinned_plan_charges_its_pass_through() -> None:
+    """
+    Tiered is not Fixed with a lower minimum, and the pin must not flatten it.
+
+    The retired ``COMMISSION_PER_SHARE`` alias would have charged 0.0035 a share and
+    missed the exchange and clearing fees entirely, which is why asking the schedule is
+    now the only way.
+
+    """
+    assert SCHEDULE.exchange_per_share > 0
+    assert SCHEDULE.clearing_per_share > 0
 
 
 def test_the_access_fee_is_the_cap_in_force_today_not_the_one_adopted() -> None:
@@ -377,13 +439,17 @@ def test_a_verdict_records_which_plan_priced_it() -> None:
     """
     Two plans means a bare R number is ambiguous; the record has to name its basis.
     """
-    fixed = CostModel.from_snapshot().as_record("AAPL")["commission"]
+    fixed = CostModel.from_snapshot(schedule=FIXED).as_record("AAPL")["commission"]
     tiered = CostModel.from_snapshot(schedule=TIERED).as_record("AAPL")["commission"]
+    pinned = CostModel.from_snapshot().as_record("AAPL")["commission"]
 
     assert "Fixed" in fixed
     assert "Tiered" in tiered
     assert "passed through" in tiered
     assert "passed through" not in fixed
+    # The default model names whichever plan is pinned, so a filed verdict carries its own
+    # basis and a reader never has to know what the pin was on the day it ran.
+    assert pinned == SCHEDULE.describe()
 
 
 def test_the_regulatory_fee_is_charged_once_not_per_leg() -> None:
