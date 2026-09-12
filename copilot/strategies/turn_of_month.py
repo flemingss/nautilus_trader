@@ -105,6 +105,7 @@ History the rule needs: the ATR the stop is placed from, plus a bar.
 
 ENTRY_SUBMITTED = "entry_submitted"
 EXIT_SUBMITTED = "exit_submitted"
+NO_GAP_ALLOWANCE = "no_gap_allowance"
 NOT_MONTH_END = "not_month_end"
 INSUFFICIENT_HISTORY = "insufficient_history"
 HOLDING = "holding"
@@ -154,6 +155,7 @@ class TurnOfMonthConfig(StrategyConfig):
         "atr_period",
         "hold_sessions",
         "stop_atr",
+        "gap_atr",
         "risk_budget",
         "max_notional",
         "long",
@@ -177,6 +179,7 @@ class TurnOfMonthConfig(StrategyConfig):
         atr_period: int = DEFAULT_ATR_PERIOD,
         hold_sessions: int = DEFAULT_HOLD_SESSIONS,
         stop_atr: str = DEFAULT_STOP_ATR,
+        gap_atr: str = "",
         risk_budget: str = DEFAULT_RISK_BUDGET,
         max_notional: str = "",
         long: bool = True,
@@ -201,6 +204,7 @@ class TurnOfMonthConfig(StrategyConfig):
         self.atr_period = atr_period
         self.hold_sessions = hold_sessions
         self.stop_atr = stop_atr
+        self.gap_atr = gap_atr
         self.risk_budget = risk_budget
         self.max_notional = max_notional
         self.long = long
@@ -354,11 +358,20 @@ class TurnOfMonthStrategy(Strategy):
         Size from the stop and submit the entry with its protective stop.
         """
         instrument = self.cache.instrument(self.config.instrument_id)
+        if not self.config.gap_atr:
+            # Sizing on the stop distance alone charges nothing for a gap through the
+            # stop, which is the understatement RISK.md's `g` exists to prevent. Refuse
+            # rather than size, because a silent zero is the defect itself.
+            self._skip(NO_GAP_ALLOWANCE)
+            return
+
         entry = Decimal(str(bar.close))
-        distance = Decimal(str(self._atr.value)) * Decimal(self.config.stop_atr)
+        atr = Decimal(str(self._atr.value))
+        distance = atr * Decimal(self.config.stop_atr)
         if distance <= 0:
             self._skip("non_positive_atr")
             return
+        allowance = atr * Decimal(self.config.gap_atr)
         stop_price = entry - distance if self.config.long else entry + distance
         if stop_price <= 0:
             self._skip("invalid_levels")
@@ -371,6 +384,7 @@ class TurnOfMonthStrategy(Strategy):
             stop_price=stop_price,
             risk_budget=self._sizing.risk_budget,
             max_notional=self._sizing.max_notional,
+            gap_allowance=allowance,
         )
         if quantity <= 0:
             self._skip("unsizeable")
@@ -378,7 +392,14 @@ class TurnOfMonthStrategy(Strategy):
 
         cash = Decimal(0)
         if self._ledger is not None and self.config.long:
-            quantity, risk, cash = self._fit_to_settled_cash(entry, distance, quantity, risk)
+            # The stressed per-share loss, so a size fitted to cash records risk on the
+            # same basis the sizing used.
+            quantity, risk, cash = self._fit_to_settled_cash(
+                entry,
+                distance + allowance,
+                quantity,
+                risk,
+            )
         if self._ledger is not None and not self._ledger.reserve(
             str(self.strategy_id),
             risk,
@@ -552,6 +573,7 @@ def strategy_factory(
             atr_period=int(parameters.get("atr_period", DEFAULT_ATR_PERIOD)),
             hold_sessions=int(parameters.get("hold_sessions", DEFAULT_HOLD_SESSIONS)),
             stop_atr=str(parameters.get("stop_atr", DEFAULT_STOP_ATR)),
+            gap_atr=str(parameters.get("gap_atr", "")),
             risk_budget=str(parameters.get("risk_budget", DEFAULT_RISK_BUDGET)),
             max_notional=str(parameters.get("max_notional", "")),
             long=bool(parameters.get("long", True)),
@@ -573,6 +595,7 @@ __all__ = [
     "ENTRY_SUBMITTED",
     "EXIT_SUBMITTED",
     "NOT_MONTH_END",
+    "NO_GAP_ALLOWANCE",
     "SEARCH_SPACE",
     "WARMUP_BARS",
     "TurnOfMonthConfig",

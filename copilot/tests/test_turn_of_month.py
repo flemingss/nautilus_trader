@@ -100,10 +100,15 @@ def series(**overrides: str) -> list[DailyBar]:
 def run(bars: list[DailyBar], **parameters: object):
     """
     Replay the rule over the given bars.
+
+    ``gap_atr`` defaults to SPY's pinned allowance, because the rule refuses to size
+    without one: sizing on the stop distance alone is the understatement the allowance
+    exists to prevent. A test that wants the unstressed arithmetic passes it explicitly.
+
     """
     return run_nautilus_replay(
         bars,
-        parameters,
+        {"gap_atr": "1.23", **parameters},
         instrument=INSTRUMENT,
         bar_type=BAR_TYPE,
         strategy_factory=strategy_factory,
@@ -160,13 +165,20 @@ class TestRule:
         (trade,) = result.trades
         assert trade.closed_at.date() == date(2024, 2, 2)
 
-    def test_a_stop_breached_within_a_session_costs_exactly_one_r(self) -> None:
+    def test_a_stop_breached_within_a_session_costs_the_stops_share_of_r(self) -> None:
         """
-        The property the whole R unit rests on.
+        What R means once sizing carries a gap allowance.
 
         A session that opens at 99.50, dips to 96 through the stop at 97 and recovers to
-        99 ends the hold at the trigger, for **exactly one R**: the stop is the
-        denominator every score in this experiment is divided by.
+        99 ends the hold at the trigger. That used to cost **exactly one R**, because R
+        was the stop distance. It is now the *stressed* per-share loss - the stop plus the
+        measured gap allowance - so an ordinary stop-out costs the stop's share of it and
+        nothing more.
+
+        The arithmetic, with a quiet ATR of 2: the stop is 1.5 ATR (3.00) and the
+        allowance 1.23 ATR (2.46), so one share risks 5.46 and a stop-out loses 3.00 of
+        it. That is deliberately **less** than one R: one R is reserved for the case the
+        stop does not contain, which the next test measures.
 
         """
         bars = series()
@@ -176,7 +188,11 @@ class TestRule:
         (trade,) = result.trades
         assert trade.closed_at.date() == date(2024, 2, 1)
         assert trade.exit_price == Decimal(97)
-        assert trade.r_multiple == Decimal(-1)
+
+        per_share = trade.risk_amount / trade.quantity
+        assert per_share == Decimal("5.46")
+        assert abs(trade.r_multiple + Decimal(3) / per_share) < Decimal("0.000001")
+        assert Decimal(-1) < trade.r_multiple < Decimal(0)
 
     def test_a_gap_through_the_stop_costs_more_than_one_r_and_is_not_hidden(self) -> None:
         """
@@ -184,11 +200,16 @@ class TestRule:
         allowance.
 
         A session that opens at 85 never trades at the 97 stop, so the fill is the bar's
-        close and the loss is five R, not one. On daily bars the engine has no intrabar
-        path to do better, and a premise measured as though every stop filled at its
-        trigger would understate exactly the losses that matter. An earlier version of
-        this test asserted only that R was negative, which passed while the stop had not
-        filled at all.
+        close and the loss is 15 a share against a stressed 5.46, or about 2.75 R. On
+        daily bars the engine has no intrabar path to do better, and a premise measured as
+        though every stop filled at its trigger would understate exactly the losses that
+        matter. An earlier version of this test asserted only that R was negative, which
+        passed while the stop had not filled at all.
+
+        Before sizing carried the allowance this same gap cost **five R**, because the
+        denominator was the stop distance alone. The allowance does not prevent the loss -
+        nothing can - it makes the position small enough that the loss is on the scale R
+        claims to measure.
 
         """
         bars = series()
@@ -199,14 +220,30 @@ class TestRule:
         assert trade.closed_at.date() == date(2024, 2, 1)
         assert trade.exit_price == Decimal(85)
         assert trade.r_multiple < Decimal(-1)
+        assert Decimal("-2.8") < trade.r_multiple < Decimal("-2.7")
 
-    def test_the_recorded_risk_is_the_floored_quantity_times_the_stop_distance(self) -> None:
+    def test_the_recorded_risk_is_the_floored_quantity_times_the_stressed_loss(self) -> None:
         result = run(series(), hold_sessions=3, stop_atr="1.5", risk_budget="1000")
 
         (trade,) = result.trades
         assert trade.risk_amount > 0
         assert trade.risk_amount <= Decimal(1000)
         assert trade.quantity > 0
+        # The stop plus the allowance, not the stop alone: 2 ATR x (1.5 + 1.23).
+        assert trade.risk_amount / trade.quantity == Decimal("5.46")
+
+    def test_without_a_gap_allowance_the_rule_refuses_to_size(self) -> None:
+        """
+        A silent zero would be the defect the allowance exists to fix.
+
+        Sizing on the stop distance alone is what every verdict filed before 2026-09-12
+        did, so an activation that declares no allowance must not trade rather than
+        quietly reverting to it.
+
+        """
+        result = run(series(), hold_sessions=3, stop_atr="1.5", gap_atr="")
+
+        assert result.trades == ()
 
     def test_a_window_with_no_month_end_trades_nothing(self) -> None:
         bars = [bar(day, "100") for day in JANUARY[:-1]]

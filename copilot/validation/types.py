@@ -83,12 +83,18 @@ class ClosedTrade:
     closed_at: datetime
     realized_pnl: Decimal
     risk_amount: Decimal
-    """Currency at risk when the position opened: ``quantity x stop_distance``.
+    """Currency at risk when the position opened: ``quantity x (stop_distance + g)``.
 
     Recorded per trade rather than assumed constant, because quantity is floored to
     whole units, so realised risk sits at or just under the budget and differs
     slightly per trade. Using the budget as the denominator would overstate R by that
     rounding.
+
+    ``g`` is the stressed per-share gap allowance (:mod:`copilot.risk.gap_stress`), so
+    this is what the trade could lose in the stressed case rather than what a stop-out
+    at the stop costs. A stop-out therefore reports a fraction of one R and a gap
+    through the stop reports about one. Verdicts filed before 2026-09-12 charged the
+    stop distance alone and are in a different, smaller unit.
     """
 
     @property

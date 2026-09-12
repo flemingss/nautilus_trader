@@ -11,6 +11,7 @@ long = true
 atr_period = 14
 hold_sessions = 3
 stop_atr = "1.5"
+gap_atr = "1.23"
 risk_budget = "1000"
 
 [validation]

@@ -151,6 +151,11 @@ as no verdict rather than a weak one - the failure that looks like a bug.
 
 """
 
+NO_GAP_ALLOWANCE = "no_gap_allowance"
+"""
+The activation declares no stressed gap allowance, so it may not size a position.
+"""
+
 DEFERRED = "deferred"
 """
 The outcome of a ``next_close`` trigger: decided now, entered on the next session.
@@ -199,6 +204,7 @@ class GapReversalConfig(StrategyConfig):
         "atr_period",
         "min_gap_atr",
         "stop_atr",
+        "gap_atr",
         "target_1_atr",
         "risk_budget",
         "max_notional",
@@ -224,6 +230,7 @@ class GapReversalConfig(StrategyConfig):
         atr_period: int = DEFAULT_ATR_PERIOD,
         min_gap_atr: str = DEFAULT_MIN_GAP_ATR,
         stop_atr: str = DEFAULT_STOP_ATR,
+        gap_atr: str = "",
         target_1_atr: str = DEFAULT_TARGET_ATR,
         risk_budget: str = DEFAULT_RISK_BUDGET,
         max_notional: str = "",
@@ -253,6 +260,7 @@ class GapReversalConfig(StrategyConfig):
         self.atr_period = atr_period
         self.min_gap_atr = min_gap_atr
         self.stop_atr = stop_atr
+        self.gap_atr = gap_atr
         self.target_1_atr = target_1_atr
         self.risk_budget = risk_budget
         self.max_notional = max_notional
@@ -514,9 +522,17 @@ class GapReversalStrategy(Strategy):
         """
         Size from the stop and submit the bracket.
         """
+        if not self.config.gap_atr:
+            # Sizing on the stop distance alone charges nothing for a gap through the
+            # stop, which is the understatement RISK.md's `g` exists to prevent. Refuse
+            # rather than size, because a silent zero is the defect itself.
+            self._skip(NO_GAP_ALLOWANCE)
+            return
+
         instrument = self.cache.instrument(self.config.instrument_id)
         entry = Decimal(str(bar.close))
         stop_distance = atr * Decimal(self.config.stop_atr)
+        gap_allowance = atr * Decimal(self.config.gap_atr)
         target_distance = atr * Decimal(self.config.target_1_atr)
 
         if self.config.long:
@@ -538,6 +554,7 @@ class GapReversalStrategy(Strategy):
             stop_price=stop_price,
             risk_budget=self._sizing.risk_budget,
             max_notional=self._sizing.max_notional,
+            gap_allowance=gap_allowance,
         )
         if quantity <= 0:
             # Exactly when a real risk engine vetoes. Skipping is right; inventing a
@@ -549,7 +566,9 @@ class GapReversalStrategy(Strategy):
         if self._ledger is not None and self.config.long:
             quantity, risk, cash = self._fit_to_settled_cash(
                 entry,
-                entry - stop_price,
+                # The stressed per-share loss, so a size fitted to cash records risk on
+                # the same basis the sizing used.
+                stop_distance + gap_allowance,
                 quantity,
                 risk,
             )
@@ -723,6 +742,7 @@ def strategy_factory(
             atr_period=int(parameters.get("atr_period", DEFAULT_ATR_PERIOD)),
             min_gap_atr=str(parameters.get("min_gap_atr", DEFAULT_MIN_GAP_ATR)),
             stop_atr=str(parameters.get("stop_atr", DEFAULT_STOP_ATR)),
+            gap_atr=str(parameters.get("gap_atr", "")),
             target_1_atr=str(parameters.get("target_1_atr", DEFAULT_TARGET_ATR)),
             risk_budget=str(parameters.get("risk_budget", DEFAULT_RISK_BUDGET)),
             max_notional=str(parameters.get("max_notional", "")),
@@ -755,6 +775,7 @@ __all__ = [
     "ENTRY_SUBMITTED",
     "ENTRY_TIMINGS",
     "MAX_SEARCHABLE_MIN_GAP_ATR",
+    "NO_GAP_ALLOWANCE",
     "SEARCH_SPACE",
     "WARMUP_BARS",
     "GapReversalConfig",
