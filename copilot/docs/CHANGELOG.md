@@ -2,6 +2,56 @@
 
 Overlay-local. Upstream NautilusTrader releases are not tracked here.
 
+## 2026-09-12, every verdict refiled, and one gate changed
+
+The re-file the two preceding entries left open. Sizing now carries the stressed gap allowance and
+the pinned plan is Tiered, and each rescales every R, so all 13 walk-forwards, both pooled runs,
+the attribution and the spent AAPL holdout were recomputed in one pass. **No figure here is
+comparable to one filed before today.**
+
+### Measured
+
+| Result                        | Before (Fixed, no `g`)             | After (Tiered, with `g`)           |
+| ----------------------------- | ---------------------------------- | ---------------------------------- |
+| SPY turn of the month         | 9/12 folds, [-0.003868, 0.194246]  | **10/12, [0.016124, 0.129851]**    |
+| AAPL next-close walk-forward  | 20/30 folds, [0.009807, 0.167240]  | 21/31, [0.001371, 0.085404]        |
+| AAPL spent holdout, re-scored | +0.034010 R, [-0.134875, 0.198432] | +0.017748 R, [-0.071442, 0.104593] |
+| Constant-membership pool      | +0.026454 R, [-0.160461, 0.171804] | +0.011840 R, [-0.086773, 0.088546] |
+| Shifting-membership pool      | +0.030844 R, [-0.017008, 0.078917] | +0.014398 R, [-0.011206, 0.041472] |
+
+- **The gap-fade family's rejection is untouched.** Neither pool clears zero, both pools'
+  signal-to-noise *fell*, EEM, HYG and TLT stay wholly below zero, and attribution still finds no
+  positive four-factor alpha anywhere.
+- **The turn of the month's interval now clears zero**, which was the one gate it failed, so all
+  three of its declared gates pass. **It turned on cost, not evidence**: the same 144 trades, a
+  cheaper commission plan, and smaller positions paying less cost per R. Mean over interval
+  half-width rose 1.015 to 1.313 where most activations moved under 0.03 - real, but not new
+  information. It is not a frozen candidate; under ADR-0033 its out-of-sample evidence is forward.
+- **The null control did not move: p 0.0419 and percentile 96.0, identically.** That is the
+  correct result and worth stating. It is a rank test on a fixed seed, so the same 500 sets of
+  entry dates were drawn and rescaling R divides the premise and every replicate alike. A sizing
+  change that moved this percentile would have meant the control was measuring something other
+  than the entry dates. Its absolute means fell together, premise +0.137807 to +0.075057 and null
+  +0.037457 to +0.019937, with 0 replicates skipped.
+
+### Pruned
+
+26 superseded verdicts and 3 superseded outputs, in this commit, per the retention rule. The
+protected set was computed rather than eyeballed: the newest verdict per activation, the 13 the
+new attribution names, and `aapl-gap-fade-long-next-close_20260904T085845Z.json`, which the spent
+holdout record cites as its `walk_forward_reference`. The older attribution and pool that a test,
+ADR-0026 and this changelog name by filename were kept for the same reason.
+
+### Found
+
+- **A reassessment block does not name its own cost basis.** The re-scored AAPL holdout records
+  its trades, verdict and interval but no `cost_model`, so the number cannot be read back with the
+  plan and sizing that produced it - the same defect ADR-0025 fixed for verdicts. The spend itself
+  is unaffected: it still carries its original Fixed schedule and snapshot in its own block, so
+  the single-use measurement is not conflated with tonight's re-score. Now a ready row.
+- **`frozen_parameters_match_the_spend` is correctly false** on that record, because the re-score's
+  frozen set carries `gap_atr` and the 2026-09-05 spend's does not. The flag is doing its job.
+
 ## 2026-09-12, the pinned commission plan is Tiered
 
 The owner switched the account to IBKR Pro with stocks on Tiered, which closes the half of
